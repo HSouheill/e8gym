@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'signup_page.dart';
 
 void main() {
   runApp(const MyApp());
@@ -56,14 +57,14 @@ class _LoginPageState extends State<LoginPage> {
               image: AssetImage('assets/background/background.png'),
               fit: BoxFit.cover,
               colorFilter: ColorFilter.mode(
-                Color(0x80000000), // Dark overlay for better text readability
+                Color(0x50000000), // Dark overlay for better text readability
                 BlendMode.darken,
               ),
             ),
           ),
           child: SafeArea(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0),
+              padding: const EdgeInsets.symmetric(horizontal: 18.0),
               child: SingleChildScrollView(
                 child: Column(
                   children: [
@@ -71,7 +72,7 @@ class _LoginPageState extends State<LoginPage> {
                     Align(
                       alignment: Alignment.topRight,
                       child: Container(
-                        margin: const EdgeInsets.only(top: 20),
+                        margin: const EdgeInsets.only(top: 0),
                         width: 50,
                         height: 50,
                         decoration: BoxDecoration(
@@ -84,7 +85,7 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                         child: const Icon(
                           Icons.person,
-                          color: Colors.white,
+                          color: Colors.black,
                           size: 30,
                         ),
                       ),
@@ -98,7 +99,7 @@ class _LoginPageState extends State<LoginPage> {
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 24,
-                        fontWeight: FontWeight.w300,
+                        fontWeight: FontWeight.w500,
                         letterSpacing: 2,
                       ),
                     ),
@@ -109,7 +110,7 @@ class _LoginPageState extends State<LoginPage> {
                       'ENDURANCE EIGHT',
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: 36,
+                        fontSize: 32,
                         fontWeight: FontWeight.bold,
                         letterSpacing: 1,
                       ),
@@ -155,11 +156,11 @@ class _LoginPageState extends State<LoginPage> {
                             ),
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          padding: const EdgeInsets.all(8),
+                          padding: const EdgeInsets.all(4),
                           child: const Icon(
                             Icons.fitness_center,
                             color: Colors.white,
-                            size: 24,
+                            size: 20,
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -167,7 +168,8 @@ class _LoginPageState extends State<LoginPage> {
                           'Gym - "Place for Athletes"',
                           style: TextStyle(
                             color: Colors.white,
-                            fontSize: 16,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
                       ],
@@ -188,11 +190,11 @@ class _LoginPageState extends State<LoginPage> {
                             ),
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          padding: const EdgeInsets.all(8),
+                          padding: const EdgeInsets.all(4),
                           child: const Icon(
                             Icons.local_drink,
                             color: Colors.white,
-                            size: 24,
+                            size: 20,
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -200,7 +202,8 @@ class _LoginPageState extends State<LoginPage> {
                           'Products & Services - "Place for Athletes"',
                           style: TextStyle(
                             color: Colors.white,
-                            fontSize: 16,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
                       ],
@@ -330,8 +333,8 @@ class _LoginPageState extends State<LoginPage> {
                           children: [
                             // Background E8 text with fade effect
                             Positioned(
-                              left: 20,
-                              top: -40,
+                              left: 10,
+                              bottom: 10,
                               child: Text(
                                 'E8',
                                 style: GoogleFonts.orbitron(
@@ -341,15 +344,15 @@ class _LoginPageState extends State<LoginPage> {
                                       end: Alignment.bottomCenter,
                                       colors: [Color(0xFFCD9700), Color(0xFF755806)],
                                     ).createShader(const Rect.fromLTWH(0, 0, 100, 100)),
-                                  fontSize: 80,
+                                  fontSize: 40,
                                   fontWeight: FontWeight.bold,
                                   letterSpacing: 2,
                                 ),
                               ),
                             ),
                             Positioned(
-                              right: 20,
-                              bottom: 8,
+                              right: 10,
+                              top: 10,
                               child: Text(
                                 'E8',
                                 style: GoogleFonts.orbitron(
@@ -359,7 +362,7 @@ class _LoginPageState extends State<LoginPage> {
                                       end: Alignment.bottomCenter,
                                       colors: [Color(0xFFCD9700), Color(0xFF755806)],
                                     ).createShader(const Rect.fromLTWH(0, 0, 100, 100)),
-                                  fontSize: 20,
+                                  fontSize: 40,
                                   fontWeight: FontWeight.bold,
                                   letterSpacing: 2,
                                 ),
@@ -383,9 +386,10 @@ class _LoginPageState extends State<LoginPage> {
                                 child: const Text(
                                   'Log in',
                                   style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.w800,
                                     color: Colors.black,
+                                    
                                   ),
                                 ),
                               ),
@@ -398,27 +402,35 @@ class _LoginPageState extends State<LoginPage> {
                     const SizedBox(height: 40),
                     
                     // Create account link
-                    RichText(
-                      text: TextSpan(
-                        text: "Don't have an account? ",
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                        ),
-                        children: [
-                          TextSpan(
-                            text: 'Create new account',
-                            style: TextStyle(
-                              foreground: Paint()
-                                ..shader = const LinearGradient(
-                                  begin: Alignment.centerLeft,
-                                  end: Alignment.centerRight,
-                                  colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
-                                ).createShader(const Rect.fromLTWH(0, 0, 200, 0)),
-                              fontWeight: FontWeight.w600,
-                            ),
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const SignupPage()),
+                        );
+                      },
+                      child: RichText(
+                        text: TextSpan(
+                          text: "Don't have an account? ",
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
                           ),
-                        ],
+                          children: [
+                            TextSpan(
+                              text: 'Create new account',
+                              style: TextStyle(
+                                foreground: Paint()
+                                  ..shader = const LinearGradient(
+                                    begin: Alignment.centerLeft,
+                                    end: Alignment.centerRight,
+                                    colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
+                                  ).createShader(const Rect.fromLTWH(0, 0, 200, 0)),
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                     
