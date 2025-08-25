@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 class SignupPage extends StatefulWidget {
   const SignupPage({super.key});
@@ -250,31 +251,22 @@ class _SignupPageState extends State<SignupPage> {
                     const SizedBox(height: 50),
                     
                     // Sign Up button
-                    SizedBox(
-                      width: double.infinity,
-                      height: 56,
-                      child: ElevatedButton(
-                        onPressed: () {
-                          // Handle signup logic here
+                     SizedBox(
+                      width: MediaQuery.of(context).size.width *0.7,
+                      height: 90,
+                      child: GestureDetector(
+                        onTap: () {
+                          // Handle login logic here
                         },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFF8BB0C),
-                          foregroundColor: Colors.black,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(28),
-                          ),
-                          elevation: 0,
-                        ),
-                        child: const Text(
-                          'Sign Up',
-                          style: TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.w800,
-                            color: Colors.black,
-                          ),
+                        child: SvgPicture.asset(
+                          'assets/img/SignUpButton.svg',
+                          width: MediaQuery.of(context).size.width * 0.6,
+                          height: 50,
+                          fit: BoxFit.cover,
                         ),
                       ),
                     ),
+                    
                     
                     const SizedBox(height: 40),
                     

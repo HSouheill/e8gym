@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'signup_page.dart';
+import 'admin_login_page.dart';
 
 void main() {
   runApp(const MyApp());
@@ -71,22 +73,30 @@ class _LoginPageState extends State<LoginPage> {
                     // Top right profile icon
                     Align(
                       alignment: Alignment.topRight,
-                      child: Container(
-                        margin: const EdgeInsets.only(top: 0),
-                        width: 50,
-                        height: 50,
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
+                      child: GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) => const AdminLoginPage()),
+                          );
+                        },
+                        child: Container(
+                          margin: const EdgeInsets.only(top: 0),
+                          width: 50,
+                          height: 50,
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
+                            ),
+                            shape: BoxShape.circle,
                           ),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.person,
-                          color: Colors.black,
-                          size: 30,
+                          child: const Icon(
+                            Icons.person,
+                            color: Colors.black,
+                            size: 30,
+                          ),
                         ),
                       ),
                     ),
@@ -318,83 +328,17 @@ class _LoginPageState extends State<LoginPage> {
                     
                     // Login button
                     SizedBox(
-                      width: MediaQuery.of(context).size.width * 0.65,
-                      height: 56,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
-                          ),
-                          borderRadius: BorderRadius.circular(28),
-                        ),
-                        child: Stack(
-                          children: [
-                            // Background E8 text with fade effect
-                            Positioned(
-                              left: 10,
-                              bottom: 10,
-                              child: Text(
-                                'E8',
-                                style: GoogleFonts.orbitron(
-                                  foreground: Paint()
-                                    ..shader = const LinearGradient(
-                                      begin: Alignment.topCenter,
-                                      end: Alignment.bottomCenter,
-                                      colors: [Color(0xFFCD9700), Color(0xFF755806)],
-                                    ).createShader(const Rect.fromLTWH(0, 0, 100, 100)),
-                                  fontSize: 40,
-                                  fontWeight: FontWeight.bold,
-                                  letterSpacing: 2,
-                                ),
-                              ),
-                            ),
-                            Positioned(
-                              right: 10,
-                              top: 10,
-                              child: Text(
-                                'E8',
-                                style: GoogleFonts.orbitron(
-                                  foreground: Paint()
-                                    ..shader = const LinearGradient(
-                                      begin: Alignment.topCenter,
-                                      end: Alignment.bottomCenter,
-                                      colors: [Color(0xFFCD9700), Color(0xFF755806)],
-                                    ).createShader(const Rect.fromLTWH(0, 0, 100, 100)),
-                                  fontSize: 40,
-                                  fontWeight: FontWeight.bold,
-                                  letterSpacing: 2,
-                                ),
-                              ),
-                            ),
-                            // Main button content
-                            Center(
-                              child: ElevatedButton(
-                                onPressed: () {
-                                  // Handle login logic here
-                                },
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.transparent,
-                                  foregroundColor: Colors.black,
-                                  shadowColor: Colors.transparent,
-                                  elevation: 0,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(28),
-                                  ),
-                                ),
-                                child: const Text(
-                                  'Log in',
-                                  style: TextStyle(
-                                    fontSize: 24,
-                                    fontWeight: FontWeight.w800,
-                                    color: Colors.black,
-                                    
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
+                      width: MediaQuery.of(context).size.width *0.7,
+                      height: 90,
+                      child: GestureDetector(
+                        onTap: () {
+                          // Handle login logic here
+                        },
+                        child: SvgPicture.asset(
+                          'assets/img/Button.svg',
+                          width: MediaQuery.of(context).size.width * 0.6,
+                          height: 50,
+                          fit: BoxFit.cover,
                         ),
                       ),
                     ),
