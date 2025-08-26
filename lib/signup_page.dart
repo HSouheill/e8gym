@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import '../services/auth_service.dart';
+import '../models/auth_models.dart';
+import '../utils/validation_utils.dart';
+import '../services/storage_service.dart';
 
 class SignupPage extends StatefulWidget {
   const SignupPage({super.key});
@@ -16,6 +20,12 @@ class _SignupPageState extends State<SignupPage> {
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _dateOfBirthController = TextEditingController();
   final TextEditingController _countryCodeController = TextEditingController();
+
+  // Form validation
+  final _formKey = GlobalKey<FormState>();
+  bool _isLoading = false;
+  String? _selectedDateOfBirth;
+  DateTime? _parsedDateOfBirth;
 
   @override
   void initState() {
@@ -56,8 +66,108 @@ class _SignupPageState extends State<SignupPage> {
     );
     if (picked != null) {
       setState(() {
+        // Create a UTC date at midnight to avoid timezone issues
+        _parsedDateOfBirth = DateTime.utc(picked.year, picked.month, picked.day);
         _dateOfBirthController.text = "${picked.day.toString().padLeft(2, '0')}/${picked.month.toString().padLeft(2, '0')}/${picked.year}";
       });
+    }
+  }
+
+  /// Handle signup process
+  Future<void> _handleSignup() async {
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
+
+    if (_parsedDateOfBirth == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please select your date of birth'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      // Debug: Print the date being sent
+      print('Date being sent: ${_parsedDateOfBirth!.toUtc().toIso8601String()}');
+      
+      final signupRequest = SignupRequest(
+        fullName: _fullNameController.text.trim(),
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+        phoneNumber: _phoneController.text.trim(),
+        countryCode: _countryCodeController.text.trim(),
+        dateOfBirth: _parsedDateOfBirth!,
+      );
+
+      final authService = AuthService();
+      final response = await authService.signup(signupRequest);
+
+      // Save tokens and user data
+      final storageService = StorageService();
+      await storageService.init();
+      await storageService.saveAuthTokens(
+        accessToken: response.accessToken,
+        refreshToken: response.refreshToken,
+      );
+      await storageService.saveUserData(response.user);
+      
+      setState(() {
+        _isLoading = false;
+      });
+
+      // Show success message
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Account created successfully!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+
+      // Navigate back to login page (main.dart)
+      try {
+        Navigator.pop(context);
+        // Show additional success message on login page
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Account created successfully! You can now log in.'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 4),
+          ),
+        );
+      } catch (e) {
+        print('Navigation error: $e'); // Debug log
+        // Fallback: show error and stay on signup page
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Navigation failed: ${e.toString()}'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+      
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+
+      String errorMessage = 'Signup failed. Please try again.';
+      if (e is AuthException) {
+        errorMessage = e.message;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(errorMessage),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -83,8 +193,10 @@ class _SignupPageState extends State<SignupPage> {
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20.0),
               child: SingleChildScrollView(
-                child: Column(
-                  children: [
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    children: [
                     const SizedBox(height: 40),
                     
                     // Welcome text
@@ -251,19 +363,23 @@ class _SignupPageState extends State<SignupPage> {
                     const SizedBox(height: 50),
                     
                     // Sign Up button
-                     SizedBox(
-                      width: MediaQuery.of(context).size.width *0.7,
+                    SizedBox(
+                      width: MediaQuery.of(context).size.width * 0.7,
                       height: 90,
                       child: GestureDetector(
-                        onTap: () {
-                          // Handle login logic here
-                        },
-                        child: SvgPicture.asset(
-                          'assets/img/SignUpButton.svg',
-                          width: MediaQuery.of(context).size.width * 0.6,
-                          height: 50,
-                          fit: BoxFit.cover,
-                        ),
+                        onTap: _isLoading ? null : _handleSignup,
+                        child: _isLoading
+                            ? const Center(
+                                child: CircularProgressIndicator(
+                                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFF8BB0C)),
+                                ),
+                              )
+                            : SvgPicture.asset(
+                                'assets/img/SignUpButton.svg',
+                                width: MediaQuery.of(context).size.width * 0.6,
+                                height: 50,
+                                fit: BoxFit.cover,
+                              ),
                       ),
                     ),
                     
@@ -298,6 +414,7 @@ class _SignupPageState extends State<SignupPage> {
                     const SizedBox(height: 40),
                   ],
                 ),
+              ),
               ),
             ),
           ),
@@ -337,7 +454,7 @@ class _SignupPageState extends State<SignupPage> {
           ),
           const SizedBox(width: 16),
           Expanded(
-            child: TextField(
+            child: TextFormField(
               controller: controller,
               obscureText: isPassword,
               style: const TextStyle(color: Colors.white),
@@ -345,7 +462,32 @@ class _SignupPageState extends State<SignupPage> {
                 hintText: label,
                 hintStyle: const TextStyle(color: Colors.white70),
                 border: InputBorder.none,
+                errorStyle: const TextStyle(color: Colors.red),
               ),
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return '$label is required';
+                }
+                
+                switch (label.toLowerCase()) {
+                  case 'full name':
+                    if (!ValidationUtils.isValidFullName(value.trim())) {
+                      return 'Full name must be between 2 and 100 characters';
+                    }
+                    break;
+                  case 'email':
+                    if (!ValidationUtils.isValidEmail(value.trim())) {
+                      return 'Please enter a valid email address';
+                    }
+                    break;
+                  case 'password':
+                    if (!ValidationUtils.isValidPassword(value)) {
+                      return 'Password must be at least 8 characters with uppercase, lowercase, and number';
+                    }
+                    break;
+                }
+                return null;
+              },
             ),
           ),
         ],
@@ -381,27 +523,47 @@ class _SignupPageState extends State<SignupPage> {
           // Country code field
           Container(
             width: 80,
-            child: TextField(
+            child: TextFormField(
               controller: _countryCodeController,
               style: const TextStyle(color: Colors.white),
               decoration: const InputDecoration(
                 hintText: '+961',
                 hintStyle: TextStyle(color: Colors.white70),
                 border: InputBorder.none,
+                errorStyle: TextStyle(color: Colors.red),
               ),
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return 'Country code is required';
+                }
+                if (!ValidationUtils.isValidCountryCode(value.trim())) {
+                  return 'Please enter a valid country code (e.g., +961)';
+                }
+                return null;
+              },
             ),
           ),
           const SizedBox(width: 16),
           // Phone number field
           Expanded(
-            child: TextField(
+            child: TextFormField(
               controller: _phoneController,
               style: const TextStyle(color: Colors.white),
               decoration: const InputDecoration(
                 hintText: 'Phone number',
                 hintStyle: TextStyle(color: Colors.white70),
                 border: InputBorder.none,
+                errorStyle: TextStyle(color: Colors.red),
               ),
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return 'Phone number is required';
+                }
+                if (!ValidationUtils.isValidPhoneNumber(value.trim())) {
+                  return 'Please enter a valid phone number';
+                }
+                return null;
+              },
             ),
           ),
         ],
@@ -437,7 +599,7 @@ class _SignupPageState extends State<SignupPage> {
           Expanded(
             child: GestureDetector(
               onTap: _selectDate,
-              child: TextField(
+              child: TextFormField(
                 controller: _dateOfBirthController,
                 enabled: false,
                 style: const TextStyle(color: Colors.white),
@@ -445,7 +607,20 @@ class _SignupPageState extends State<SignupPage> {
                   hintText: 'Date of Birth',
                   hintStyle: TextStyle(color: Colors.white70),
                   border: InputBorder.none,
+                  errorStyle: TextStyle(color: Colors.red),
                 ),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Date of birth is required';
+                  }
+                  if (_parsedDateOfBirth == null) {
+                    return 'Please select a valid date of birth';
+                  }
+                  if (!ValidationUtils.isValidDateOfBirth(_parsedDateOfBirth!)) {
+                    return 'You must be at least 13 years old to register';
+                  }
+                  return null;
+                },
               ),
             ),
           ),

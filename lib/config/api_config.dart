@@ -26,6 +26,17 @@ class ApiConfig {
   static const String adminLogin = '/admin/login';
   static const String createAdmin = '/superadmin/create-admin';
   
+  // Branch Authentication Endpoints
+  static const String branchLogin = '/api/branch-auth/login';
+  static const String branchLogout = '/api/branch-auth/logout';
+  static const String branchForgotPassword = '/api/branch-auth/forgot-password';
+  static const String branchResetPassword = '/api/branch-auth/reset-password';
+  static const String branchResendOTP = '/api/branch-auth/resend-otp';
+  
+  // Branch Management Endpoints
+  static const String createBranch = '/api/branches';
+  static const String getBranches = '/api/branches';
+  
   // Timeout settings
   static const int connectionTimeout = 30000; // 30 seconds
   static const int receiveTimeout = 30000; // 30 seconds

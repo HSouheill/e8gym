@@ -1,28 +1,33 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'create_branch_page.dart';
 import 'services/api_service.dart';
-import 'branch_forgot_password_page.dart';
-import 'branch_dashboard_page.dart';
-import 'super_admin_dashboard_page.dart';
 
-class AdminLoginPage extends StatefulWidget {
-  const AdminLoginPage({super.key});
+class BranchResetPasswordPage extends StatefulWidget {
+  final String email;
+  
+  const BranchResetPasswordPage({
+    super.key,
+    required this.email,
+  });
 
   @override
-  State<AdminLoginPage> createState() => _AdminLoginPageState();
+  State<BranchResetPasswordPage> createState() => _BranchResetPasswordPageState();
 }
 
-class _AdminLoginPageState extends State<AdminLoginPage> {
-  final TextEditingController _usernameController = TextEditingController();
+class _BranchResetPasswordPageState extends State<BranchResetPasswordPage> {
+  final TextEditingController _otpController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  String _selectedAdminType = 'Admin';
+  final TextEditingController _confirmPasswordController = TextEditingController();
   bool _isLoading = false;
+  bool _passwordReset = false;
+  bool _obscurePassword = true;
+  bool _obscureConfirmPassword = true;
 
   @override
   void dispose() {
-    _usernameController.dispose();
+    _otpController.dispose();
     _passwordController.dispose();
+    _confirmPasswordController.dispose();
     super.dispose();
   }
 
@@ -43,7 +48,7 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
               image: AssetImage('assets/background/background.png'),
               fit: BoxFit.cover,
               colorFilter: ColorFilter.mode(
-                Color(0x50000000), // Dark overlay for better text readability
+                Color(0x50000000),
                 BlendMode.darken,
               ),
             ),
@@ -51,9 +56,8 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
           child: SafeArea(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 18.0, vertical: 30),
-              child: Expanded(
+              child: SingleChildScrollView(
                 child: Column(
-                  mainAxisAlignment: MainAxisAlignment.start,
                   children: [
                     // Back button
                     Align(
@@ -63,7 +67,6 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
                           Navigator.pop(context);
                         },
                         child: Container(
-                          margin: const EdgeInsets.only(top: 0),
                           width: 50,
                           height: 50,
                           decoration: BoxDecoration(
@@ -85,9 +88,9 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
                     
                     const SizedBox(height: 40),
                     
-                    // Admin Login title
+                    // Title
                     const Text(
-                      'ADMIN LOGIN',
+                      'RESET PASSWORD',
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 32,
@@ -99,18 +102,19 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
                     const SizedBox(height: 16),
                     
                     // Subtitle
-                    const Text(
-                      'Access administrative controls',
-                      style: TextStyle(
+                    Text(
+                      'Enter the OTP sent to ${widget.email}',
+                      style: const TextStyle(
                         color: Colors.white,
                         fontSize: 18,
                         fontWeight: FontWeight.w500,
                       ),
+                      textAlign: TextAlign.center,
                     ),
                     
                     const SizedBox(height: 50),
                     
-                    // Admin type selection
+                    // OTP field
                     Container(
                       decoration: BoxDecoration(
                         border: Border(
@@ -133,68 +137,7 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
                             ),
                             padding: const EdgeInsets.all(8),
                             child: const Icon(
-                              Icons.admin_panel_settings,
-                              color: Colors.white,
-                              size: 24,
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: DropdownButtonHideUnderline(
-                              child: DropdownButton<String>(
-                                value: _selectedAdminType,
-                                dropdownColor: Colors.black87,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                                items: ['Admin', 'Super Admin'].map((String value) {
-                                  return DropdownMenuItem<String>(
-                                    value: value,
-                                    child: Text(value),
-                                  );
-                                }).toList(),
-                                onChanged: (String? newValue) {
-                                  if (newValue != null) {
-                                    setState(() {
-                                      _selectedAdminType = newValue;
-                                    });
-                                  }
-                                },
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    
-                    const SizedBox(height: 32),
-                    
-                    // Username field
-                    Container(
-                      decoration: BoxDecoration(
-                        border: Border(
-                          bottom: BorderSide(
-                            color: const Color(0xFFF8BB0C),
-                            width: 2,
-                          ),
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            decoration: BoxDecoration(
-                              gradient: const LinearGradient(
-                                begin: Alignment.topCenter,
-                                end: Alignment.bottomCenter,
-                                colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
-                              ),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            padding: const EdgeInsets.all(8),
-                            child: const Icon(
-                              Icons.person,
+                              Icons.security,
                               color: Colors.white,
                               size: 24,
                             ),
@@ -202,12 +145,15 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
                           const SizedBox(width: 16),
                           Expanded(
                             child: TextField(
-                              controller: _usernameController,
+                              controller: _otpController,
                               style: const TextStyle(color: Colors.white),
+                              keyboardType: TextInputType.number,
+                              maxLength: 6,
                               decoration: const InputDecoration(
-                                hintText: 'Username or Email',
+                                hintText: 'Enter 6-digit OTP',
                                 hintStyle: TextStyle(color: Colors.white70),
                                 border: InputBorder.none,
+                                counterText: '',
                               ),
                             ),
                           ),
@@ -217,7 +163,7 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
                     
                     const SizedBox(height: 24),
                     
-                    // Password field
+                    // New Password field
                     Container(
                       decoration: BoxDecoration(
                         border: Border(
@@ -249,54 +195,97 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
                           Expanded(
                             child: TextField(
                               controller: _passwordController,
-                              obscureText: true,
+                              obscureText: _obscurePassword,
                               style: const TextStyle(color: Colors.white),
                               decoration: const InputDecoration(
-                                hintText: 'Password',
+                                hintText: 'New Password',
                                 hintStyle: TextStyle(color: Colors.white70),
                                 border: InputBorder.none,
                               ),
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: () {
+                              setState(() {
+                                _obscurePassword = !_obscurePassword;
+                              });
+                            },
+                            icon: Icon(
+                              _obscurePassword ? Icons.visibility : Icons.visibility_off,
+                              color: Colors.white70,
                             ),
                           ),
                         ],
                       ),
                     ),
                     
-                    // Forgot Password link (only for Branch Admin)
-                    if (_selectedAdminType == 'Admin') ...[
-                      const SizedBox(height: 16),
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: GestureDetector(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const BranchForgotPasswordPage(),
-                              ),
-                            );
-                          },
-                          child: const Text(
-                            'Forgot Password?',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                              decoration: TextDecoration.underline,
-                            ),
+                    const SizedBox(height: 24),
+                    
+                    // Confirm Password field
+                    Container(
+                      decoration: BoxDecoration(
+                        border: Border(
+                          bottom: BorderSide(
+                            color: const Color(0xFFF8BB0C),
+                            width: 2,
                           ),
                         ),
                       ),
-                    ],
+                      child: Row(
+                        children: [
+                          Container(
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
+                              ),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            padding: const EdgeInsets.all(8),
+                            child: const Icon(
+                              Icons.lock_outline,
+                              color: Colors.white,
+                              size: 24,
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: TextField(
+                              controller: _confirmPasswordController,
+                              obscureText: _obscureConfirmPassword,
+                              style: const TextStyle(color: Colors.white),
+                              decoration: const InputDecoration(
+                                hintText: 'Confirm New Password',
+                                hintStyle: TextStyle(color: Colors.white70),
+                                border: InputBorder.none,
+                              ),
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: () {
+                              setState(() {
+                                _obscureConfirmPassword = !_obscureConfirmPassword;
+                              });
+                            },
+                            icon: Icon(
+                              _obscureConfirmPassword ? Icons.visibility : Icons.visibility_off,
+                              color: Colors.white70,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                     
                     const SizedBox(height: 40),
                     
+                    // Submit button
                     SizedBox(
-                      width: MediaQuery.of(context).size.width *0.6,
+                      width: MediaQuery.of(context).size.width * 0.6,
                       height: 80,
                       child: GestureDetector(
                         onTap: _isLoading ? null : () async {
-                          await _handleLogin();
+                          await _handleResetPassword();
                         },
                         child: _isLoading
                             ? Container(
@@ -326,8 +315,44 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
                       ),
                     ),
                     
-                    
-                    
+                    if (_passwordReset) ...[
+                      const SizedBox(height: 30),
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.green.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.green),
+                        ),
+                        child: const Column(
+                          children: [
+                            Icon(
+                              Icons.check_circle,
+                              color: Colors.green,
+                              size: 48,
+                            ),
+                            SizedBox(height: 16),
+                            Text(
+                              'Password Reset Successful!',
+                              style: TextStyle(
+                                color: Colors.green,
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            SizedBox(height: 8),
+                            Text(
+                              'Your password has been reset successfully. You can now login with your new password.',
+                              style: TextStyle(
+                                color: Colors.green,
+                                fontSize: 14,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -338,10 +363,30 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
     );
   }
 
-  Future<void> _handleLogin() async {
+  Future<void> _handleResetPassword() async {
     // Validate inputs
-    if (_usernameController.text.isEmpty || _passwordController.text.isEmpty) {
-      _showSnackBar('Please fill in all fields');
+    if (_otpController.text.isEmpty) {
+      _showSnackBar('Please enter the OTP');
+      return;
+    }
+
+    if (_passwordController.text.isEmpty) {
+      _showSnackBar('Please enter a new password');
+      return;
+    }
+
+    if (_confirmPasswordController.text.isEmpty) {
+      _showSnackBar('Please confirm your password');
+      return;
+    }
+
+    if (_passwordController.text != _confirmPasswordController.text) {
+      _showSnackBar('Passwords do not match');
+      return;
+    }
+
+    if (_passwordController.text.length < 6) {
+      _showSnackBar('Password must be at least 6 characters long');
       return;
     }
 
@@ -351,82 +396,28 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
     });
 
     try {
-      Map<String, dynamic> result;
-      
-      if (_selectedAdminType == 'Super Admin') {
-        // Call SuperAdmin login API
-        result = await ApiService.superAdminLogin(
-          _usernameController.text,
-          _passwordController.text,
-        );
-      } else if (_selectedAdminType == 'Admin') {
-        // Call Branch Admin login API
-        result = await ApiService.branchLogin(
-          _usernameController.text,
-          _passwordController.text,
-        );
-      } else {
-        // Call regular admin login API
-        result = await ApiService.adminLogin(
-          _usernameController.text,
-          _passwordController.text,
-        );
-      }
+      final result = await ApiService.branchResetPassword(
+        widget.email,
+        _otpController.text,
+        _passwordController.text,
+      );
 
       if (result['success']) {
-        // Login successful
-        _showSnackBar(result['message'] ?? 'Login successful!');
-        
-        // Store user data and token
-        final userData = result['data'];
-        
-        if (_selectedAdminType == 'Admin') {
-          print('Admin login successful for: ${userData['branch']['email']}');
-          print('Branch Name: ${userData['branch']['branch_name']}');
-          print('Access Token: ${userData['access_token']}');
-          
-          // Navigate to branch dashboard
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => BranchDashboardPage(
-                branchData: userData,
-                accessToken: userData['access_token'],
-              ),
-            ),
-          );
-        } else if (_selectedAdminType == 'Super Admin') {
-          print('Super Admin login successful for: ${userData['user']['email']}');
-          print('Access Token: ${userData['access_token']}');
-          
-          // Navigate to SuperAdmin dashboard
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => SuperAdminDashboardPage(
-                accessToken: userData['access_token'],
-                userEmail: userData['user']['email'],
-              ),
-            ),
-          );
-        } else {
-          print('Regular admin login successful for: ${userData['user']['email']}');
-          print('Access Token: ${userData['access_token']}');
-        }
+        setState(() {
+          _passwordReset = true;
+        });
+        _showSnackBar(result['message'] ?? 'Password reset successful');
         
         // Clear form
-        _usernameController.clear();
+        _otpController.clear();
         _passwordController.clear();
+        _confirmPasswordController.clear();
       } else {
-        // Login failed
-        _showSnackBar(result['message'] ?? 'Login failed');
-        print('Login error: ${result['error']}');
+        _showSnackBar(result['message'] ?? 'Password reset failed');
       }
     } catch (e) {
       _showSnackBar('An error occurred: $e');
-      print('Exception during login: $e');
     } finally {
-      // Reset loading state
       setState(() {
         _isLoading = false;
       });
