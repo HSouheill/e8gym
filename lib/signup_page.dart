@@ -191,38 +191,39 @@ class _SignupPageState extends State<SignupPage> {
           ),
           child: SafeArea(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20.0),
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
               child: SingleChildScrollView(
                 child: Form(
                   key: _formKey,
                   child: Column(
                     children: [
-                    const SizedBox(height: 40),
+                    const SizedBox(height: 19),
                     
+                    // Welcome text
                     // Welcome text
                     const Text(
                       'WELCOME TO',
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: 24,
+                        fontSize: 20,
                         fontWeight: FontWeight.w500,
-                        letterSpacing: 2,
+                        letterSpacing: 1.5,
                       ),
                     ),
                     
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 6),
                     
                     const Text(
                       'ENDURANCE EIGHT',
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: 32,
+                        fontSize: 26,
                         fontWeight: FontWeight.bold,
-                        letterSpacing: 1,
+                        letterSpacing: 0.5,
                       ),
                     ),
                     
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 14),
                     
                     // Brand description
                     const Text(
@@ -230,24 +231,24 @@ class _SignupPageState extends State<SignupPage> {
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: 16,
-                        height: 1.5,
+                        fontSize: 14,
+                        height: 1.3,
                       ),
                     ),
                     
-                    const SizedBox(height: 40),
+                    const SizedBox(height: 19),
                     
                     // Explore section
                     const Text(
                       'Explore our:',
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: 20,
+                        fontSize: 14,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
                     
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 12),
                     
                     // Gym option
                     Row(
@@ -256,28 +257,28 @@ class _SignupPageState extends State<SignupPage> {
                         Container(
                           decoration: BoxDecoration(
                             color: const Color(0xFFF8BB0C),
-                            borderRadius: BorderRadius.circular(8),
+                            borderRadius: BorderRadius.circular(6),
                           ),
-                          padding: const EdgeInsets.all(8),
+                          padding: const EdgeInsets.all(4),
                           child: const Icon(
                             Icons.fitness_center,
                             color: Colors.black,
-                            size: 20,
+                            size: 14,
                           ),
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: 8),
                         const Text(
                           'Gym - "Place for Athletes"',
                           style: TextStyle(
                             color: Colors.white,
-                            fontSize: 14,
+                            fontSize: 11,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
                       ],
                     ),
                     
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 10),
                     
                     // Products & Services option
                     Row(
@@ -286,28 +287,28 @@ class _SignupPageState extends State<SignupPage> {
                         Container(
                           decoration: BoxDecoration(
                             color: const Color(0xFFF8BB0C),
-                            borderRadius: BorderRadius.circular(8),
+                            borderRadius: BorderRadius.circular(6),
                           ),
-                          padding: const EdgeInsets.all(8),
+                          padding: const EdgeInsets.all(4),
                           child: const Icon(
                             Icons.local_drink,
                             color: Colors.black,
-                            size: 20,
+                            size: 14,
                           ),
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: 8),
                         const Text(
                           'Products & Services - "Place for Athletes"',
                           style: TextStyle(
                             color: Colors.white,
-                            fontSize: 14,
+                            fontSize: 11,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
                       ],
                     ),
                     
-                    const SizedBox(height: 50),
+                    const SizedBox(height: 24),
                     
                     // Create new account section
                     const Align(
@@ -316,13 +317,13 @@ class _SignupPageState extends State<SignupPage> {
                         'Create new account',
                         style: TextStyle(
                           color: Colors.white,
-                          fontSize: 28,
+                          fontSize: 18,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                     ),
                     
-                    const SizedBox(height: 32),
+                    const SizedBox(height: 19),
                     
                     // Full Name field
                     _buildInputField(
@@ -331,7 +332,7 @@ class _SignupPageState extends State<SignupPage> {
                       icon: Icons.person,
                     ),
                     
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 16),
                     
                     // Email field
                     _buildInputField(
@@ -340,7 +341,7 @@ class _SignupPageState extends State<SignupPage> {
                       icon: Icons.email,
                     ),
                     
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 16),
                     
                     // Password field
                     _buildInputField(
@@ -350,22 +351,22 @@ class _SignupPageState extends State<SignupPage> {
                       isPassword: true,
                     ),
                     
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 16),
                     
                     // Phone Number field
                     _buildPhoneField(),
                     
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 16),
                     
                     // Date of Birth field
                     _buildDateField(),
                     
-                    const SizedBox(height: 50),
+                    const SizedBox(height: 34),
                     
                     // Sign Up button
                     SizedBox(
-                      width: MediaQuery.of(context).size.width * 0.7,
-                      height: 90,
+                      width: MediaQuery.of(context).size.width * 0.6,
+                      height: 80,
                       child: GestureDetector(
                         onTap: _isLoading ? null : _handleSignup,
                         child: _isLoading
@@ -376,15 +377,15 @@ class _SignupPageState extends State<SignupPage> {
                               )
                             : SvgPicture.asset(
                                 'assets/img/SignUpButton.svg',
-                                width: MediaQuery.of(context).size.width * 0.6,
-                                height: 50,
+                                width: MediaQuery.of(context).size.width * 0.5,
+                                height: 30,
                                 fit: BoxFit.cover,
                               ),
                       ),
                     ),
                     
                     
-                    const SizedBox(height: 40),
+                    const SizedBox(height: 14),
                     
                     // Back to login link
                     GestureDetector(
@@ -396,7 +397,7 @@ class _SignupPageState extends State<SignupPage> {
                           text: "Already have an account? ",
                           style: const TextStyle(
                             color: Colors.white,
-                            fontSize: 16,
+                            fontSize: 12,
                           ),
                           children: [
                             TextSpan(
@@ -411,14 +412,14 @@ class _SignupPageState extends State<SignupPage> {
                       ),
                     ),
                     
-                    const SizedBox(height: 40),
+                    const SizedBox(height: 39),
                   ],
                 ),
-              ),
               ),
             ),
           ),
         ),
+      ),
       ),
     );
   }
@@ -443,24 +444,24 @@ class _SignupPageState extends State<SignupPage> {
           Container(
             decoration: BoxDecoration(
               color: const Color(0xFFF8BB0C),
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(6),
             ),
-            padding: const EdgeInsets.all(8),
+            padding: const EdgeInsets.all(6),
             child: Icon(
               icon,
               color: Colors.black,
-              size: 20,
+              size: 16,
             ),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: 12),
           Expanded(
             child: TextFormField(
               controller: controller,
               obscureText: isPassword,
-              style: const TextStyle(color: Colors.white),
+              style: const TextStyle(color: Colors.white, fontSize: 13),
               decoration: InputDecoration(
                 hintText: label,
-                hintStyle: const TextStyle(color: Colors.white70),
+                hintStyle: const TextStyle(color: Colors.white70, fontSize: 13),
                 border: InputBorder.none,
                 errorStyle: const TextStyle(color: Colors.red),
               ),
@@ -510,25 +511,25 @@ class _SignupPageState extends State<SignupPage> {
           Container(
             decoration: BoxDecoration(
               color: const Color(0xFFF8BB0C),
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(6),
             ),
-            padding: const EdgeInsets.all(8),
+            padding: const EdgeInsets.all(6),
             child: const Icon(
               Icons.flag,
               color: Colors.black,
-              size: 20,
+              size: 16,
             ),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: 12),
           // Country code field
           Container(
-            width: 80,
+            width: 70,
             child: TextFormField(
               controller: _countryCodeController,
-              style: const TextStyle(color: Colors.white),
+              style: const TextStyle(color: Colors.white, fontSize: 13),
               decoration: const InputDecoration(
                 hintText: '+961',
-                hintStyle: TextStyle(color: Colors.white70),
+                hintStyle: TextStyle(color: Colors.white70, fontSize: 13),
                 border: InputBorder.none,
                 errorStyle: TextStyle(color: Colors.red),
               ),
@@ -543,15 +544,15 @@ class _SignupPageState extends State<SignupPage> {
               },
             ),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: 12),
           // Phone number field
           Expanded(
             child: TextFormField(
               controller: _phoneController,
-              style: const TextStyle(color: Colors.white),
+              style: const TextStyle(color: Colors.white, fontSize: 13),
               decoration: const InputDecoration(
                 hintText: 'Phone number',
-                hintStyle: TextStyle(color: Colors.white70),
+                hintStyle: TextStyle(color: Colors.white70, fontSize: 13),
                 border: InputBorder.none,
                 errorStyle: TextStyle(color: Colors.red),
               ),
@@ -586,26 +587,26 @@ class _SignupPageState extends State<SignupPage> {
           Container(
             decoration: BoxDecoration(
               color: const Color(0xFFF8BB0C),
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(6),
             ),
-            padding: const EdgeInsets.all(8),
+            padding: const EdgeInsets.all(6),
             child: const Icon(
               Icons.calendar_today,
               color: Colors.black,
-              size: 20,
+              size: 16,
             ),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: 12),
           Expanded(
             child: GestureDetector(
               onTap: _selectDate,
               child: TextFormField(
                 controller: _dateOfBirthController,
                 enabled: false,
-                style: const TextStyle(color: Colors.white),
+                style: const TextStyle(color: Colors.white, fontSize: 13),
                 decoration: const InputDecoration(
                   hintText: 'Date of Birth',
-                  hintStyle: TextStyle(color: Colors.white70),
+                  hintStyle: TextStyle(color: Colors.white70, fontSize: 13),
                   border: InputBorder.none,
                   errorStyle: TextStyle(color: Colors.red),
                 ),

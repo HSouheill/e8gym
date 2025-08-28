@@ -18,6 +18,7 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
   final TextEditingController _passwordController = TextEditingController();
   String _selectedAdminType = 'Admin';
   bool _isLoading = false;
+  bool _obscurePassword = true; // Add this line for password visibility toggle
 
   @override
   void dispose() {
@@ -249,12 +250,28 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
                           Expanded(
                             child: TextField(
                               controller: _passwordController,
-                              obscureText: true,
+                              obscureText: _obscurePassword, // Use the boolean variable
                               style: const TextStyle(color: Colors.white),
                               decoration: const InputDecoration(
                                 hintText: 'Password',
                                 hintStyle: TextStyle(color: Colors.white70),
                                 border: InputBorder.none,
+                              ),
+                            ),
+                          ),
+                          // Add show/hide password toggle button
+                          GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                _obscurePassword = !_obscurePassword;
+                              });
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.all(8),
+                              child: Icon(
+                                _obscurePassword ? Icons.visibility : Icons.visibility_off,
+                                color: Colors.white,
+                                size: 24,
                               ),
                             ),
                           ),
