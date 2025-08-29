@@ -1,19 +1,43 @@
 class ApiConfig {
   // Base URLs for different environments
-  static const String devBaseUrl = 'http://localhost:8080';
-  static const String stagingBaseUrl = 'https://staging-api.e8gym.com';
-  static const String productionBaseUrl = 'https://api.e8gym.com';
+  // 
+  // IMPORTANT: Choose the correct URL based on your setup:
+  // 
+  // 1. Android Emulator: Use 'http://10.0.2.2:8080'
+  //    - 10.0.2.2 is a special IP that maps to your host machine's localhost
+  //    - This works when running Flutter app on Android emulator
+  // 
+  // 2. iOS Simulator: Use 'http://localhost:8080'
+  //    - localhost works directly on iOS simulator
+  // 
+  // 3. Physical Device: Use your computer's local IP address
+  //    - Find your computer's IP: ifconfig (Mac/Linux) or ipconfig (Windows)
+  //    - Example: 'http://192.168.1.100:8080'
+  //    - Make sure your device is on the same WiFi network
+  // 
+  // 4. Production: Use your actual backend domain
+  //    - Example: 'https://api.yourapp.com'
+  
+  static const String devBaseUrl = 'http://10.0.2.2:8080'; // For Android emulator
+  static const String localBaseUrl = 'http://localhost:8080'; // For iOS simulator
+  static const String networkBaseUrl = 'http://192.168.1.100:8080'; // For physical device on same network
+  static const String productionBaseUrl = 'https://your-production-domain.com'; // Replace with actual production URL
   
   // Current environment (change this as needed)
-  static const String currentEnvironment = 'dev';
+  // Options: 'dev', 'local', 'network', 'production'
+  static const String currentEnvironment = 'network';
   
   // Get the appropriate base URL based on current environment
   static String get baseUrl {
     switch (currentEnvironment) {
       case 'dev':
+        // Use 10.0.2.2 for Android emulator (maps to host machine's localhost)
+        // Use localhost for iOS simulator
         return devBaseUrl;
-      case 'staging':
-        return stagingBaseUrl;
+      case 'local':
+        return localBaseUrl;
+      case 'network':
+        return networkBaseUrl;
       case 'production':
         return productionBaseUrl;
       default:
@@ -36,6 +60,9 @@ class ApiConfig {
   // Branch Management Endpoints
   static const String createBranch = '/api/branches';
   static const String getBranches = '/api/branches';
+  
+  // Standalone Class Management Endpoints
+  static const String createStandaloneClass = '/api/standalone-classes';
   
   // Timeout settings
   static const int connectionTimeout = 30000; // 30 seconds

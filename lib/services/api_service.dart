@@ -2,20 +2,54 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../config/api_config.dart';
 import '../models/auth_models.dart';
+import '../models/standalone_class_models.dart';
 
 class ApiService {
+  
+  // Test connection to backend
+  static Future<bool> testConnection() async {
+    try {
+      print('=== Testing Backend Connection ===');
+      print('Testing URL: ${ApiConfig.baseUrl}');
+      
+      final response = await http.get(
+        Uri.parse('${ApiConfig.baseUrl}/health'), // Assuming you have a health endpoint
+        headers: ApiConfig.defaultHeaders,
+      ).timeout(const Duration(seconds: 10));
+      
+      print('Connection test response: ${response.statusCode}');
+      print('Response body: ${response.body}');
+      
+      return response.statusCode == 200;
+    } catch (e) {
+      print('Connection test failed: $e');
+      return false;
+    }
+  }
   
   // SuperAdmin Login
   static Future<Map<String, dynamic>> superAdminLogin(String email, String password) async {
     try {
+      print('=== ApiService.superAdminLogin Debug ===');
+      print('Email: $email');
+      print('Password: ${password.isNotEmpty ? '[HIDDEN]' : '[EMPTY]'}');
+      print('URL: ${ApiConfig.baseUrl}${ApiConfig.superAdminLogin}');
+      print('Headers: ${ApiConfig.defaultHeaders}');
+      
+      final requestBody = {
+        'email': email,
+        'password': password,
+      };
+      print('Request body: $requestBody');
+      
       final response = await http.post(
         Uri.parse('${ApiConfig.baseUrl}${ApiConfig.superAdminLogin}'),
         headers: ApiConfig.defaultHeaders,
-        body: jsonEncode({
-          'email': email,
-          'password': password,
-        }),
+        body: jsonEncode(requestBody),
       );
+
+      print('Response status code: ${response.statusCode}');
+      print('Response body: ${response.body}');
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -33,6 +67,7 @@ class ApiService {
         };
       }
     } catch (e) {
+      print('Exception in superAdminLogin: $e');
       return {
         'success': false,
         'message': 'Network error: $e',
@@ -332,6 +367,45 @@ class ApiService {
         return {
           'success': false,
           'message': errorData['message'] ?? 'Failed to fetch branches',
+          'error': errorData['error'],
+        };
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Network error: $e',
+        'error': e.toString(),
+      };
+    }
+  }
+
+  // Create Standalone Class (SuperAdmin only)
+  static Future<Map<String, dynamic>> createStandaloneClass(
+    CreateStandaloneClassRequest classData,
+    String accessToken,
+  ) async {
+    try {
+      final response = await http.post(
+        Uri.parse('${ApiConfig.baseUrl}${ApiConfig.createStandaloneClass}'),
+        headers: {
+          ...ApiConfig.defaultHeaders,
+          'Authorization': 'Bearer $accessToken',
+        },
+        body: jsonEncode(classData.toJson()),
+      );
+
+      if (response.statusCode == 201) {
+        final data = jsonDecode(response.body);
+        return {
+          'success': true,
+          'data': data['data'],
+          'message': data['message'],
+        };
+      } else {
+        final errorData = jsonDecode(response.body);
+        return {
+          'success': false,
+          'message': errorData['message'] ?? 'Class creation failed',
           'error': errorData['error'],
         };
       }

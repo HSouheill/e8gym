@@ -3,6 +3,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'services/api_service.dart';
 import 'models/auth_models.dart';
 import 'create_branch_page.dart';
+import 'standalone_classes_page.dart';
 
 class SuperAdminDashboardPage extends StatefulWidget {
   final String accessToken;
@@ -27,6 +28,7 @@ class _SuperAdminDashboardPageState extends State<SuperAdminDashboardPage> {
   int _totalBranches = 0;
   int _limit = 20;
   bool _hasMorePages = true;
+  bool _isSidebarOpen = false;
   
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
@@ -168,6 +170,48 @@ class _SuperAdminDashboardPageState extends State<SuperAdminDashboardPage> {
     });
   }
 
+  void _navigateToStandaloneClasses() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => StandaloneClassesPage(
+          accessToken: widget.accessToken,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSidebarMenuItem({
+    required IconData icon,
+    required String title,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: isSelected ? const Color(0xFFF8BB0C).withOpacity(0.2) : Colors.transparent,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: ListTile(
+        leading: Icon(
+          icon,
+          color: isSelected ? const Color(0xFF926E07) : Colors.grey[600],
+        ),
+        title: Text(
+          title,
+          style: TextStyle(
+            color: isSelected ? const Color(0xFF926E07) : Colors.grey[800],
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+          ),
+        ),
+        onTap: onTap,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -191,90 +235,287 @@ class _SuperAdminDashboardPageState extends State<SuperAdminDashboardPage> {
             ),
           ),
           child: SafeArea(
-            child: Column(
+            child: Row(
               children: [
-                // Header
-                Padding(
-                  padding: const EdgeInsets.all(18.0),
-                  child: Row(
-                    children: [
-                      GestureDetector(
-                        onTap: () {
-                          Navigator.pop(context);
-                        },
-                        child: Container(
-                          width: 50,
-                          height: 50,
+                // Sidebar
+                if (_isSidebarOpen)
+                  Container(
+                    width: 280,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.95),
+                      borderRadius: const BorderRadius.only(
+                        topRight: Radius.circular(20),
+                        bottomRight: Radius.circular(20),
+                      ),
+                    ),
+                    child: Column(
+                      children: [
+                        // Sidebar Header
+                        Container(
+                          padding: const EdgeInsets.all(20),
                           decoration: BoxDecoration(
                             gradient: const LinearGradient(
                               begin: Alignment.topCenter,
                               end: Alignment.bottomCenter,
                               colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
                             ),
-                            shape: BoxShape.circle,
+                            borderRadius: const BorderRadius.only(
+                              topRight: Radius.circular(20),
+                            ),
                           ),
-                          child: const Icon(
-                            Icons.arrow_back,
-                            color: Colors.black,
-                            size: 30,
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.admin_panel_settings,
+                                color: Colors.black,
+                                size: 32,
+                              ),
+                              const SizedBox(width: 12),
+                              const Expanded(
+                                child: Text(
+                                  'SuperAdmin',
+                                  style: TextStyle(
+                                    color: Colors.black,
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                              IconButton(
+                                onPressed: () {
+                                  setState(() {
+                                    _isSidebarOpen = false;
+                                  });
+                                },
+                                icon: const Icon(Icons.close, color: Colors.black),
+                              ),
+                            ],
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 20),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                        
+                        // Sidebar Menu Items
+                        Expanded(
+                          child: ListView(
+                            padding: const EdgeInsets.all(16),
+                            children: [
+                              _buildSidebarMenuItem(
+                                icon: Icons.dashboard,
+                                title: 'Dashboard',
+                                isSelected: true,
+                                onTap: () {
+                                  setState(() {
+                                    _isSidebarOpen = false;
+                                  });
+                                },
+                              ),
+                              const SizedBox(height: 8),
+                              _buildSidebarMenuItem(
+                                icon: Icons.business,
+                                title: 'Branches',
+                                isSelected: true,
+                                onTap: () {
+                                  setState(() {
+                                    _isSidebarOpen = false;
+                                  });
+                                },
+                              ),
+                              const SizedBox(height: 8),
+                              _buildSidebarMenuItem(
+                                icon: Icons.fitness_center,
+                                title: 'Standalone Classes',
+                                isSelected: false,
+                                onTap: _navigateToStandaloneClasses,
+                              ),
+                              const SizedBox(height: 8),
+                              _buildSidebarMenuItem(
+                                icon: Icons.people,
+                                title: 'Users',
+                                isSelected: false,
+                                onTap: () {
+                                  // TODO: Implement Users page
+                                  setState(() {
+                                    _isSidebarOpen = false;
+                                  });
+                                },
+                              ),
+                              const SizedBox(height: 8),
+                              _buildSidebarMenuItem(
+                                icon: Icons.settings,
+                                title: 'Settings',
+                                isSelected: false,
+                                onTap: () {
+                                  // TODO: Implement Settings page
+                                  setState(() {
+                                    _isSidebarOpen = false;
+                                  });
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                        
+                        // Sidebar Footer
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            children: [
+                              const Divider(),
+                              const SizedBox(height: 8),
+                              Row(
+                                children: [
+                                  CircleAvatar(
+                                    radius: 20,
+                                    backgroundColor: const Color(0xFFF8BB0C),
+                                    child: Text(
+                                      widget.userEmail[0].toUpperCase(),
+                                      style: const TextStyle(
+                                        color: Colors.black,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          widget.userEmail,
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                        const Text(
+                                          'SuperAdmin',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.grey,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                // Main Content
+                Expanded(
+                  child: Column(
+                    children: [
+                      // Header
+                      Padding(
+                        padding: const EdgeInsets.all(18.0),
+                        child: Row(
                           children: [
-                            const Text(
-                              'SuperAdmin Dashboard',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 24,
-                                fontWeight: FontWeight.bold,
+                            GestureDetector(
+                              onTap: () {
+                                Navigator.pop(context);
+                              },
+                              child: Container(
+                                width: 50,
+                                height: 50,
+                                decoration: BoxDecoration(
+                                  gradient: const LinearGradient(
+                                    begin: Alignment.topCenter,
+                                    end: Alignment.bottomCenter,
+                                    colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
+                                  ),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.arrow_back,
+                                  color: Colors.black,
+                                  size: 30,
+                                ),
                               ),
                             ),
-                            Text(
-                              'Welcome, ${widget.userEmail}',
-                              style: const TextStyle(
-                                color: Colors.white70,
-                                fontSize: 16,
+                            const SizedBox(width: 20),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'SuperAdmin Dashboard',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 24,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  Text(
+                                    'Welcome, ${widget.userEmail}',
+                                    style: const TextStyle(
+                                      color: Colors.white70,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            // Menu Button
+                            GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  _isSidebarOpen = !_isSidebarOpen;
+                                });
+                              },
+                              child: Container(
+                                width: 50,
+                                height: 50,
+                                decoration: BoxDecoration(
+                                  gradient: const LinearGradient(
+                                    begin: Alignment.topCenter,
+                                    end: Alignment.bottomCenter,
+                                    colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
+                                  ),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  _isSidebarOpen ? Icons.close : Icons.menu,
+                                  color: Colors.black,
+                                  size: 30,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            GestureDetector(
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => CreateBranchPage(
+                                      accessToken: widget.accessToken,
+                                    ),
+                                  ),
+                                );
+                              },
+                              child: Container(
+                                width: 50,
+                                height: 50,
+                                decoration: BoxDecoration(
+                                  gradient: const LinearGradient(
+                                    begin: Alignment.topCenter,
+                                    end: Alignment.bottomCenter,
+                                    colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
+                                  ),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.add,
+                                  color: Colors.black,
+                                  size: 30,
+                                ),
                               ),
                             ),
                           ],
                         ),
                       ),
-                      GestureDetector(
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => CreateBranchPage(
-                                accessToken: widget.accessToken,
-                              ),
-                            ),
-                          );
-                        },
-                        child: Container(
-                          width: 50,
-                          height: 50,
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
-                            ),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            Icons.add,
-                            color: Colors.black,
-                            size: 30,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
 
                 // Search Bar
                 Padding(
@@ -393,7 +634,10 @@ class _SuperAdminDashboardPageState extends State<SuperAdminDashboardPage> {
               ],
             ),
           ),
+              ],
         ),
+      ),
+      ),
       ),
     );
   }

@@ -308,6 +308,39 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
                     
                     const SizedBox(height: 40),
                     
+                    // Test Connection Button (for debugging)
+                    SizedBox(
+                      width: MediaQuery.of(context).size.width * 0.6,
+                      height: 50,
+                      child: ElevatedButton(
+                        onPressed: _isLoading ? null : () async {
+                          print('Testing backend connection...');
+                          final isConnected = await ApiService.testConnection();
+                          if (isConnected) {
+                            _showSnackBar('Backend connection successful!');
+                          } else {
+                            _showSnackBar('Backend connection failed! Check console for details.');
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.black54,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(25),
+                          ),
+                        ),
+                        child: const Text(
+                          'Test Backend Connection',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                    
+                    const SizedBox(height: 20),
+                    
                     SizedBox(
                       width: MediaQuery.of(context).size.width *0.6,
                       height: 80,
@@ -371,11 +404,19 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
       Map<String, dynamic> result;
       
       if (_selectedAdminType == 'Super Admin') {
+        // Add debug logging for SuperAdmin login
+        print('=== SuperAdmin Login Debug ===');
+        print('Username/Email: ${_usernameController.text}');
+        print('Password: ${_passwordController.text.isNotEmpty ? '[HIDDEN]' : '[EMPTY]'}');
+        print('Calling ApiService.superAdminLogin...');
+        
         // Call SuperAdmin login API
         result = await ApiService.superAdminLogin(
           _usernameController.text,
           _passwordController.text,
         );
+        
+        print('SuperAdmin login result: $result');
       } else if (_selectedAdminType == 'Admin') {
         // Call Branch Admin login API
         result = await ApiService.branchLogin(
