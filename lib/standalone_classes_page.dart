@@ -47,11 +47,23 @@ class _StandaloneClassesPageState extends State<StandaloneClassesPage> {
     }
 
     try {
-      // TODO: Implement getStandaloneClasses API method
-      // For now, we'll just show an empty state
-      setState(() {
-        _classes = [];
-      });
+      final result = await ApiService.getStandaloneClasses(
+        widget.accessToken,
+        search: _searchQuery.isNotEmpty ? _searchQuery : null,
+      );
+
+      if (result['success']) {
+        final data = result['data'];
+        final classListResponse = StandaloneClassListResponse.fromJson(data);
+        
+        setState(() {
+          _classes = classListResponse.classes;
+        });
+      } else {
+        if (!refresh) {
+          _showSnackBar(result['message'] ?? 'Failed to load classes');
+        }
+      }
     } catch (e) {
       if (!refresh) {
         _showSnackBar('An error occurred: $e');
@@ -168,6 +180,27 @@ class _StandaloneClassesPageState extends State<StandaloneClassesPage> {
                           ),
                           child: const Icon(
                             Icons.add,
+                            color: Colors.black,
+                            size: 30,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      GestureDetector(
+                        onTap: _loadExpiringClasses,
+                        child: Container(
+                          width: 50,
+                          height: 50,
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
+                            ),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.warning,
                             color: Colors.black,
                             size: 30,
                           ),
@@ -473,6 +506,57 @@ class _StandaloneClassesPageState extends State<StandaloneClassesPage> {
               fontSize: 12,
             ),
           ),
+          if (classData.expiresAt != null) ...[
+            const SizedBox(height: 4),
+            Text(
+              'Expires: ${_formatDate(classData.expiresAt!)}',
+              style: TextStyle(
+                color: classData.isExpired ? Colors.red : Colors.orange,
+                fontSize: 12,
+              ),
+            ),
+          ],
+          if (classData.renewalCount > 0) ...[
+            const SizedBox(height: 4),
+            Text(
+              'Renewed: ${classData.renewalCount} times',
+              style: const TextStyle(
+                color: Colors.white60,
+                fontSize: 12,
+              ),
+            ),
+          ],
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _buildActionButton(
+                'View',
+                Icons.visibility,
+                Colors.blue,
+                () => _viewClass(classData),
+              ),
+              _buildActionButton(
+                'Edit',
+                Icons.edit,
+                Colors.orange,
+                () => _editClass(classData),
+              ),
+              if (classData.isExpired)
+                _buildActionButton(
+                  'Renew',
+                  Icons.refresh,
+                  Colors.green,
+                  () => _renewClass(classData),
+                ),
+              _buildActionButton(
+                'Delete',
+                Icons.delete,
+                Colors.red,
+                () => _deleteClass(classData),
+              ),
+            ],
+          ),
         ],
       ),
     );
@@ -507,5 +591,204 @@ class _StandaloneClassesPageState extends State<StandaloneClassesPage> {
         ),
       ),
     );
+  }
+
+  Widget _buildActionButton(String label, IconData icon, Color color, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.2),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: color.withOpacity(0.5)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: color, size: 16),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: TextStyle(
+                color: color,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _viewClass(StandaloneClassResponse classData) {
+    // TODO: Navigate to class detail page
+    _showSnackBar('Viewing class: ${classData.name}');
+  }
+
+  void _editClass(StandaloneClassResponse classData) {
+    // TODO: Navigate to class edit page
+    _showSnackBar('Editing class: ${classData.name}');
+  }
+
+  Future<void> _renewClass(StandaloneClassResponse classData) async {
+    // Show renewal dialog
+    final weeksActive = await showDialog<int>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Renew Class'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('How many weeks would you like to renew "${classData.name}" for?'),
+            const SizedBox(height: 16),
+            TextField(
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                labelText: 'Weeks Active',
+                hintText: 'Enter number of weeks (1-52)',
+                border: OutlineInputBorder(),
+              ),
+              onChanged: (value) {
+                // Handle input validation
+              },
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              // TODO: Get the weeks value from TextField
+              Navigator.of(context).pop(4); // Default to 4 weeks for now
+            },
+            child: const Text('Renew'),
+          ),
+        ],
+      ),
+    );
+
+    if (weeksActive != null && weeksActive > 0) {
+      try {
+        final renewData = RenewClassRequest(weeksActive: weeksActive);
+        final result = await ApiService.renewClass(
+          classData.id,
+          renewData,
+          widget.accessToken,
+        );
+
+        if (result['success']) {
+          _showSnackBar('Class renewed successfully for $weeksActive weeks');
+          // Refresh the classes list
+          _loadClasses(refresh: true);
+        } else {
+          _showSnackBar(result['message'] ?? 'Failed to renew class');
+        }
+      } catch (e) {
+        _showSnackBar('An error occurred: $e');
+      }
+    }
+  }
+
+  Future<void> _deleteClass(StandaloneClassResponse classData) async {
+    // Show confirmation dialog
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Class'),
+        content: Text('Are you sure you want to delete "${classData.name}"? This action cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        final result = await ApiService.deleteStandaloneClass(
+          classData.id,
+          widget.accessToken,
+        );
+
+        if (result['success']) {
+          _showSnackBar('Class deleted successfully');
+          // Refresh the classes list
+          _loadClasses(refresh: true);
+        } else {
+          _showSnackBar(result['message'] ?? 'Failed to delete class');
+        }
+      } catch (e) {
+        _showSnackBar('An error occurred: $e');
+      }
+    }
+  }
+
+  Future<void> _loadExpiringClasses() async {
+    try {
+      final result = await ApiService.getExpiringClasses(
+        widget.accessToken,
+        daysThreshold: 7, // Show classes expiring in next 7 days
+      );
+
+      if (result['success']) {
+        final data = result['data'];
+        final classListResponse = StandaloneClassListResponse.fromJson(data);
+        
+        if (classListResponse.classes.isNotEmpty) {
+          // Show expiring classes in a dialog
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('Expiring Classes'),
+              content: SizedBox(
+                width: double.maxFinite,
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: classListResponse.classes.length,
+                  itemBuilder: (context, index) {
+                    final classData = classListResponse.classes[index];
+                    return ListTile(
+                      title: Text(classData.name),
+                      subtitle: Text('Expires: ${_formatDate(classData.expiresAt!)}'),
+                      trailing: TextButton(
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                          _renewClass(classData);
+                        },
+                        child: const Text('Renew'),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Close'),
+                ),
+              ],
+            ),
+          );
+        } else {
+          _showSnackBar('No classes expiring in the next 7 days');
+        }
+      } else {
+        _showSnackBar(result['message'] ?? 'Failed to fetch expiring classes');
+      }
+    } catch (e) {
+      _showSnackBar('An error occurred: $e');
+    }
   }
 }

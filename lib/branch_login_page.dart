@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'services/api_service.dart';
 import 'branch_dashboard_page.dart';
 import 'branch_forgot_password_page.dart';
@@ -263,11 +262,34 @@ class _BranchLoginPageState extends State<BranchLoginPage> {
                                 ),
                               ),
                             )
-                          : SvgPicture.asset(
-                              'assets/img/Button.svg',
+                          : Container(
                               width: MediaQuery.of(context).size.width * 0.5,
                               height: 40,
-                              fit: BoxFit.cover,
+                              decoration: BoxDecoration(
+                                gradient: const LinearGradient(
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                  colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
+                                ),
+                                borderRadius: BorderRadius.circular(20),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: const Color(0xFFDBA50B).withOpacity(0.3),
+                                    offset: const Offset(0, 3),
+                                    blurRadius: 5,
+                                  ),
+                                ],
+                              ),
+                              child: const Center(
+                                child: Text(
+                                  'Login',
+                                  style: TextStyle(
+                                    color: Colors.black,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
                             ),
                     ),
                   ),
@@ -310,9 +332,16 @@ class _BranchLoginPageState extends State<BranchLoginPage> {
         
         // Store user data and token
         final userData = result['data'];
-        print('Branch Admin login successful for: ${userData['branch']['email']}');
-        print('Branch Name: ${userData['branch']['branch_name']}');
-        print('Access Token: ${userData['access_token']}');
+        
+        // Validate that we have the required data
+        if (userData == null || userData['branch'] == null || userData['access_token'] == null) {
+          _showSnackBar('Invalid response from server. Please try again.');
+          return;
+        }
+        
+        print('Branch Admin login successful for: ${userData['branch']['email'] ?? 'Unknown'}');
+        print('Branch Name: ${userData['branch']['branch_name'] ?? 'Unknown'}');
+        print('Access Token: ${userData['access_token'] ?? 'No token'}');
         
         // Navigate to branch dashboard
         Navigator.pushReplacement(

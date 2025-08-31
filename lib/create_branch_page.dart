@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'services/api_service.dart';
 import 'models/auth_models.dart';
+import 'models/standalone_class_models.dart';
 
 class CreateBranchPage extends StatefulWidget {
   final String accessToken;
@@ -22,77 +22,61 @@ class _CreateBranchPageState extends State<CreateBranchPage> {
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmPasswordController = TextEditingController();
   final TextEditingController _phoneNumberController = TextEditingController();
-  final TextEditingController _countryCodeController = TextEditingController();
+  final TextEditingController _locationController = TextEditingController();
   
   bool _isLoading = false;
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
   
-  // Sample data for classes and team members
-  List<ClassModel> _classes = [];
+  // Class selection
+  List<StandaloneClassResponse> _availableClasses = [];
+  List<StandaloneClassResponse> _selectedClasses = [];
+  bool _isLoadingClasses = false;
+  
+  // Team member management
   List<TeamMemberModel> _teamMembers = [];
+  final TextEditingController _teamMemberNameController = TextEditingController();
+  final TextEditingController _teamMemberEmailController = TextEditingController();
+  final TextEditingController _teamMemberPhoneController = TextEditingController();
+  final TextEditingController _teamMemberRoleController = TextEditingController();
+  String _selectedCountryCode = '+1';
+  bool _showAddTeamMemberForm = false;
+
 
   @override
   void initState() {
     super.initState();
-    _countryCodeController.text = '+1'; // Default country code
-    _initializeSampleData();
+    _loadAvailableClasses();
   }
 
-  void _initializeSampleData() {
-    // Add some sample classes
-    _classes = [
-      ClassModel(
-        name: 'Yoga Basics',
-        description: 'Introduction to yoga for beginners',
-        duration: 60,
-        capacity: 20,
-        schedule: [
-          ClassSchedule(
-            dayOfWeek: 1, // Monday
-            startTime: DateTime(2024, 1, 1, 9, 0), // 9:00 AM
-            endTime: DateTime(2024, 1, 1, 10, 0), // 10:00 AM
-          ),
-        ],
-        instructor: 'Sarah Johnson',
-        isActive: true,
-      ),
-      ClassModel(
-        name: 'HIIT Training',
-        description: 'High-intensity interval training',
-        duration: 45,
-        capacity: 15,
-        schedule: [
-          ClassSchedule(
-            dayOfWeek: 2, // Tuesday
-            startTime: DateTime(2024, 1, 1, 17, 0), // 5:00 PM
-            endTime: DateTime(2024, 1, 1, 17, 45), // 5:45 PM
-          ),
-        ],
-        instructor: 'Mike Chen',
-        isActive: true,
-      ),
-    ];
+  Future<void> _loadAvailableClasses() async {
+    setState(() {
+      _isLoadingClasses = true;
+    });
 
-    // Add some sample team members
-    _teamMembers = [
-      TeamMemberModel(
-        fullName: 'Alex Rodriguez',
-        email: 'alex@e8gym.com',
-        phoneNumber: '555-0101',
-        countryCode: '+1',
-        role: 'Trainer',
-        isActive: true,
-      ),
-      TeamMemberModel(
-        fullName: 'Emma Wilson',
-        email: 'emma@e8gym.com',
-        phoneNumber: '555-0102',
-        countryCode: '+1',
-        role: 'Receptionist',
-        isActive: true,
-      ),
-    ];
+    try {
+      final result = await ApiService.getStandaloneClasses(
+        widget.accessToken,
+        limit: 100, // Get more classes for selection
+      );
+
+      if (result['success']) {
+        final data = result['data'];
+        final classListResponse = StandaloneClassListResponse.fromJson(data);
+        
+        setState(() {
+          _availableClasses = classListResponse.classes.where((c) => c.isActive).toList();
+        });
+      } else {
+        _showSnackBar(result['message'] ?? 'Failed to load available classes');
+      }
+    } catch (e) {
+      _showSnackBar('An error occurred while loading classes: $e');
+    } finally {
+      setState(() {
+        _isLoadingClasses = false;
+      });
+    }
   }
 
   @override
@@ -103,7 +87,14 @@ class _CreateBranchPageState extends State<CreateBranchPage> {
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     _phoneNumberController.dispose();
-    _countryCodeController.dispose();
+    _locationController.dispose();
+    
+    // Team member controllers
+    _teamMemberNameController.dispose();
+    _teamMemberEmailController.dispose();
+    _teamMemberPhoneController.dispose();
+    _teamMemberRoleController.dispose();
+    
     super.dispose();
   }
 
@@ -249,26 +240,24 @@ class _CreateBranchPageState extends State<CreateBranchPage> {
                           _buildSectionTitle('Admin Phone Number'),
                           _buildInputField(
                             controller: _phoneNumberController,
-                            hintText: 'Enter phone number',
+                            hintText: 'Enter phone number (e.g., 5551234567)',
                             icon: Icons.phone,
                           ),
                           
                           const SizedBox(height: 24),
                           
-                          // Country Code field
-                          _buildSectionTitle('Country Code'),
+                          // Location field
+                          _buildSectionTitle('Branch Location'),
                           _buildInputField(
-                            controller: _countryCodeController,
-                            hintText: 'Enter country code (e.g., +1)',
-                            icon: Icons.flag,
+                            controller: _locationController,
+                            hintText: 'Enter branch location/address',
+                            icon: Icons.location_on,
                           ),
                           
-                          const SizedBox(height: 32),
+                          const SizedBox(height: 24),
                           
-                          // Classes and Team Members info
-                          _buildSectionTitle('Branch Setup'),
-                          const SizedBox(height: 16),
-                          
+                          // Class Selection
+                          _buildSectionTitle('Import Existing Classes'),
                           Container(
                             padding: const EdgeInsets.all(16),
                             decoration: BoxDecoration(
@@ -287,30 +276,131 @@ class _CreateBranchPageState extends State<CreateBranchPage> {
                                       size: 24,
                                     ),
                                     const SizedBox(width: 12),
-                                    Text(
-                                      'Sample Classes (${_classes.length})',
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w600,
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'Available Classes (${_availableClasses.length})',
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                          Text(
+                                            'Selected: ${_selectedClasses.length} classes',
+                                            style: const TextStyle(
+                                              color: Colors.white70,
+                                              fontSize: 14,
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ),
+                                    if (_isLoadingClasses)
+                                      const SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                        ),
+                                      ),
                                   ],
                                 ),
+                                const SizedBox(height: 16),
+                                if (_availableClasses.isNotEmpty) ...[
+                                  Container(
+                                    height: 200,
+                                    decoration: BoxDecoration(
+                                      color: Colors.black.withOpacity(0.2),
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(color: Colors.white.withOpacity(0.2)),
+                                    ),
+                                    child: ListView.builder(
+                                      itemCount: _availableClasses.length,
+                                      itemBuilder: (context, index) {
+                                        final classData = _availableClasses[index];
+                                        final isSelected = _selectedClasses.contains(classData);
+                                        
+                                        return ListTile(
+                                          title: Text(
+                                            classData.name,
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                            ),
+                                          ),
+                                          subtitle: Text(
+                                            '${classData.instructor} • ${classData.capacity} people',
+                                            style: TextStyle(
+                                              color: Colors.white70,
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                          trailing: Checkbox(
+                                            value: isSelected,
+                                            onChanged: (bool? value) {
+                                              setState(() {
+                                                if (value == true) {
+                                                  _selectedClasses.add(classData);
+                                                } else {
+                                                  _selectedClasses.remove(classData);
+                                                }
+                                              });
+                                            },
+                                            activeColor: const Color(0xFFF8BB0C),
+                                            checkColor: Colors.black,
+                                          ),
+                                          onTap: () {
+                                            setState(() {
+                                              if (isSelected) {
+                                                _selectedClasses.remove(classData);
+                                              } else {
+                                                _selectedClasses.add(classData);
+                                              }
+                                            });
+                                          },
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                ] else if (!_isLoadingClasses) ...[
+                                  Container(
+                                    padding: const EdgeInsets.all(16),
+                                    decoration: BoxDecoration(
+                                      color: Colors.black.withOpacity(0.2),
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(color: Colors.white.withOpacity(0.2)),
+                                    ),
+                                    child: const Center(
+                                      child: Text(
+                                        'No available classes found',
+                                        style: TextStyle(
+                                          color: Colors.white70,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
                                 const SizedBox(height: 8),
                                 Text(
-                                  'Yoga Basics, HIIT Training, and more will be automatically added to this branch.',
+                                  'Select classes to automatically assign to this branch. You can manage classes later through the branch management interface.',
                                   style: const TextStyle(
                                     color: Colors.white70,
-                                    fontSize: 14,
+                                    fontSize: 12,
                                   ),
                                 ),
                               ],
                             ),
                           ),
                           
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 32),
                           
+                          // Team Members Section
+                          _buildSectionTitle('Team Members'),
                           Container(
                             padding: const EdgeInsets.all(16),
                             decoration: BoxDecoration(
@@ -329,9 +419,286 @@ class _CreateBranchPageState extends State<CreateBranchPage> {
                                       size: 24,
                                     ),
                                     const SizedBox(width: 12),
-                                    Text(
-                                      'Sample Team Members (${_teamMembers.length})',
-                                      style: const TextStyle(
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'Team Members (${_teamMembers.length})',
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                          Text(
+                                            'Add team members to this branch',
+                                            style: const TextStyle(
+                                              color: Colors.white70,
+                                              fontSize: 14,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    GestureDetector(
+                                      onTap: () {
+                                        setState(() {
+                                          _showAddTeamMemberForm = !_showAddTeamMemberForm;
+                                          if (!_showAddTeamMemberForm) {
+                                            _clearTeamMemberForm();
+                                          }
+                                        });
+                                      },
+                                      child: Container(
+                                        padding: const EdgeInsets.all(8),
+                                        decoration: BoxDecoration(
+                                          color: _showAddTeamMemberForm 
+                                              ? Colors.red.withOpacity(0.3)
+                                              : const Color(0xFFF8BB0C),
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        child: Icon(
+                                          _showAddTeamMemberForm ? Icons.close : Icons.add,
+                                          color: Colors.black,
+                                          size: 20,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                
+                                // Add Team Member Form
+                                if (_showAddTeamMemberForm) ...[
+                                  const SizedBox(height: 16),
+                                  Container(
+                                    padding: const EdgeInsets.all(16),
+                                    decoration: BoxDecoration(
+                                      color: Colors.black.withOpacity(0.2),
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(color: Colors.white.withOpacity(0.2)),
+                                    ),
+                                    child: Column(
+                                      children: [
+                                        // Name and Email Row
+                                        Row(
+                                          children: [
+                                            Expanded(
+                                              child: _buildTeamMemberInputField(
+                                                controller: _teamMemberNameController,
+                                                hintText: 'Full Name',
+                                                icon: Icons.person,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 16),
+                                            Expanded(
+                                              child: _buildTeamMemberInputField(
+                                                controller: _teamMemberEmailController,
+                                                hintText: 'Email',
+                                                icon: Icons.email,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 16),
+                                        
+                                        // Phone and Role Row
+                                        Row(
+                                          children: [
+                                            Expanded(
+                                              child: _buildTeamMemberInputField(
+                                                controller: _teamMemberPhoneController,
+                                                hintText: 'Phone Number',
+                                                icon: Icons.phone,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 16),
+                                            Expanded(
+                                              child: _buildTeamMemberInputField(
+                                                controller: _teamMemberRoleController,
+                                                hintText: 'Role',
+                                                icon: Icons.work,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 16),
+                                        
+                                        // Country Code and Add Button
+                                        Row(
+                                          children: [
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                              decoration: BoxDecoration(
+                                                color: Colors.white.withOpacity(0.1),
+                                                borderRadius: BorderRadius.circular(8),
+                                                border: Border.all(color: Colors.white.withOpacity(0.3)),
+                                              ),
+                                              child: DropdownButton<String>(
+                                                value: _selectedCountryCode,
+                                                dropdownColor: Colors.black,
+                                                style: const TextStyle(color: Colors.white),
+                                                underline: Container(),
+                                                items: ['+1', '+44', '+33', '+49', '+81', '+86', '+91', '+971']
+                                                    .map((code) => DropdownMenuItem(
+                                                          value: code,
+                                                          child: Text(code),
+                                                        ))
+                                                    .toList(),
+                                                onChanged: (String? newValue) {
+                                                  setState(() {
+                                                    _selectedCountryCode = newValue!;
+                                                  });
+                                                },
+                                              ),
+                                            ),
+                                            const SizedBox(width: 16),
+                                            Expanded(
+                                              child: GestureDetector(
+                                                onTap: _addTeamMember,
+                                                child: Container(
+                                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                                  decoration: BoxDecoration(
+                                                    gradient: const LinearGradient(
+                                                      begin: Alignment.topCenter,
+                                                      end: Alignment.bottomCenter,
+                                                      colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
+                                                    ),
+                                                    borderRadius: BorderRadius.circular(8),
+                                                  ),
+                                                  child: const Center(
+                                                    child: Text(
+                                                      'Add Team Member',
+                                                      style: TextStyle(
+                                                        color: Colors.black,
+                                                        fontWeight: FontWeight.w600,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                                
+                                // Team Members List
+                                if (_teamMembers.isNotEmpty) ...[
+                                  const SizedBox(height: 16),
+                                  Container(
+                                    height: 150,
+                                    decoration: BoxDecoration(
+                                      color: Colors.black.withOpacity(0.2),
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(color: Colors.white.withOpacity(0.2)),
+                                    ),
+                                    child: ListView.builder(
+                                      itemCount: _teamMembers.length,
+                                      itemBuilder: (context, index) {
+                                        final member = _teamMembers[index];
+                                        return ListTile(
+                                          title: Text(
+                                            member.fullName,
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                          subtitle: Text(
+                                            '${member.role} • ${member.email}',
+                                            style: const TextStyle(
+                                              color: Colors.white70,
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                          trailing: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Text(
+                                                '${member.countryCode}${member.phoneNumber}',
+                                                style: const TextStyle(
+                                                  color: Colors.white70,
+                                                  fontSize: 12,
+                                                ),
+                                              ),
+                                              const SizedBox(width: 8),
+                                              GestureDetector(
+                                                onTap: () => _removeTeamMember(index),
+                                                child: const Icon(
+                                                  Icons.delete,
+                                                  color: Colors.red,
+                                                  size: 20,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                ] else if (!_showAddTeamMemberForm) ...[
+                                  const SizedBox(height: 16),
+                                  Container(
+                                    padding: const EdgeInsets.all(16),
+                                    decoration: BoxDecoration(
+                                      color: Colors.black.withOpacity(0.2),
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(color: Colors.white.withOpacity(0.2)),
+                                    ),
+                                    child: const Center(
+                                      child: Text(
+                                        'No team members added yet',
+                                        style: TextStyle(
+                                          color: Colors.white70,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                                
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Add team members who will work at this branch. You can manage team members later through the branch management interface.',
+                                  style: const TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          
+                          const SizedBox(height: 32),
+                          
+                          // Branch Setup Info
+                          _buildSectionTitle('Branch Setup'),
+                          const SizedBox(height: 16),
+                          
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Colors.white.withOpacity(0.3)),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.info_outline,
+                                      color: Colors.white,
+                                      size: 24,
+                                    ),
+                                    const SizedBox(width: 12),
+                                    const Text(
+                                      'Branch Setup Information',
+                                      style: TextStyle(
                                         color: Colors.white,
                                         fontSize: 16,
                                         fontWeight: FontWeight.w600,
@@ -340,9 +707,9 @@ class _CreateBranchPageState extends State<CreateBranchPage> {
                                   ],
                                 ),
                                 const SizedBox(height: 8),
-                                Text(
-                                  'Trainer and receptionist roles will be automatically added to this branch.',
-                                  style: const TextStyle(
+                                const Text(
+                                  'After branch creation, you can assign existing classes and add team members through the branch management interface.',
+                                  style: TextStyle(
                                     color: Colors.white70,
                                     fontSize: 14,
                                   ),
@@ -380,11 +747,34 @@ class _CreateBranchPageState extends State<CreateBranchPage> {
                                         ),
                                       ),
                                     )
-                                  : SvgPicture.asset(
-                                      'assets/img/Button.svg',
+                                  : Container(
                                       width: MediaQuery.of(context).size.width * 0.8,
                                       height: 56,
-                                      fit: BoxFit.contain,
+                                      decoration: BoxDecoration(
+                                        gradient: const LinearGradient(
+                                          begin: Alignment.topCenter,
+                                          end: Alignment.bottomCenter,
+                                          colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
+                                        ),
+                                        borderRadius: BorderRadius.circular(28),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: const Color(0xFFDBA50B).withOpacity(0.3),
+                                            offset: const Offset(0, 5),
+                                            blurRadius: 7,
+                                          ),
+                                        ],
+                                      ),
+                                      child: const Center(
+                                        child: Text(
+                                          'Create Branch',
+                                          style: TextStyle(
+                                            color: Colors.black,
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ),
                                     ),
                             ),
                           ),
@@ -486,7 +876,7 @@ class _CreateBranchPageState extends State<CreateBranchPage> {
         _passwordController.text.isEmpty ||
         _confirmPasswordController.text.isEmpty ||
         _phoneNumberController.text.isEmpty ||
-        _countryCodeController.text.isEmpty) {
+        _locationController.text.isEmpty) {
       _showSnackBar('Please fill in all fields');
       return;
     }
@@ -513,6 +903,15 @@ class _CreateBranchPageState extends State<CreateBranchPage> {
     });
 
     try {
+      // Convert selected classes to ClassModel format
+      final selectedClassModels = _selectedClasses.map((standaloneClass) => ClassModel(
+        name: standaloneClass.name,
+        description: standaloneClass.description,
+        duration: 60, // Default duration for branch classes
+        capacity: standaloneClass.capacity,
+        instructor: standaloneClass.instructor,
+      )).toList();
+
       // Create branch request data
       final branchData = CreateBranchRequest(
         branchName: _branchNameController.text,
@@ -520,8 +919,8 @@ class _CreateBranchPageState extends State<CreateBranchPage> {
         email: _emailController.text,
         password: _passwordController.text,
         phoneNumber: _phoneNumberController.text,
-        countryCode: _countryCodeController.text,
-        classes: _classes,
+        location: _locationController.text,
+        classes: selectedClassModels,
         teamMembers: _teamMembers,
       );
 
@@ -541,7 +940,17 @@ class _CreateBranchPageState extends State<CreateBranchPage> {
         _passwordController.clear();
         _confirmPasswordController.clear();
         _phoneNumberController.clear();
-        _countryCodeController.text = '+1';
+        _locationController.clear();
+        
+        // Clear selected classes
+        setState(() {
+          _selectedClasses.clear();
+        });
+        
+        // Clear team members
+        setState(() {
+          _teamMembers.clear();
+        });
         
         // Navigate back or show success page
         Navigator.pop(context);
@@ -571,5 +980,108 @@ class _CreateBranchPageState extends State<CreateBranchPage> {
         ),
       ),
     );
+  }
+
+  // Team Member Management Methods
+  Widget _buildTeamMemberInputField({
+    required TextEditingController controller,
+    required String hintText,
+    required IconData icon,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(
+            color: const Color(0xFFF8BB0C),
+            width: 2,
+          ),
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
+              ),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            padding: const EdgeInsets.all(6),
+            child: Icon(
+              icon,
+              color: Colors.white,
+              size: 18,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: TextField(
+              controller: controller,
+              style: const TextStyle(color: Colors.white, fontSize: 14),
+              decoration: InputDecoration(
+                hintText: hintText,
+                hintStyle: const TextStyle(color: Colors.white70, fontSize: 14),
+                border: InputBorder.none,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _addTeamMember() {
+    // Validate inputs
+    if (_teamMemberNameController.text.isEmpty ||
+        _teamMemberEmailController.text.isEmpty ||
+        _teamMemberPhoneController.text.isEmpty ||
+        _teamMemberRoleController.text.isEmpty) {
+      _showSnackBar('Please fill in all team member fields');
+      return;
+    }
+
+    // Basic email validation
+    if (!_teamMemberEmailController.text.contains('@')) {
+      _showSnackBar('Please enter a valid email address');
+      return;
+    }
+
+    // Create team member
+    final teamMember = TeamMemberModel(
+      fullName: _teamMemberNameController.text,
+      email: _teamMemberEmailController.text,
+      phoneNumber: _teamMemberPhoneController.text,
+      countryCode: _selectedCountryCode,
+      role: _teamMemberRoleController.text,
+    );
+
+    setState(() {
+      _teamMembers.add(teamMember);
+    });
+
+    // Clear form and hide it
+    _clearTeamMemberForm();
+    setState(() {
+      _showAddTeamMemberForm = false;
+    });
+
+    _showSnackBar('Team member added successfully!');
+  }
+
+  void _removeTeamMember(int index) {
+    setState(() {
+      _teamMembers.removeAt(index);
+    });
+    _showSnackBar('Team member removed');
+  }
+
+  void _clearTeamMemberForm() {
+    _teamMemberNameController.clear();
+    _teamMemberEmailController.clear();
+    _teamMemberPhoneController.clear();
+    _teamMemberRoleController.clear();
+    _selectedCountryCode = '+1';
   }
 }

@@ -16,7 +16,7 @@ class AdminLoginPage extends StatefulWidget {
 class _AdminLoginPageState extends State<AdminLoginPage> {
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  String _selectedAdminType = 'Admin';
+  String _selectedAdminType = 'Branch';
   bool _isLoading = false;
   bool _obscurePassword = true; // Add this line for password visibility toggle
 
@@ -150,7 +150,7 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
                                   fontSize: 18,
                                   fontWeight: FontWeight.w500,
                                 ),
-                                items: ['Admin', 'Super Admin'].map((String value) {
+                                items: ['Branch', 'Super Admin'].map((String value) {
                                   return DropdownMenuItem<String>(
                                     value: value,
                                     child: Text(value),
@@ -280,7 +280,7 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
                     ),
                     
                     // Forgot Password link (only for Branch Admin)
-                    if (_selectedAdminType == 'Admin') ...[
+                    if (_selectedAdminType == 'Branch') ...[
                       const SizedBox(height: 16),
                       Align(
                         alignment: Alignment.centerRight,
@@ -306,40 +306,10 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
                       ),
                     ],
                     
+                    
+                   
+                    
                     const SizedBox(height: 40),
-                    
-                    // Test Connection Button (for debugging)
-                    SizedBox(
-                      width: MediaQuery.of(context).size.width * 0.6,
-                      height: 50,
-                      child: ElevatedButton(
-                        onPressed: _isLoading ? null : () async {
-                          print('Testing backend connection...');
-                          final isConnected = await ApiService.testConnection();
-                          if (isConnected) {
-                            _showSnackBar('Backend connection successful!');
-                          } else {
-                            _showSnackBar('Backend connection failed! Check console for details.');
-                          }
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.black54,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(25),
-                          ),
-                        ),
-                        child: const Text(
-                          'Test Backend Connection',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ),
-                    
-                    const SizedBox(height: 20),
                     
                     SizedBox(
                       width: MediaQuery.of(context).size.width *0.6,
@@ -417,7 +387,7 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
         );
         
         print('SuperAdmin login result: $result');
-      } else if (_selectedAdminType == 'Admin') {
+      } else if (_selectedAdminType == 'Branch') {
         // Call Branch Admin login API
         result = await ApiService.branchLogin(
           _usernameController.text,
@@ -438,7 +408,7 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
         // Store user data and token
         final userData = result['data'];
         
-        if (_selectedAdminType == 'Admin') {
+        if (_selectedAdminType == 'Branch') {
           print('Admin login successful for: ${userData['branch']['email']}');
           print('Branch Name: ${userData['branch']['branch_name']}');
           print('Access Token: ${userData['access_token']}');

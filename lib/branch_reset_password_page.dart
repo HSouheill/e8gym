@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'services/api_service.dart';
 
 class BranchResetPasswordPage extends StatefulWidget {
@@ -306,11 +305,34 @@ class _BranchResetPasswordPageState extends State<BranchResetPasswordPage> {
                                   ),
                                 ),
                               )
-                            : SvgPicture.asset(
-                                'assets/img/Button.svg',
+                            : Container(
                                 width: MediaQuery.of(context).size.width * 0.5,
                                 height: 40,
-                                fit: BoxFit.cover,
+                                decoration: BoxDecoration(
+                                  gradient: const LinearGradient(
+                                    begin: Alignment.topCenter,
+                                    end: Alignment.bottomCenter,
+                                    colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
+                                  ),
+                                  borderRadius: BorderRadius.circular(20),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: const Color(0xFFDBA50B).withOpacity(0.3),
+                                      offset: const Offset(0, 3),
+                                      blurRadius: 5,
+                                    ),
+                                  ],
+                                ),
+                                child: const Center(
+                                  child: Text(
+                                    'Submit',
+                                    style: TextStyle(
+                                      color: Colors.black,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
                               ),
                       ),
                     ),

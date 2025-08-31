@@ -47,6 +47,7 @@ class ApiConfig {
   
   // API Endpoints
   static const String superAdminLogin = '/superadmin/login';
+  static const String superAdminLogout = '/api/auth/logout'; // This might need to be different
   static const String adminLogin = '/admin/login';
   static const String createAdmin = '/superadmin/create-admin';
   
@@ -60,9 +61,23 @@ class ApiConfig {
   // Branch Management Endpoints
   static const String createBranch = '/api/branches';
   static const String getBranches = '/api/branches';
+  static const String getBranch = '/api/branches'; // Will be appended with /:id
+  static const String updateBranch = '/api/branches'; // Will be appended with /:id
+  static const String deleteBranch = '/api/branches'; // Will be appended with /:id
   
   // Standalone Class Management Endpoints
   static const String createStandaloneClass = '/api/standalone-classes';
+  static const String getStandaloneClasses = '/api/standalone-classes';
+  static const String getStandaloneClass = '/api/standalone-classes'; // Will be appended with /:id
+  static const String updateStandaloneClass = '/api/standalone-classes'; // Will be appended with /:id
+  static const String deleteStandaloneClass = '/api/standalone-classes'; // Will be appended with /:id
+  static const String renewClass = '/api/standalone-classes'; // Will be appended with /:id/renew
+  static const String getExpiringClasses = '/api/standalone-classes/expiring';
+  
+  // Branch Class Management Endpoints
+  static const String getBranchClasses = '/api/branch/classes';
+  static const String getBranchClass = '/api/branch/classes'; // Will be appended with /:id
+  static const String updateBranchClassSchedule = '/api/branch/classes'; // Will be appended with /:id/schedule
   
   // Timeout settings
   static const int connectionTimeout = 30000; // 30 seconds

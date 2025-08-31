@@ -26,7 +26,7 @@ class _CreateStandaloneClassPageState extends State<CreateStandaloneClassPage> {
   List<ClassSchedule> _schedules = [];
   
   final List<String> _daysOfWeek = [
-    'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'
+    'Sunday (0)', 'Monday (1)', 'Tuesday (2)', 'Wednesday (3)', 'Thursday (4)', 'Friday (5)', 'Saturday (6)'
   ];
 
   @override
@@ -40,10 +40,18 @@ class _CreateStandaloneClassPageState extends State<CreateStandaloneClassPage> {
 
   void _addSchedule() {
     setState(() {
+      // Use a fixed date (e.g., next Monday) to avoid date-related validation issues
+      final now = DateTime.now();
+      // Monday = 1 in Dart, Monday = 1 in backend
+      final nextMonday = now.add(Duration(days: (8 - now.weekday) % 7));
+      
+      // Ensure the date matches the day of week
+      final targetDate = DateTime(nextMonday.year, nextMonday.month, nextMonday.day);
+      
       _schedules.add(ClassSchedule(
-        dayOfWeek: 0,
-        startTime: DateTime.now(),
-        endTime: DateTime.now().add(const Duration(hours: 1)),
+        dayOfWeek: 1, // Monday (1) in backend format
+        startTime: DateTime(targetDate.year, targetDate.month, targetDate.day, 9, 0), // 9:00 AM
+        endTime: DateTime(targetDate.year, targetDate.month, targetDate.day, 10, 0), // 10:00 AM
       ));
     });
   }
@@ -58,6 +66,47 @@ class _CreateStandaloneClassPageState extends State<CreateStandaloneClassPage> {
     setState(() {
       _schedules[index] = schedule;
     });
+  }
+
+  void _updateScheduleDay(int index, int newDayOfWeek) {
+    if (index >= 0 && index < _schedules.length) {
+      final currentSchedule = _schedules[index];
+      final now = DateTime.now();
+      
+      // Convert backend day format (0=Sunday, 1=Monday, ..., 6=Saturday) to Dart format (1=Monday, ..., 7=Sunday)
+      int dartWeekday;
+      if (newDayOfWeek == 0) {
+        dartWeekday = 7; // Sunday
+      } else {
+        dartWeekday = newDayOfWeek; // Monday=1, Tuesday=2, etc.
+      }
+      
+      // Find the next occurrence of the selected day
+      int daysToAdd = (dartWeekday - now.weekday + 7) % 7;
+      if (daysToAdd == 0) daysToAdd = 7; // If today is the selected day, go to next week
+      
+      final targetDate = now.add(Duration(days: daysToAdd));
+      
+      final newSchedule = ClassSchedule(
+        dayOfWeek: newDayOfWeek,
+        startTime: DateTime(
+          targetDate.year,
+          targetDate.month,
+          targetDate.day,
+          currentSchedule.startTime.hour,
+          currentSchedule.startTime.minute,
+        ),
+        endTime: DateTime(
+          targetDate.year,
+          targetDate.month,
+          targetDate.day,
+          currentSchedule.endTime.hour,
+          currentSchedule.endTime.minute,
+        ),
+      );
+      
+      _updateSchedule(index, newSchedule);
+    }
   }
 
   Future<void> _submitForm() async {
@@ -75,6 +124,36 @@ class _CreateStandaloneClassPageState extends State<CreateStandaloneClassPage> {
       return;
     }
 
+    // Validate that all schedules have valid times
+    for (int i = 0; i < _schedules.length; i++) {
+      final schedule = _schedules[i];
+      if (schedule.endTime.isBefore(schedule.startTime) || schedule.endTime.isAtSameMomentAs(schedule.startTime)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Schedule ${i + 1}: End time must be after start time'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        return;
+      }
+      
+      // Validate that the date matches the day of week
+      // Dart weekday: 1=Monday, 7=Sunday; Backend expects: 0=Sunday, 6=Saturday
+      final dartWeekday = schedule.startTime.weekday;
+      final expectedDayOfWeek = dartWeekday == 7 ? 0 : dartWeekday;
+      if (expectedDayOfWeek != schedule.dayOfWeek) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Schedule ${i + 1}: Date does not match selected day of week'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        return;
+      }
+    }
+
     setState(() {
       _isLoading = true;
     });
@@ -87,6 +166,13 @@ class _CreateStandaloneClassPageState extends State<CreateStandaloneClassPage> {
         capacity: int.parse(_capacityController.text),
         schedule: _schedules,
       );
+
+      print('=== Form Submission Debug ===');
+      print('Schedules count: ${_schedules.length}');
+      for (int i = 0; i < _schedules.length; i++) {
+        final schedule = _schedules[i];
+        print('Schedule $i: Day ${schedule.dayOfWeek}, Start: ${schedule.startTime}, End: ${schedule.endTime}');
+      }
 
       final result = await ApiService.createStandaloneClass(
         request,
@@ -420,11 +506,7 @@ class _CreateStandaloneClassPageState extends State<CreateStandaloneClassPage> {
             }).toList(),
             onChanged: (value) {
               if (value != null) {
-                _updateSchedule(index, ClassSchedule(
-                  dayOfWeek: value,
-                  startTime: schedule.startTime,
-                  endTime: schedule.endTime,
-                ));
+                _updateScheduleDay(index, value);
               }
             },
           ),
@@ -446,6 +528,7 @@ class _CreateStandaloneClassPageState extends State<CreateStandaloneClassPage> {
                                           initialTime: TimeOfDay.fromDateTime(schedule.startTime),
                                         );
                                         if (time != null) {
+                                          // Create a new DateTime with the selected time but keep the same date
                                           final newDateTime = DateTime(
                                             schedule.startTime.year,
                                             schedule.startTime.month,
@@ -482,6 +565,7 @@ class _CreateStandaloneClassPageState extends State<CreateStandaloneClassPage> {
                                           initialTime: TimeOfDay.fromDateTime(schedule.endTime),
                                         );
                                         if (time != null) {
+                                          // Create a new DateTime with the selected time but keep the same date
                                           final newDateTime = DateTime(
                                             schedule.endTime.year,
                                             schedule.endTime.month,

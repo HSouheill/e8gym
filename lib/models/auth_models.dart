@@ -1,4 +1,4 @@
-import 'dart:convert';
+
 
 /// Signup request model
 class SignupRequest {
@@ -191,11 +191,9 @@ class BranchResponse {
   final String adminName;
   final String email;
   final String phoneNumber;
-  final String countryCode;
-  final List<String> classes;
-  final List<String> teamMembers;
-  final bool isActive;
-  final bool isVerified;
+  final String location;
+  final List<ClassModel> classes;
+  final List<TeamMemberModel> teamMembers;
   final DateTime createdAt;
   final DateTime updatedAt;
   final String createdBy;
@@ -206,11 +204,9 @@ class BranchResponse {
     required this.adminName,
     required this.email,
     required this.phoneNumber,
-    required this.countryCode,
+    required this.location,
     required this.classes,
     required this.teamMembers,
-    required this.isActive,
-    required this.isVerified,
     required this.createdAt,
     required this.updatedAt,
     required this.createdBy,
@@ -218,16 +214,18 @@ class BranchResponse {
 
   factory BranchResponse.fromJson(Map<String, dynamic> json) {
     return BranchResponse(
-      id: json['id'],
+      id: json['id'] ?? '',
       branchName: json['branch_name'] ?? '',
       adminName: json['admin_name'] ?? '',
       email: json['email'] ?? '',
       phoneNumber: json['phone_number'] ?? '',
-      countryCode: json['country_code'] ?? '',
-      classes: List<String>.from(json['classes'] ?? []),
-      teamMembers: List<String>.from(json['team_members'] ?? []),
-      isActive: json['is_active'] ?? false,
-      isVerified: json['is_verified'] ?? false,
+      location: json['location'] ?? '',
+      classes: (json['classes'] as List<dynamic>?)
+          ?.map((c) => ClassModel.fromJson(c))
+          .toList() ?? [],
+      teamMembers: (json['team_members'] as List<dynamic>?)
+          ?.map((t) => TeamMemberModel.fromJson(t))
+          .toList() ?? [],
       createdAt: DateTime.parse(json['created_at']),
       updatedAt: DateTime.parse(json['updated_at']),
       createdBy: json['created_by'] ?? '',
@@ -309,127 +307,78 @@ class BranchPasswordResetConfirm {
   }
 }
 
-/// Class Model for Branch
+/// Class Model for Branch Creation
 class ClassModel {
-  final String? id;
   final String name;
   final String description;
   final int duration;
   final int capacity;
-  final List<ClassSchedule> schedule;
   final String instructor;
-  final bool isActive;
 
   ClassModel({
-    this.id,
     required this.name,
     required this.description,
     required this.duration,
     required this.capacity,
-    required this.schedule,
     required this.instructor,
-    required this.isActive,
   });
 
   Map<String, dynamic> toJson() {
     return {
-      if (id != null) 'id': id,
       'name': name,
       'description': description,
       'duration': duration,
       'capacity': capacity,
-      'schedule': schedule.map((s) => s.toJson()).toList(),
       'instructor': instructor,
-      'is_active': isActive,
     };
   }
 
   factory ClassModel.fromJson(Map<String, dynamic> json) {
     return ClassModel(
-      id: json['id'],
       name: json['name'] ?? '',
       description: json['description'] ?? '',
       duration: json['duration'] ?? 0,
       capacity: json['capacity'] ?? 0,
-      schedule: (json['schedule'] as List<dynamic>?)
-          ?.map((s) => ClassSchedule.fromJson(s))
-          .toList() ?? [],
       instructor: json['instructor'] ?? '',
-      isActive: json['is_active'] ?? true,
     );
   }
 }
 
-/// Class Schedule Model
-class ClassSchedule {
-  final int dayOfWeek;
-  final DateTime startTime;
-  final DateTime endTime;
 
-  ClassSchedule({
-    required this.dayOfWeek,
-    required this.startTime,
-    required this.endTime,
-  });
 
-  Map<String, dynamic> toJson() {
-    return {
-      'day_of_week': dayOfWeek,
-      'start_time': startTime.toIso8601String(),
-      'end_time': endTime.toIso8601String(),
-    };
-  }
-
-  factory ClassSchedule.fromJson(Map<String, dynamic> json) {
-    return ClassSchedule(
-      dayOfWeek: json['day_of_week'] ?? 0,
-      startTime: DateTime.parse(json['start_time']),
-      endTime: DateTime.parse(json['end_time']),
-    );
-  }
-}
-
-/// Team Member Model for Branch
+/// Team Member Model for Branch Creation
 class TeamMemberModel {
-  final String? id;
   final String fullName;
   final String email;
   final String phoneNumber;
   final String countryCode;
   final String role;
-  final bool isActive;
 
   TeamMemberModel({
-    this.id,
     required this.fullName,
     required this.email,
     required this.phoneNumber,
     required this.countryCode,
     required this.role,
-    required this.isActive,
   });
 
   Map<String, dynamic> toJson() {
     return {
-      if (id != null) 'id': id,
       'full_name': fullName,
       'email': email,
       'phone_number': phoneNumber,
       'country_code': countryCode,
       'role': role,
-      'is_active': isActive,
     };
   }
 
   factory TeamMemberModel.fromJson(Map<String, dynamic> json) {
     return TeamMemberModel(
-      id: json['id'],
       fullName: json['full_name'] ?? '',
       email: json['email'] ?? '',
       phoneNumber: json['phone_number'] ?? '',
       countryCode: json['country_code'] ?? '',
       role: json['role'] ?? '',
-      isActive: json['is_active'] ?? true,
     );
   }
 }
@@ -441,7 +390,7 @@ class CreateBranchRequest {
   final String email;
   final String password;
   final String phoneNumber;
-  final String countryCode;
+  final String location;
   final List<ClassModel> classes;
   final List<TeamMemberModel> teamMembers;
 
@@ -451,9 +400,9 @@ class CreateBranchRequest {
     required this.email,
     required this.password,
     required this.phoneNumber,
-    required this.countryCode,
-    required this.classes,
-    required this.teamMembers,
+    required this.location,
+    this.classes = const [],
+    this.teamMembers = const [],
   });
 
   Map<String, dynamic> toJson() {
@@ -463,9 +412,71 @@ class CreateBranchRequest {
       'email': email,
       'password': password,
       'phone_number': phoneNumber,
-      'country_code': countryCode,
+      'location': location,
       'classes': classes.map((c) => c.toJson()).toList(),
       'team_members': teamMembers.map((t) => t.toJson()).toList(),
     };
+  }
+}
+
+/// Update Branch Request Model
+class UpdateBranchRequest {
+  final String? branchName;
+  final String? adminName;
+  final String? email;
+  final String? phoneNumber;
+  final String? location;
+  final List<ClassModel>? classes;
+  final List<TeamMemberModel>? teamMembers;
+  final bool? isActive;
+
+  UpdateBranchRequest({
+    this.branchName,
+    this.adminName,
+    this.email,
+    this.phoneNumber,
+    this.location,
+    this.classes,
+    this.teamMembers,
+    this.isActive,
+  });
+
+  Map<String, dynamic> toJson() {
+    final Map<String, dynamic> data = {};
+    if (branchName != null) data['branch_name'] = branchName;
+    if (adminName != null) data['admin_name'] = adminName;
+    if (email != null) data['email'] = email;
+    if (phoneNumber != null) data['phone_number'] = phoneNumber;
+    if (location != null) data['location'] = location;
+    if (classes != null) data['classes'] = classes!.map((c) => c.toJson()).toList();
+    if (teamMembers != null) data['team_members'] = teamMembers!.map((t) => t.toJson()).toList();
+    if (isActive != null) data['is_active'] = isActive;
+    return data;
+  }
+}
+
+/// Branch List Response Model
+class BranchListResponse {
+  final List<BranchResponse> branches;
+  final int total;
+  final int page;
+  final int limit;
+
+  BranchListResponse({
+    required this.branches,
+    required this.total,
+    required this.page,
+    required this.limit,
+  });
+
+  factory BranchListResponse.fromJson(Map<String, dynamic> json) {
+    return BranchListResponse(
+      branches: (json['branches'] as List)
+          .map((branch) => BranchResponse.fromJson(branch))
+          .toList(),
+      total: json['total'] ?? 0,
+      page: json['page'] ?? 1,
+      limit: json['limit'] ?? 20,
+    );
   }
 }

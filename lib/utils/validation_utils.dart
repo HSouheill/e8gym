@@ -50,6 +50,40 @@ class ValidationUtils {
     return age >= 13;
   }
 
+  /// Validates class schedule times
+  static bool isValidScheduleTime(DateTime startTime, DateTime endTime) {
+    return startTime.isBefore(endTime);
+  }
+
+  /// Validates class schedule for overlapping times on the same day
+  static bool hasOverlappingSchedules(List<Map<String, dynamic>> schedules) {
+    for (int i = 0; i < schedules.length; i++) {
+      for (int j = i + 1; j < schedules.length; j++) {
+        if (schedules[i]['dayOfWeek'] == schedules[j]['dayOfWeek']) {
+          final start1 = schedules[i]['startTime'] as DateTime;
+          final end1 = schedules[i]['endTime'] as DateTime;
+          final start2 = schedules[j]['startTime'] as DateTime;
+          final end2 = schedules[j]['endTime'] as DateTime;
+          
+          if (start1.isBefore(end2) && end1.isAfter(start2)) {
+            return true;
+          }
+        }
+      }
+    }
+    return false;
+  }
+
+  /// Validates class capacity
+  static bool isValidClassCapacity(int capacity) {
+    return capacity > 0 && capacity <= 100;
+  }
+
+  /// Validates class duration
+  static bool isValidClassDuration(int duration) {
+    return duration > 0 && duration <= 480; // Max 8 hours
+  }
+
   /// Gets validation error message for a field
   static String? getValidationError(String fieldName, String value, {DateTime? dateOfBirth}) {
     switch (fieldName.toLowerCase()) {
