@@ -78,9 +78,7 @@ class UpdateClassScheduleRequest {
     required this.schedule,
   });
 
-  Map<String, dynamic> toJson() {
-    return {
-      'schedule': schedule.map((s) => s.toJson()).toList(),
-    };
+  List<Map<String, dynamic>> toJson() {
+    return schedule.map((s) => s.toJson()).toList();
   }
 }

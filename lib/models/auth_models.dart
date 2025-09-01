@@ -94,6 +94,22 @@ class UserResponse {
     required this.updatedAt,
   });
 
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'full_name': fullName,
+      'email': email,
+      'phone_number': phoneNumber,
+      'country_code': countryCode,
+      'date_of_birth': dateOfBirth.toUtc().toIso8601String(),
+      'is_active': isActive,
+      'is_verified': isVerified,
+      'role': role,
+      'created_at': createdAt.toUtc().toIso8601String(),
+      'updated_at': updatedAt.toUtc().toIso8601String(),
+    };
+  }
+
   factory UserResponse.fromJson(Map<String, dynamic> json) {
     return UserResponse(
       id: json['id'],

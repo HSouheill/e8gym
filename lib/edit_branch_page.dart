@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:convert';
 import 'services/api_service.dart';
 import 'models/auth_models.dart';
 import 'models/standalone_class_models.dart';
@@ -57,8 +58,7 @@ class _EditBranchPageState extends State<EditBranchPage> {
     // Initialize team members
     _teamMembers = List.from(widget.branch.teamMembers);
     
-    // Initialize selected classes (convert from ClassModel to StandaloneClassResponse)
-    // Note: This is a simplified conversion - in a real app you'd need proper mapping
+    // Initialize selected classes will be done after loading available classes
     _selectedClasses = [];
   }
 
@@ -77,8 +77,13 @@ class _EditBranchPageState extends State<EditBranchPage> {
         final data = result['data'];
         final classListResponse = StandaloneClassListResponse.fromJson(data);
         
+
+        
         setState(() {
           _availableClasses = classListResponse.classes.where((c) => c.isActive).toList();
+          
+          // Initialize selected classes from existing branch data
+          _initializeSelectedClassesFromBranch();
         });
       } else {
         _showSnackBar(result['message'] ?? 'Failed to load available classes');
@@ -89,6 +94,22 @@ class _EditBranchPageState extends State<EditBranchPage> {
       setState(() {
         _isLoadingClasses = false;
       });
+    }
+  }
+
+  void _initializeSelectedClassesFromBranch() {
+    // Map existing branch classes to standalone classes
+    for (final branchClass in widget.branch.classes) {
+      // Find matching standalone class by name (since we don't have direct ID mapping)
+      try {
+        final matchingStandaloneClass = _availableClasses.firstWhere(
+          (standaloneClass) => standaloneClass.name == branchClass.name,
+        );
+        _selectedClasses.add(matchingStandaloneClass);
+      } catch (e) {
+        // If no matching class found, skip it
+        print('No matching standalone class found for: ${branchClass.name}');
+      }
     }
   }
 
@@ -518,35 +539,86 @@ class _EditBranchPageState extends State<EditBranchPage> {
   }
 
   Widget _buildClassSelectionDropdown() {
-    return DropdownButtonFormField<StandaloneClassResponse>(
-      decoration: InputDecoration(
-        labelText: 'Add Class',
-        prefixIcon: const Icon(Icons.fitness_center, color: Color(0xFFF8BB0C)),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+    // Ensure we have unique classes by ID
+    final uniqueAvailableClasses = _availableClasses
+        .fold<List<StandaloneClassResponse>>([], (list, classItem) {
+      if (!list.any((item) => item.id == classItem.id)) {
+        list.add(classItem);
+      }
+      return list;
+    });
+
+    // Filter out already selected classes
+    final availableForSelection = uniqueAvailableClasses
+        .where((c) => !_selectedClasses.any((selected) => selected.id == c.id))
+        .toList();
+
+
+
+    // If no classes available, show a disabled dropdown
+    if (availableForSelection.isEmpty) {
+      return DropdownButtonFormField<String>(
+        decoration: InputDecoration(
+          labelText: 'Add Class',
+          prefixIcon: const Icon(Icons.fitness_center, color: Color(0xFFF8BB0C)),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: Color(0xFFF8BB0C), width: 2),
+          ),
+          filled: true,
+          fillColor: Colors.grey[100],
         ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFFF8BB0C), width: 2),
-        ),
-        filled: true,
-        fillColor: Colors.white,
+        value: null,
+        items: const [DropdownMenuItem<String>(value: null, child: Text('No more classes available'))],
+        onChanged: null,
+        hint: const Text('No more classes available'),
+      );
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.grey[300]!),
+        borderRadius: BorderRadius.circular(12),
+        color: Colors.white,
       ),
-      value: null,
-      items: _availableClasses
-          .where((c) => !_selectedClasses.contains(c))
-          .map((c) => DropdownMenuItem(
-                value: c,
-                child: Text(c.name),
-              ))
-          .toList(),
-      onChanged: (StandaloneClassResponse? value) {
-        if (value != null) {
-          setState(() {
-            _selectedClasses.add(value);
-          });
-        }
-      },
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          isExpanded: true,
+          hint: const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              children: [
+                Icon(Icons.fitness_center, color: Color(0xFFF8BB0C)),
+                SizedBox(width: 12),
+                Text('Add Class'),
+              ],
+            ),
+          ),
+          value: null,
+          items: availableForSelection.isNotEmpty
+              ? availableForSelection
+                  .map((c) => DropdownMenuItem(
+                        value: c.id,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: Text(c.name),
+                        ),
+                      ))
+                  .toList()
+              : const [DropdownMenuItem<String>(value: null, child: Text('No classes available'))],
+          onChanged: (String? classId) {
+            if (classId != null) {
+              final selectedClass = availableForSelection.firstWhere((c) => c.id == classId);
+              setState(() {
+                _selectedClasses.add(selectedClass);
+              });
+            }
+          },
+        ),
+      ),
     );
   }
 
@@ -690,13 +762,48 @@ class _EditBranchPageState extends State<EditBranchPage> {
     });
 
     try {
-      // TODO: Implement API call to update branch
-      // For now, just show a success message
-      await Future.delayed(const Duration(seconds: 2)); // Simulate API call
+      // Convert StandaloneClassResponse to ClassModel
+      final classModels = _selectedClasses.map((standaloneClass) => ClassModel(
+        name: standaloneClass.name,
+        description: standaloneClass.description,
+        duration: 60, // Default duration in minutes
+        capacity: standaloneClass.capacity,
+        instructor: standaloneClass.instructor,
+      )).toList();
+
+      // Create update request
+      final updateRequest = UpdateBranchRequest(
+        branchName: _branchNameController.text.trim(),
+        adminName: _adminNameController.text.trim(),
+        email: _emailController.text.trim(),
+        phoneNumber: _phoneNumberController.text.trim(),
+        location: _locationController.text.trim(),
+        classes: classModels,
+        teamMembers: _teamMembers,
+        isActive: true,
+      );
+
+      // Debug: Print the request data
+      print('=== Update Branch Debug ===');
+      print('Branch ID: ${widget.branch.id}');
+      print('Request data: ${jsonEncode(updateRequest.toJson())}');
       
-      if (mounted) {
-        _showSnackBar('Branch updated successfully');
-        Navigator.of(context).pop(true); // Return true to indicate success
+      // Call API to update branch
+      final result = await ApiService.updateBranch(
+        widget.branch.id,
+        updateRequest.toJson(),
+        widget.accessToken,
+      );
+
+      if (result['success']) {
+        if (mounted) {
+          _showSnackBar('Branch updated successfully');
+          Navigator.of(context).pop(true); // Return true to indicate success
+        }
+      } else {
+        if (mounted) {
+          _showSnackBar(result['message'] ?? 'Failed to update branch');
+        }
       }
     } catch (e) {
       if (mounted) {

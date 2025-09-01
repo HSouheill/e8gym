@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'services/api_service.dart';
 import 'models/standalone_class_models.dart';
 import 'create_standalone_class_page.dart';
+import 'edit_standalone_class_page.dart';
 
 class StandaloneClassesPage extends StatefulWidget {
   final String accessToken;
@@ -154,15 +155,18 @@ class _StandaloneClassesPageState extends State<StandaloneClassesPage> {
                           ),
                         ),
                       ),
-                      const SizedBox(width: 20),
+                      // const SizedBox(width: 20),
                       const Expanded(
                         child: Text(
                           'Standalone Classes',
                           style: TextStyle(
                             color: Colors.white,
-                            fontSize: 24,
+                            fontSize: 22,
                             fontWeight: FontWeight.bold,
+
+
                           ),
+                          textAlign: TextAlign.center,
                         ),
                       ),
                       GestureDetector(
@@ -185,27 +189,7 @@ class _StandaloneClassesPageState extends State<StandaloneClassesPage> {
                           ),
                         ),
                       ),
-                      const SizedBox(width: 16),
-                      GestureDetector(
-                        onTap: _loadExpiringClasses,
-                        child: Container(
-                          width: 50,
-                          height: 50,
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
-                            ),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            Icons.warning,
-                            color: Colors.black,
-                            size: 30,
-                          ),
-                        ),
-                      ),
+                      
                     ],
                   ),
                 ),
@@ -627,9 +611,20 @@ class _StandaloneClassesPageState extends State<StandaloneClassesPage> {
     _showSnackBar('Viewing class: ${classData.name}');
   }
 
-  void _editClass(StandaloneClassResponse classData) {
-    // TODO: Navigate to class edit page
-    _showSnackBar('Editing class: ${classData.name}');
+  void _editClass(StandaloneClassResponse classData) async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => EditStandaloneClassPage(
+          accessToken: widget.accessToken,
+          classData: classData,
+        ),
+      ),
+    );
+    
+    if (result == true) {
+      _loadClasses(refresh: true);
+    }
   }
 
   Future<void> _renewClass(StandaloneClassResponse classData) async {

@@ -206,7 +206,7 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
                               controller: _usernameController,
                               style: const TextStyle(color: Colors.white),
                               decoration: const InputDecoration(
-                                hintText: 'Username or Email',
+                                hintText: 'Email',
                                 hintStyle: TextStyle(color: Colors.white70),
                                 border: InputBorder.none,
                               ),

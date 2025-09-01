@@ -3,6 +3,10 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'signup_page.dart';
 import 'admin_login_page.dart';
+import 'services/auth_service.dart';
+import 'services/storage_service.dart';
+import 'user_dashboard.dart';
+import 'models/auth_models.dart';
 
 void main() {
   runApp(const MyApp());
@@ -34,12 +38,83 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  final AuthService _authService = AuthService();
+  final StorageService _storageService = StorageService();
+  bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+  }
 
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  Future<void> _handleLogin() async {
+    if (_emailController.text.trim().isEmpty || _passwordController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter both email and password'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final loginRequest = LoginRequest(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+      );
+
+      final response = await _authService.login(loginRequest);
+
+      // Save tokens and user data
+      await _storageService.init();
+      await _storageService.saveAuthTokens(
+        accessToken: response.accessToken,
+        refreshToken: response.refreshToken,
+      );
+      await _storageService.saveUserData(response.user);
+
+      setState(() {
+        _isLoading = false;
+      });
+
+      // Navigate to classes page
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const UserDashboard()),
+        );
+      }
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+
+      String errorMessage = 'Login failed. Please try again.';
+      if (e is AuthException) {
+        errorMessage = e.message;
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMessage),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -330,15 +405,19 @@ class _LoginPageState extends State<LoginPage> {
                     width: MediaQuery.of(context).size.width * 0.5,
                     height: 65,
                     child: GestureDetector(
-                      onTap: () {
-                        // Handle login logic here
-                      },
-                      child: SvgPicture.asset(
-                        'assets/img/Button.svg',
-                        width: MediaQuery.of(context).size.width * 0.4,
-                        height: 40,
-                        fit: BoxFit.cover,
-                      ),
+                      onTap: _isLoading ? null : _handleLogin,
+                      child: _isLoading
+                          ? const Center(
+                              child: CircularProgressIndicator(
+                                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFF8BB0C)),
+                              ),
+                            )
+                          : SvgPicture.asset(
+                              'assets/img/Button.svg',
+                              width: MediaQuery.of(context).size.width * 0.4,
+                              height: 40,
+                              fit: BoxFit.cover,
+                            ),
                     ),
                   ),
                   

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'services/auth_service.dart';
 import 'services/storage_service.dart';
+import 'user_dashboard.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -158,7 +159,13 @@ class _HomePageState extends State<HomePage> {
                             children: [
                               ElevatedButton(
                                 onPressed: () {
-                                  // Navigate to gym features
+                                  // Navigate to classes page
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => const UserDashboard(),
+                                    ),
+                                  );
                                 },
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: Colors.white,
@@ -169,7 +176,7 @@ class _HomePageState extends State<HomePage> {
                                   ),
                                 ),
                                 child: const Text(
-                                  'Explore Gym',
+                                  'View Classes',
                                   style: TextStyle(fontWeight: FontWeight.bold),
                                 ),
                               ),

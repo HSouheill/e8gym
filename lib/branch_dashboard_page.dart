@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'services/api_service.dart';
 import 'models/branch_class_models.dart';
 import 'models/standalone_class_models.dart';
+import 'branch_users_page.dart';
 
 class BranchDashboardPage extends StatefulWidget {
   final Map<String, dynamic> branchData;
@@ -23,7 +24,7 @@ class _BranchDashboardPageState extends State<BranchDashboardPage> {
   late final String accessToken;
   List<BranchClassResponse> _classes = [];
   String? _errorMessage;
-  int _currentTab = 0; // 0 = Dashboard, 1 = Classes
+  int _currentTab = 0; // 0 = Dashboard, 1 = Classes, 2 = Users
 
   @override
   void initState() {
@@ -196,6 +197,14 @@ class _BranchDashboardPageState extends State<BranchDashboardPage> {
                           onTap: () => setState(() => _currentTab = 1),
                         ),
                       ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: _buildTabButton(
+                          title: 'Users',
+                          isSelected: _currentTab == 2,
+                          onTap: () => setState(() => _currentTab = 2),
+                        ),
+                      ),
                     ],
                   ),
                   
@@ -203,7 +212,11 @@ class _BranchDashboardPageState extends State<BranchDashboardPage> {
                   
                   // Content based on selected tab
                   Expanded(
-                    child: _currentTab == 0 ? _buildDashboardContent(branchData) : _buildClassesContent(),
+                    child: _currentTab == 0 
+                        ? _buildDashboardContent(branchData) 
+                        : _currentTab == 1 
+                            ? _buildClassesContent()
+                            : _buildUsersContent(),
                   ),
                 ],
               ),
@@ -265,13 +278,11 @@ class _BranchDashboardPageState extends State<BranchDashboardPage> {
                   ),
                 ),
                 const SizedBox(height: 20),
+                _buildInfoRow('Admin Name', branchData['admin_name'] ?? 'N/A'),
+                const SizedBox(height: 12),
                 _buildInfoRow('Email', branchData['email'] ?? 'N/A'),
                 const SizedBox(height: 12),
                 _buildInfoRow('Phone', '${branchData['country_code'] ?? ''} ${branchData['phone_number'] ?? 'N/A'}'),
-                const SizedBox(height: 12),
-                _buildInfoRow('Status', branchData['is_active'] == true ? 'Active' : 'Inactive'),
-                const SizedBox(height: 12),
-                _buildInfoRow('Verification', branchData['is_verified'] == true ? 'Verified' : 'Pending'),
               ],
             ),
           ),
@@ -298,7 +309,7 @@ class _BranchDashboardPageState extends State<BranchDashboardPage> {
                   title: 'Team Members',
                   subtitle: '${(branchData['team_members'] as List?)?.length ?? 0} members',
                   onTap: () {
-                    _showSnackBar('Team members feature coming soon!');
+                    _showTeamMembersDialog(branchData);
                   },
                 ),
               ),
@@ -312,6 +323,34 @@ class _BranchDashboardPageState extends State<BranchDashboardPage> {
                     setState(() => _currentTab = 1);
                   },
                 ),
+              ),
+            ],
+          ),
+          
+          const SizedBox(height: 16),
+          
+          Row(
+            children: [
+              Expanded(
+                child: _buildActionCard(
+                  icon: Icons.person,
+                  title: 'Users',
+                  subtitle: 'View branch users',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => BranchUsersPage(
+                          accessToken: accessToken,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Container(), // Empty space for future action
               ),
             ],
           ),
@@ -352,6 +391,110 @@ class _BranchDashboardPageState extends State<BranchDashboardPage> {
           const SizedBox(height: 20),
         ],
       ),
+    );
+  }
+
+  Widget _buildUsersContent() {
+    return Column(
+      children: [
+        // Users header
+        Row(
+          children: [
+            const Expanded(
+              child: Text(
+                'Branch Users',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            GestureDetector(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => BranchUsersPage(
+                      accessToken: accessToken,
+                    ),
+                  ),
+                );
+              },
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.people,
+                  color: Colors.white,
+                  size: 20,
+                ),
+              ),
+            ),
+          ],
+        ),
+        
+        const SizedBox(height: 20),
+        
+        // Users content placeholder
+        Expanded(
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(
+                  Icons.people_outline,
+                  color: Colors.white,
+                  size: 64,
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'User Management',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Tap the users icon to view and manage\nbranch users and their bookings',
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 14,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 20),
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => BranchUsersPage(
+                          accessToken: accessToken,
+                        ),
+                      ),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    foregroundColor: const Color(0xFF926E07),
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: const Text('View Users'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -621,19 +764,47 @@ class _BranchDashboardPageState extends State<BranchDashboardPage> {
     final startTime = '${schedule.startTime.hour.toString().padLeft(2, '0')}:${schedule.startTime.minute.toString().padLeft(2, '0')}';
     final endTime = '${schedule.endTime.hour.toString().padLeft(2, '0')}:${schedule.endTime.minute.toString().padLeft(2, '0')}';
     
+    // Check if this is a next week schedule (has specific date)
+    final isNextWeekSchedule = schedule.startTime.year > 2024 || 
+                              (schedule.startTime.year == 2024 && schedule.startTime.month > 1);
+    
+    String scheduleText;
+    if (isNextWeekSchedule) {
+      final date = schedule.startTime;
+      scheduleText = '${date.day}/${date.month}/${date.year} ($dayName): $startTime - $endTime';
+    } else {
+      scheduleText = '$dayName: $startTime - $endTime';
+    }
+    
     return Container(
       margin: const EdgeInsets.only(bottom: 4),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.1),
+        color: isNextWeekSchedule 
+            ? const Color(0xFFF8BB0C).withOpacity(0.2) // Different color for next week schedules
+            : Colors.white.withOpacity(0.1),
         borderRadius: BorderRadius.circular(6),
+        border: isNextWeekSchedule 
+            ? Border.all(color: const Color(0xFFF8BB0C), width: 1)
+            : null,
       ),
-      child: Text(
-        '$dayName: $startTime - $endTime',
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 12,
-        ),
+      child: Row(
+        children: [
+          if (isNextWeekSchedule) 
+            const Icon(Icons.event, color: Color(0xFFF8BB0C), size: 12),
+          if (isNextWeekSchedule) 
+            const SizedBox(width: 4),
+          Expanded(
+            child: Text(
+              scheduleText,
+              style: TextStyle(
+                color: isNextWeekSchedule ? const Color(0xFFF8BB0C) : Colors.white,
+                fontSize: 12,
+                fontWeight: isNextWeekSchedule ? FontWeight.w600 : FontWeight.normal,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -726,7 +897,17 @@ class _BranchDashboardPageState extends State<BranchDashboardPage> {
                   final dayName = days[schedule.dayOfWeek];
                   final startTime = '${schedule.startTime.hour.toString().padLeft(2, '0')}:${schedule.startTime.minute.toString().padLeft(2, '0')}';
                   final endTime = '${schedule.endTime.hour.toString().padLeft(2, '0')}:${schedule.endTime.minute.toString().padLeft(2, '0')}';
-                  return Text('$dayName: $startTime - $endTime');
+                  
+                  // Check if this is a next week schedule
+                  final isNextWeekSchedule = schedule.startTime.year > 2024 || 
+                                            (schedule.startTime.year == 2024 && schedule.startTime.month > 1);
+                  
+                  if (isNextWeekSchedule) {
+                    final date = schedule.startTime;
+                    return Text('${date.day}/${date.month}/${date.year} ($dayName): $startTime - $endTime');
+                  } else {
+                    return Text('$dayName: $startTime - $endTime');
+                  }
                 }),
               ],
             ],
@@ -768,17 +949,41 @@ class _BranchDashboardPageState extends State<BranchDashboardPage> {
                     final startTime = '${schedule.startTime.hour.toString().padLeft(2, '0')}:${schedule.startTime.minute.toString().padLeft(2, '0')}';
                     final endTime = '${schedule.endTime.hour.toString().padLeft(2, '0')}:${schedule.endTime.minute.toString().padLeft(2, '0')}';
                     
+                    // Check if this is a next week schedule
+                    final isNextWeekSchedule = schedule.startTime.year > 2024 || 
+                                              (schedule.startTime.year == 2024 && schedule.startTime.month > 1);
+                    
+                    String scheduleText;
+                    if (isNextWeekSchedule) {
+                      final date = schedule.startTime;
+                      scheduleText = '${date.day}/${date.month}/${date.year} ($dayName): $startTime - $endTime';
+                    } else {
+                      scheduleText = '$dayName: $startTime - $endTime';
+                    }
+                    
                     return Container(
                       margin: const EdgeInsets.only(bottom: 8),
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: Colors.grey[100],
+                        color: isNextWeekSchedule ? Colors.orange[50] : Colors.grey[100],
                         borderRadius: BorderRadius.circular(4),
+                        border: isNextWeekSchedule 
+                            ? Border.all(color: Colors.orange[300]!, width: 1)
+                            : null,
                       ),
                       child: Row(
                         children: [
+                          if (isNextWeekSchedule) 
+                            const Icon(Icons.event, color: Colors.orange, size: 16),
+                          if (isNextWeekSchedule) 
+                            const SizedBox(width: 8),
                           Expanded(
-                            child: Text('$dayName: $startTime - $endTime'),
+                            child: Text(
+                              scheduleText,
+                              style: TextStyle(
+                                fontWeight: isNextWeekSchedule ? FontWeight.w600 : FontWeight.normal,
+                              ),
+                            ),
                           ),
                           IconButton(
                             icon: const Icon(Icons.edit, size: 16),
@@ -842,6 +1047,10 @@ class _BranchDashboardPageState extends State<BranchDashboardPage> {
         ? TimeOfDay.fromDateTime(schedules[editingIndex].endTime)
         : const TimeOfDay(hour: 10, minute: 0);
     final List<String> days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    
+    // For next week scheduling
+    bool isNextWeekSchedule = false;
+    DateTime? selectedDate;
 
     showDialog(
       context: context,
@@ -852,25 +1061,86 @@ class _BranchDashboardPageState extends State<BranchDashboardPage> {
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Day selection
-              DropdownButtonFormField<int>(
-                value: selectedDay,
-                decoration: const InputDecoration(
-                  labelText: 'Day of Week',
-                  border: OutlineInputBorder(),
-                ),
-                items: days.asMap().entries.map((entry) {
-                  return DropdownMenuItem(
-                    value: entry.key,
-                    child: Text(entry.value),
-                  );
-                }).toList(),
-                onChanged: (value) {
-                  setTimeDialogState(() {
-                    selectedDay = value!;
-                  });
-                },
+              // Schedule type selection
+              Row(
+                children: [
+                  Expanded(
+                    child: RadioListTile<bool>(
+                      title: const Text('Recurring'),
+                      subtitle: const Text('Every week'),
+                      value: false,
+                      groupValue: isNextWeekSchedule,
+                      onChanged: (value) {
+                        setTimeDialogState(() {
+                          isNextWeekSchedule = value!;
+                          selectedDate = null;
+                        });
+                      },
+                    ),
+                  ),
+                  Expanded(
+                    child: RadioListTile<bool>(
+                      title: const Text('Next Week'),
+                      subtitle: const Text('Specific date'),
+                      value: true,
+                      groupValue: isNextWeekSchedule,
+                      onChanged: (value) {
+                        setTimeDialogState(() {
+                          isNextWeekSchedule = value!;
+                          // Set default to next week's same day
+                          final now = DateTime.now();
+                          final nextWeek = now.add(const Duration(days: 7));
+                          selectedDate = DateTime(nextWeek.year, nextWeek.month, nextWeek.day);
+                        });
+                      },
+                    ),
+                  ),
+                ],
               ),
+              const SizedBox(height: 16),
+              
+              // Day selection (for recurring) or Date selection (for next week)
+              if (!isNextWeekSchedule) ...[
+                DropdownButtonFormField<int>(
+                  value: selectedDay,
+                  decoration: const InputDecoration(
+                    labelText: 'Day of Week',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: days.asMap().entries.map((entry) {
+                    return DropdownMenuItem(
+                      value: entry.key,
+                      child: Text(entry.value),
+                    );
+                  }).toList(),
+                  onChanged: (value) {
+                    setTimeDialogState(() {
+                      selectedDay = value!;
+                    });
+                  },
+                ),
+              ] else ...[
+                ListTile(
+                  title: const Text('Date'),
+                  subtitle: Text(selectedDate != null 
+                      ? '${selectedDate!.day}/${selectedDate!.month}/${selectedDate!.year}'
+                      : 'Select a date'),
+                  trailing: const Icon(Icons.calendar_today),
+                  onTap: () async {
+                    final date = await showDatePicker(
+                      context: context,
+                      initialDate: selectedDate ?? DateTime.now().add(const Duration(days: 7)),
+                      firstDate: DateTime.now().add(const Duration(days: 1)),
+                      lastDate: DateTime.now().add(const Duration(days: 14)), // Allow up to 2 weeks ahead
+                    );
+                    if (date != null) {
+                      setTimeDialogState(() {
+                        selectedDate = date;
+                      });
+                    }
+                  },
+                ),
+              ],
               const SizedBox(height: 16),
               
               // Time selection
@@ -928,27 +1198,70 @@ class _BranchDashboardPageState extends State<BranchDashboardPage> {
                   return;
                 }
 
-                // Check for overlapping schedules on the same day
+                // Validate date selection for next week scheduling
+                if (isNextWeekSchedule && selectedDate == null) {
+                  _showSnackBar('Please select a date for next week scheduling');
+                  return;
+                }
+
+                // Check for overlapping schedules
                 for (int i = 0; i < schedules.length; i++) {
-                  if (i != editingIndex && schedules[i].dayOfWeek == selectedDay) {
-                    final existingStart = TimeOfDay.fromDateTime(schedules[i].startTime);
-                    final existingEnd = TimeOfDay.fromDateTime(schedules[i].endTime);
-                    
-                    if ((startTime.hour < existingEnd.hour || 
-                         (startTime.hour == existingEnd.hour && startTime.minute < existingEnd.minute)) &&
-                        (endTime.hour > existingStart.hour || 
-                         (endTime.hour == existingStart.hour && endTime.minute > existingStart.minute))) {
-                      _showSnackBar('Schedule times overlap with existing schedule');
-                      return;
+                  if (i == editingIndex) continue;
+                  
+                  final existingSchedule = schedules[i];
+                  bool hasConflict = false;
+                  
+                  if (isNextWeekSchedule) {
+                    // For next week scheduling, check if the selected date conflicts with any existing schedule
+                    if (existingSchedule.dayOfWeek == selectedDate!.weekday % 7) { // Convert to 0-6 format
+                      final existingStart = TimeOfDay.fromDateTime(existingSchedule.startTime);
+                      final existingEnd = TimeOfDay.fromDateTime(existingSchedule.endTime);
+                      
+                      if ((startTime.hour < existingEnd.hour || 
+                           (startTime.hour == existingEnd.hour && startTime.minute < existingEnd.minute)) &&
+                          (endTime.hour > existingStart.hour || 
+                           (endTime.hour == existingStart.hour && endTime.minute > existingStart.minute))) {
+                        hasConflict = true;
+                      }
                     }
+                  } else {
+                    // For recurring schedules, check day of week conflicts
+                    if (existingSchedule.dayOfWeek == selectedDay) {
+                      final existingStart = TimeOfDay.fromDateTime(existingSchedule.startTime);
+                      final existingEnd = TimeOfDay.fromDateTime(existingSchedule.endTime);
+                      
+                      if ((startTime.hour < existingEnd.hour || 
+                           (startTime.hour == existingEnd.hour && startTime.minute < existingEnd.minute)) &&
+                          (endTime.hour > existingStart.hour || 
+                           (endTime.hour == existingStart.hour && endTime.minute > existingStart.minute))) {
+                        hasConflict = true;
+                      }
+                    }
+                  }
+                  
+                  if (hasConflict) {
+                    _showSnackBar('Schedule times overlap with existing schedule');
+                    return;
                   }
                 }
 
-                final newSchedule = ClassSchedule(
-                  dayOfWeek: selectedDay,
-                  startTime: DateTime(2024, 1, 1, startTime.hour, startTime.minute),
-                  endTime: DateTime(2024, 1, 1, endTime.hour, endTime.minute),
-                );
+                ClassSchedule newSchedule;
+                if (isNextWeekSchedule) {
+                  // Create schedule for specific date
+                  final scheduleDate = selectedDate!;
+                  newSchedule = ClassSchedule(
+                    dayOfWeek: scheduleDate.weekday % 7, // Convert to 0-6 format (Sunday = 0)
+                    startTime: DateTime(scheduleDate.year, scheduleDate.month, scheduleDate.day, startTime.hour, startTime.minute),
+                    endTime: DateTime(scheduleDate.year, scheduleDate.month, scheduleDate.day, endTime.hour, endTime.minute),
+                  );
+                } else {
+                  // Create recurring schedule
+                  newSchedule = ClassSchedule(
+                    dayOfWeek: selectedDay,
+                    startTime: DateTime(2024, 1, 1, startTime.hour, startTime.minute),
+                    endTime: DateTime(2024, 1, 1, endTime.hour, endTime.minute),
+                  );
+                }
 
                 setDialogState(() {
                   if (editingIndex != null) {
@@ -1032,6 +1345,143 @@ class _BranchDashboardPageState extends State<BranchDashboardPage> {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),
         ),
+      ),
+    );
+  }
+
+  void _showTeamMembersDialog(Map<String, dynamic> branchData) {
+    final teamMembers = branchData['team_members'] as List? ?? [];
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
+        title: const Text('Team Members'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: teamMembers.isEmpty
+              ? const Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.people_outline,
+                        size: 64,
+                        color: Colors.grey,
+                      ),
+                      SizedBox(height: 16),
+                      Text(
+                        'No team members found',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        'Team members will appear here once they are added to the branch',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                )
+              : ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: teamMembers.length,
+                  itemBuilder: (context, index) {
+                    final member = teamMembers[index];
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[100],
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.grey[300]!),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              CircleAvatar(
+                                backgroundColor: const Color(0xFFF8BB0C),
+                                child: Text(
+                                  (member['full_name'] as String?)?.substring(0, 1).toUpperCase() ?? '?',
+                                  style: const TextStyle(
+                                    color: Colors.black,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      member['full_name'] ?? 'Unknown',
+                                      style: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    Text(
+                                      member['role'] ?? 'No role specified',
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        color: Colors.grey,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          _buildTeamMemberInfoRow('Email', member['email'] ?? 'N/A'),
+                          _buildTeamMemberInfoRow('Phone', '${member['country_code'] ?? ''} ${member['phone_number'] ?? 'N/A'}'),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTeamMemberInfoRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(
+        children: [
+          Text(
+            '$label: ',
+            style: const TextStyle(
+              color: Colors.grey,
+              fontSize: 12,
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

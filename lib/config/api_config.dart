@@ -20,7 +20,7 @@ class ApiConfig {
   
   static const String devBaseUrl = 'http://10.0.2.2:8080'; // For Android emulator
   static const String localBaseUrl = 'http://localhost:8080'; // For iOS simulator
-  static const String networkBaseUrl = 'http://192.168.1.100:8080'; // For physical device on same network
+  static const String networkBaseUrl = 'http://192.168.1.106:8080'; // For physical device on same network
   static const String productionBaseUrl = 'https://your-production-domain.com'; // Replace with actual production URL
   
   // Current environment (change this as needed)
@@ -78,6 +78,11 @@ class ApiConfig {
   static const String getBranchClasses = '/api/branch/classes';
   static const String getBranchClass = '/api/branch/classes'; // Will be appended with /:id
   static const String updateBranchClassSchedule = '/api/branch/classes'; // Will be appended with /:id/schedule
+  
+  // User Booking Endpoints
+  static const String createBooking = '/api/bookings';
+  static const String getBooking = '/api/bookings'; // Will be appended with /:id
+  static const String cancelBooking = '/api/bookings'; // Will be appended with /:id
   
   // Timeout settings
   static const int connectionTimeout = 30000; // 30 seconds

@@ -3,6 +3,8 @@ import 'package:http/http.dart' as http;
 import '../config/api_config.dart';
 import '../models/standalone_class_models.dart';
 import '../models/branch_class_models.dart';
+import '../models/booking_models.dart';
+import '../models/branch_user_models.dart';
 
 class ApiService {
   
@@ -424,6 +426,10 @@ class ApiService {
     String accessToken,
   ) async {
     try {
+      print('=== API Service Update Branch Debug ===');
+      print('URL: ${ApiConfig.baseUrl}${ApiConfig.updateBranch}/$branchId');
+      print('Request data: ${jsonEncode(updateData)}');
+      
       final response = await http.put(
         Uri.parse('${ApiConfig.baseUrl}${ApiConfig.updateBranch}/$branchId'),
         headers: {
@@ -432,6 +438,9 @@ class ApiService {
         },
         body: jsonEncode(updateData),
       );
+      
+      print('Response status: ${response.statusCode}');
+      print('Response body: ${response.body}');
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -935,6 +944,52 @@ class ApiService {
     }
   }
 
+  // Get Classes for Specific Branch (User)
+  static Future<Map<String, dynamic>> getBranchClassesForUser(
+    String branchId,
+    String accessToken, {
+    int page = 1,
+    int limit = 20,
+  }) async {
+    try {
+      final uri = Uri.parse('${ApiConfig.baseUrl}/api/branches/$branchId/classes')
+          .replace(queryParameters: {
+        'page': page.toString(),
+        'limit': limit.toString(),
+      });
+
+      final response = await http.get(
+        uri,
+        headers: {
+          ...ApiConfig.defaultHeaders,
+          'Authorization': 'Bearer $accessToken',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return {
+          'success': true,
+          'data': data['data'],
+          'message': data['message'],
+        };
+      } else {
+        final errorData = jsonDecode(response.body);
+        return {
+          'success': false,
+          'message': errorData['message'] ?? 'Failed to fetch branch classes',
+          'error': errorData['error'],
+        };
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Network error: $e',
+        'error': e.toString(),
+      };
+    }
+  }
+
   // Get Single Branch Class (Branch Admin only)
   static Future<Map<String, dynamic>> getBranchClass(
     String classId,
@@ -980,6 +1035,10 @@ class ApiService {
     String accessToken,
   ) async {
     try {
+      print('=== Update Branch Class Schedule Debug ===');
+      print('URL: ${ApiConfig.baseUrl}${ApiConfig.updateBranchClassSchedule}/$classId/schedule');
+      print('Request body: ${jsonEncode(scheduleData.toJson())}');
+      
       final response = await http.put(
         Uri.parse('${ApiConfig.baseUrl}${ApiConfig.updateBranchClassSchedule}/$classId/schedule'),
         headers: {
@@ -988,6 +1047,9 @@ class ApiService {
         },
         body: jsonEncode(scheduleData.toJson()),
       );
+      
+      print('Response status: ${response.statusCode}');
+      print('Response body: ${response.body}');
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -1001,6 +1063,319 @@ class ApiService {
         return {
           'success': false,
           'message': errorData['message'] ?? 'Failed to update class schedule',
+          'error': errorData['error'],
+        };
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Network error: $e',
+        'error': e.toString(),
+      };
+    }
+  }
+
+  // Create Booking (User)
+  static Future<Map<String, dynamic>> createBooking(
+    CreateBookingRequest request,
+    String accessToken,
+  ) async {
+    try {
+      final response = await http.post(
+        Uri.parse('${ApiConfig.baseUrl}${ApiConfig.createBooking}'),
+        headers: {
+          ...ApiConfig.defaultHeaders,
+          'Authorization': 'Bearer $accessToken',
+        },
+        body: jsonEncode(request.toJson()),
+      );
+
+      if (response.statusCode == 201) {
+        final data = jsonDecode(response.body);
+        return {
+          'success': true,
+          'data': data['data'],
+          'message': data['message'],
+        };
+      } else {
+        final errorData = jsonDecode(response.body);
+        return {
+          'success': false,
+          'message': errorData['message'] ?? 'Failed to create booking',
+          'error': errorData['error'],
+        };
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Network error: $e',
+        'error': e.toString(),
+      };
+    }
+  }
+
+  // Get Booking (User)
+  static Future<Map<String, dynamic>> getBooking(
+    String bookingId,
+    String accessToken,
+  ) async {
+    try {
+      final response = await http.get(
+        Uri.parse('${ApiConfig.baseUrl}${ApiConfig.getBooking}/$bookingId'),
+        headers: {
+          ...ApiConfig.defaultHeaders,
+          'Authorization': 'Bearer $accessToken',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return {
+          'success': true,
+          'data': data['data'],
+          'message': data['message'],
+        };
+      } else {
+        final errorData = jsonDecode(response.body);
+        return {
+          'success': false,
+          'message': errorData['message'] ?? 'Failed to fetch booking',
+          'error': errorData['error'],
+        };
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Network error: $e',
+        'error': e.toString(),
+      };
+    }
+  }
+
+  // Cancel Booking (User)
+  static Future<Map<String, dynamic>> cancelBooking(
+    String bookingId,
+    String accessToken,
+  ) async {
+    try {
+      final response = await http.delete(
+        Uri.parse('${ApiConfig.baseUrl}${ApiConfig.cancelBooking}/$bookingId'),
+        headers: {
+          ...ApiConfig.defaultHeaders,
+          'Authorization': 'Bearer $accessToken',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return {
+          'success': true,
+          'data': data['data'],
+          'message': data['message'],
+        };
+      } else {
+        final errorData = jsonDecode(response.body);
+        return {
+          'success': false,
+          'message': errorData['message'] ?? 'Failed to cancel booking',
+          'error': errorData['error'],
+        };
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Network error: $e',
+        'error': e.toString(),
+      };
+    }
+  }
+
+  // ===== BRANCH USER ENDPOINTS =====
+
+  // Get Branch Users
+  static Future<Map<String, dynamic>> getBranchUsers(
+    String accessToken, {
+    int page = 1,
+    int limit = 10,
+    String? search,
+    String? dateFrom,
+    String? dateTo,
+  }) async {
+    try {
+      final queryParams = <String, String>{
+        'page': page.toString(),
+        'limit': limit.toString(),
+      };
+
+      if (search != null && search.isNotEmpty) {
+        queryParams['search'] = search;
+      }
+      if (dateFrom != null && dateFrom.isNotEmpty) {
+        queryParams['date_from'] = dateFrom;
+      }
+      if (dateTo != null && dateTo.isNotEmpty) {
+        queryParams['date_to'] = dateTo;
+      }
+
+      final uri = Uri.parse('${ApiConfig.baseUrl}/api/branch/users').replace(queryParameters: queryParams);
+
+      final response = await http.get(
+        uri,
+        headers: {
+          ...ApiConfig.defaultHeaders,
+          'Authorization': 'Bearer $accessToken',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return {
+          'success': true,
+          'data': data['data'],
+          'message': data['message'],
+        };
+      } else {
+        final errorData = jsonDecode(response.body);
+        return {
+          'success': false,
+          'message': errorData['message'] ?? 'Failed to fetch branch users',
+          'error': errorData['error'],
+        };
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Network error: $e',
+        'error': e.toString(),
+      };
+    }
+  }
+
+  // Get Branch User Stats
+  static Future<Map<String, dynamic>> getBranchUserStats(String accessToken) async {
+    try {
+      final response = await http.get(
+        Uri.parse('${ApiConfig.baseUrl}/api/branch/users/stats'),
+        headers: {
+          ...ApiConfig.defaultHeaders,
+          'Authorization': 'Bearer $accessToken',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return {
+          'success': true,
+          'data': data['data'],
+          'message': data['message'],
+        };
+      } else {
+        final errorData = jsonDecode(response.body);
+        return {
+          'success': false,
+          'message': errorData['message'] ?? 'Failed to fetch branch user stats',
+          'error': errorData['error'],
+        };
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Network error: $e',
+        'error': e.toString(),
+      };
+    }
+  }
+
+  // Get Branch User Detail
+  static Future<Map<String, dynamic>> getBranchUserDetail(
+    String userId,
+    String accessToken,
+  ) async {
+    try {
+      final response = await http.get(
+        Uri.parse('${ApiConfig.baseUrl}/api/branch/users/$userId'),
+        headers: {
+          ...ApiConfig.defaultHeaders,
+          'Authorization': 'Bearer $accessToken',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return {
+          'success': true,
+          'data': data['data'],
+          'message': data['message'],
+        };
+      } else {
+        final errorData = jsonDecode(response.body);
+        return {
+          'success': false,
+          'message': errorData['message'] ?? 'Failed to fetch branch user detail',
+          'error': errorData['error'],
+        };
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Network error: $e',
+        'error': e.toString(),
+      };
+    }
+  }
+
+  // Get Branch User Bookings
+  static Future<Map<String, dynamic>> getBranchUserBookings(
+    String userId,
+    String accessToken, {
+    int page = 1,
+    int limit = 10,
+    String? status,
+    String? dateFrom,
+    String? dateTo,
+    String? classDate,
+  }) async {
+    try {
+      final queryParams = <String, String>{
+        'page': page.toString(),
+        'limit': limit.toString(),
+      };
+
+      if (status != null && status.isNotEmpty) {
+        queryParams['status'] = status;
+      }
+      if (dateFrom != null && dateFrom.isNotEmpty) {
+        queryParams['date_from'] = dateFrom;
+      }
+      if (dateTo != null && dateTo.isNotEmpty) {
+        queryParams['date_to'] = dateTo;
+      }
+      if (classDate != null && classDate.isNotEmpty) {
+        queryParams['class_date'] = classDate;
+      }
+
+      final uri = Uri.parse('${ApiConfig.baseUrl}/api/branch/users/$userId/bookings').replace(queryParameters: queryParams);
+
+      final response = await http.get(
+        uri,
+        headers: {
+          ...ApiConfig.defaultHeaders,
+          'Authorization': 'Bearer $accessToken',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return {
+          'success': true,
+          'data': data['data'],
+          'message': data['message'],
+        };
+      } else {
+        final errorData = jsonDecode(response.body);
+        return {
+          'success': false,
+          'message': errorData['message'] ?? 'Failed to fetch branch user bookings',
           'error': errorData['error'],
         };
       }
