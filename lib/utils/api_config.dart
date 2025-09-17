@@ -1,6 +1,6 @@
 class ApiConfig {
   // Base URL for the API
-  static const String baseUrl = 'http://localhost:8080'; // Change this to your actual backend URL
+  static const String baseUrl = 'https://e8gym.online'; // Production URL with HTTPS
   
   // API endpoints
   static const String signup = '/api/auth/signup';

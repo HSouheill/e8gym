@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'models/auth_models.dart';
+import 'services/api_service.dart';
 import 'edit_branch_page.dart';
 
 class BranchDetailPage extends StatefulWidget {
@@ -17,7 +19,84 @@ class BranchDetailPage extends StatefulWidget {
 }
 
 class _BranchDetailPageState extends State<BranchDetailPage> {
-  bool _isLoading = false;
+  String? _backgroundImageUrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadBackgroundImage();
+  }
+
+  Future<void> _loadBackgroundImage() async {
+    try {
+      // First try to get from API
+      final result = await ApiService.getAppSettings(widget.accessToken);
+      if (result['success'] && result['data'] != null) {
+        final data = result['data'];
+        String? backgroundImage;
+        
+        // Try different possible keys for background image
+        if (data['background_image'] != null) {
+          backgroundImage = data['background_image'];
+        } else if (data['backgroundImage'] != null) {
+          backgroundImage = data['backgroundImage'];
+        } else if (data['background'] != null) {
+          backgroundImage = data['background'];
+        }
+        
+        if (backgroundImage != null && backgroundImage.isNotEmpty) {
+          // Normalize the URL
+          String normalizedUrl = _normalizeUrl(backgroundImage);
+          setState(() {
+            _backgroundImageUrl = normalizedUrl;
+          });
+          
+          // Cache the URL
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('background_image_url', normalizedUrl);
+          return;
+        }
+      }
+      
+      // Fallback to cached URL
+      final prefs = await SharedPreferences.getInstance();
+      final cachedUrl = prefs.getString('background_image_url');
+      if (cachedUrl != null && cachedUrl.isNotEmpty) {
+        setState(() {
+          _backgroundImageUrl = cachedUrl;
+        });
+      }
+    } catch (e) {
+      print('Error loading background image: $e');
+      // Fallback to cached URL
+      final prefs = await SharedPreferences.getInstance();
+      final cachedUrl = prefs.getString('background_image_url');
+      if (cachedUrl != null && cachedUrl.isNotEmpty) {
+        setState(() {
+          _backgroundImageUrl = cachedUrl;
+        });
+      }
+    }
+  }
+
+  String _normalizeUrl(String url) {
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      return url;
+    }
+    
+    // Handle relative paths
+    if (url.startsWith('/app/')) {
+      return 'https://e8gym.online/uploads$url';
+    } else if (url.startsWith('app/')) {
+      return 'https://e8gym.online/uploads/$url';
+    } else if (url.startsWith('/uploads/')) {
+      return 'https://e8gym.online$url';
+    } else if (url.startsWith('uploads/')) {
+      return 'https://e8gym.online/$url';
+    }
+    
+    return 'https://e8gym.online/uploads/$url';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -34,36 +113,74 @@ class _BranchDetailPageState extends State<BranchDetailPage> {
           ),
         ],
       ),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
+      body: Stack(
+        children: [
+          // Base gradient background
+          Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
+              ),
+            ),
           ),
-        ),
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Branch Header Card
-              _buildBranchHeaderCard(),
-              const SizedBox(height: 16),
-              
-              // Branch Details Card
-              _buildBranchDetailsCard(),
-              const SizedBox(height: 16),
-              
-              // Classes Card
-              _buildClassesCard(),
-              const SizedBox(height: 16),
-              
-              // Team Members Card
-              _buildTeamMembersCard(),
-            ],
+          
+          // Static background image
+          Container(
+            decoration: const BoxDecoration(
+              image: DecorationImage(
+                image: AssetImage('assets/background/background.png'),
+                fit: BoxFit.cover,
+              ),
+            ),
           ),
-        ),
+          
+          // Dynamic background image overlay
+          if (_backgroundImageUrl != null)
+            Positioned.fill(
+              child: Image.network(
+                _backgroundImageUrl!,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  return const SizedBox.shrink();
+                },
+              ),
+            ),
+          
+          // Dark overlay
+          Positioned.fill(
+            child: Container(
+              decoration: const BoxDecoration(
+                color: Color(0x50000000),
+              ),
+            ),
+          ),
+          
+          // Main content
+          SingleChildScrollView(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Branch Header Card
+                _buildBranchHeaderCard(),
+                const SizedBox(height: 16),
+                
+                // Branch Details Card
+                _buildBranchDetailsCard(),
+                const SizedBox(height: 16),
+                
+                // Classes Card
+                _buildClassesCard(),
+                const SizedBox(height: 16),
+                
+                // Team Members Card
+                _buildTeamMembersCard(),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -194,7 +311,7 @@ class _BranchDetailPageState extends State<BranchDetailPage> {
             const SizedBox(height: 12),
             _buildDetailRow(Icons.phone, 'Phone', widget.branch.phoneNumber),
             const SizedBox(height: 12),
-            _buildDetailRow(Icons.location_on, 'Location', widget.branch.location ?? 'Not specified'),
+            _buildDetailRow(Icons.location_on, 'Location', widget.branch.location),
             const SizedBox(height: 12),
             _buildDetailRow(Icons.calendar_today, 'Created', _formatDate(widget.branch.createdAt)),
           ],

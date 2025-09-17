@@ -15,35 +15,28 @@ class ApiConfig {
   //    - Example: 'http://192.168.1.100:8080'
   //    - Make sure your device is on the same WiFi network
   // 
-  // 4. Production: Use your actual backend domain
+  // 4. Production: Use your actual backend domain with HTTPS
   //    - Example: 'https://api.yourapp.com'
   
-  static const String devBaseUrl = 'http://10.0.2.2:8080'; // For Android emulator
-  static const String localBaseUrl = 'http://localhost:8080'; // For iOS simulator
-  static const String networkBaseUrl = 'http://192.168.1.106:8080'; // For physical device on same network
-  static const String productionBaseUrl = 'https://your-production-domain.com'; // Replace with actual production URL
+  // static const String devBaseUrl = 'http://10.0.2.2:8080'; // For Android emulator
+  // static const String localBaseUrl = 'http://localhost:8080'; // For iOS simulator
+  // static const String networkBaseUrl = 'http://192.168.0.239:8080'; // For physical device on same network
+  static const String productionBaseUrl = 'https://e8gym.online'; // Production URL with HTTPS
   
   // Current environment (change this as needed)
   // Options: 'dev', 'local', 'network', 'production'
-  static const String currentEnvironment = 'network';
+  static const String currentEnvironment = 'production';
   
   // Get the appropriate base URL based on current environment
-  static String get baseUrl {
-    switch (currentEnvironment) {
-      case 'dev':
-        // Use 10.0.2.2 for Android emulator (maps to host machine's localhost)
-        // Use localhost for iOS simulator
-        return devBaseUrl;
-      case 'local':
-        return localBaseUrl;
-      case 'network':
-        return networkBaseUrl;
-      case 'production':
-        return productionBaseUrl;
-      default:
-        return devBaseUrl;
-    }
-  }
+  static String baseUrl = productionBaseUrl;
+  // {
+  //   switch (currentEnvironment) {
+  //     case 'production':
+  //       return productionBaseUrl;
+  //     default:
+  //       return productionBaseUrl; // Default to production for safety
+  //   }
+  // }
   
   // API Endpoints
   static const String superAdminLogin = '/superadmin/login';
@@ -73,6 +66,10 @@ class ApiConfig {
   static const String deleteStandaloneClass = '/api/standalone-classes'; // Will be appended with /:id
   static const String renewClass = '/api/standalone-classes'; // Will be appended with /:id/renew
   static const String getExpiringClasses = '/api/standalone-classes/expiring';
+
+  // App Settings Endpoints
+  static const String getAppSettings = '/settings';
+  static const String uploadBackgroundImage = '/settings/background';
   
   // Branch Class Management Endpoints
   static const String getBranchClasses = '/api/branch/classes';
@@ -92,5 +89,6 @@ class ApiConfig {
   static const Map<String, String> defaultHeaders = {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
+    'User-Agent': 'E8Gym/1.0.0', // Add user agent for better tracking
   };
 }

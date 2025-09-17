@@ -9,6 +9,7 @@ class BranchClassResponse {
   final int capacity;
   final List<ClassSchedule> schedule;
   final String instructor;
+  final List<String> images;
   final bool isActive;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -21,6 +22,7 @@ class BranchClassResponse {
     required this.capacity,
     required this.schedule,
     required this.instructor,
+    this.images = const [],
     required this.isActive,
     required this.createdAt,
     required this.updatedAt,
@@ -28,18 +30,25 @@ class BranchClassResponse {
 
   factory BranchClassResponse.fromJson(Map<String, dynamic> json) {
     return BranchClassResponse(
-      id: json['id'] ?? '',
-      name: json['name'] ?? '',
-      description: json['description'] ?? '',
+      id: json['id']?.toString() ?? '',
+      name: json['name']?.toString() ?? '',
+      description: json['description']?.toString() ?? '',
       duration: json['duration'] ?? 0,
       capacity: json['capacity'] ?? 0,
       schedule: (json['schedule'] as List<dynamic>?)
           ?.map((s) => ClassSchedule.fromJson(s))
           .toList() ?? [],
-      instructor: json['instructor'] ?? '',
+      instructor: json['instructor']?.toString() ?? '',
+      images: (json['images'] as List<dynamic>?)
+          ?.map((image) => image.toString())
+          .toList() ?? [],
       isActive: json['is_active'] ?? false,
-      createdAt: DateTime.parse(json['created_at']),
-      updatedAt: DateTime.parse(json['updated_at']),
+      createdAt: json['created_at'] != null 
+          ? DateTime.parse(json['created_at'].toString())
+          : DateTime.now(),
+      updatedAt: json['updated_at'] != null 
+          ? DateTime.parse(json['updated_at'].toString())
+          : DateTime.now(),
     );
   }
 }
@@ -60,9 +69,9 @@ class BranchClassListResponse {
 
   factory BranchClassListResponse.fromJson(Map<String, dynamic> json) {
     return BranchClassListResponse(
-      classes: (json['classes'] as List)
-          .map((classData) => BranchClassResponse.fromJson(classData))
-          .toList(),
+      classes: (json['classes'] as List<dynamic>?)
+          ?.map((classData) => BranchClassResponse.fromJson(classData))
+          .toList() ?? [],
       total: json['total'] ?? 0,
       page: json['page'] ?? 1,
       limit: json['limit'] ?? 20,

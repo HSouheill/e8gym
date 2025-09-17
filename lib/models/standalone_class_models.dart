@@ -4,7 +4,8 @@ class CreateStandaloneClassRequest {
   final String instructor;
   final int capacity;
   final List<ClassSchedule> schedule;
-  final MonthlySchedule? monthlySchedule;
+  final int? duration;
+  final List<String>? images;
 
   CreateStandaloneClassRequest({
     required this.name,
@@ -12,7 +13,8 @@ class CreateStandaloneClassRequest {
     required this.instructor,
     required this.capacity,
     required this.schedule,
-    this.monthlySchedule,
+    this.duration,
+    this.images,
   });
 
   Map<String, dynamic> toJson() {
@@ -24,8 +26,12 @@ class CreateStandaloneClassRequest {
       'schedule': schedule.map((s) => s.toJson()).toList(),
     };
     
-    if (monthlySchedule != null) {
-      data['monthly_schedule'] = monthlySchedule!.toJson();
+    if (duration != null) {
+      data['duration'] = duration;
+    }
+    
+    if (images != null) {
+      data['images'] = images;
     }
     
     return data;
@@ -40,78 +46,72 @@ class CreateStandaloneClassRequest {
       schedule: (json['schedule'] as List<dynamic>?)
           ?.map((s) => ClassSchedule.fromJson(s))
           .toList() ?? [],
-      monthlySchedule: json['monthly_schedule'] != null 
-          ? MonthlySchedule.fromJson(json['monthly_schedule'])
-          : null,
+      duration: json['duration'],
+      images: (json['images'] as List<dynamic>?)
+          ?.map((image) => image.toString())
+          .toList(),
     );
   }
 }
 
 class ClassSchedule {
   final int dayOfWeek; // 0 = Sunday, 6 = Saturday
+  final DateTime date; // The actual date for this schedule
   final DateTime startTime;
   final DateTime endTime;
 
   ClassSchedule({
     required this.dayOfWeek,
+    required this.date,
     required this.startTime,
     required this.endTime,
   });
 
   Map<String, dynamic> toJson() {
+    // Ensure all dates are on the same calendar day
+    final scheduleDate = DateTime.utc(date.year, date.month, date.day);
+    final startDateTime = DateTime.utc(date.year, date.month, date.day, startTime.hour, startTime.minute);
+    final endDateTime = DateTime.utc(date.year, date.month, date.day, endTime.hour, endTime.minute);
+    
     return {
       'day_of_week': dayOfWeek,
-      'start_time': startTime.toUtc().toIso8601String(),
-      'end_time': endTime.toUtc().toIso8601String(),
+      'date': scheduleDate.toIso8601String(),
+      'start_time': startDateTime.toIso8601String(),
+      'end_time': endDateTime.toIso8601String(),
     };
   }
 
   factory ClassSchedule.fromJson(Map<String, dynamic> json) {
+    // Handle both formats: with day_of_week field or without
+    int dayOfWeek = 0;
+    if (json['day_of_week'] != null) {
+      dayOfWeek = int.tryParse(json['day_of_week'].toString()) ?? 0;
+    } else {
+      // Calculate day of week from the date
+      final date = DateTime.parse(json['date']);
+      dayOfWeek = date.weekday % 7; // Convert Dart weekday (1-7) to backend format (0-6)
+    }
+    
     return ClassSchedule(
-      dayOfWeek: json['day_of_week'] ?? 0,
+      dayOfWeek: dayOfWeek,
+      date: DateTime.parse(json['date']),
       startTime: DateTime.parse(json['start_time']),
       endTime: DateTime.parse(json['end_time']),
     );
   }
 }
 
-class MonthlySchedule {
-  final int year;
-  final int month;
-  final List<ClassSchedule> schedules;
 
-  MonthlySchedule({
-    required this.year,
-    required this.month,
-    required this.schedules,
-  });
-
-  Map<String, dynamic> toJson() {
-    return {
-      'year': year,
-      'month': month,
-      'schedules': schedules.map((s) => s.toJson()).toList(),
-    };
-  }
-
-  factory MonthlySchedule.fromJson(Map<String, dynamic> json) {
-    return MonthlySchedule(
-      year: json['year'] ?? DateTime.now().year,
-      month: json['month'] ?? DateTime.now().month,
-      schedules: (json['schedules'] as List<dynamic>?)
-          ?.map((s) => ClassSchedule.fromJson(s))
-          .toList() ?? [],
-    );
-  }
-}
 
 class StandaloneClassResponse {
   final String id;
   final String name;
   final String description;
   final String instructor;
+  final int duration;
   final int capacity;
   final List<ClassSchedule> schedule;
+  final List<String> images;
   final bool isActive;
   final DateTime? expiresAt;
   final bool isExpired;
@@ -125,8 +125,10 @@ class StandaloneClassResponse {
     required this.name,
     required this.description,
     required this.instructor,
+    required this.duration,
     required this.capacity,
     required this.schedule,
+    required this.images,
     required this.isActive,
     this.expiresAt,
     this.isExpired = false,
@@ -151,14 +153,18 @@ class StandaloneClassResponse {
       name: json['name'] ?? '',
       description: json['description'] ?? '',
       instructor: json['instructor'] ?? '',
-      capacity: json['capacity'] ?? 0,
+      duration: json['duration'] != null ? int.tryParse(json['duration'].toString()) ?? 0 : 0,
+      capacity: json['capacity'] != null ? int.tryParse(json['capacity'].toString()) ?? 0 : 0,
       schedule: (json['schedule'] as List<dynamic>?)
           ?.map((s) => ClassSchedule.fromJson(s))
+          .toList() ?? [],
+      images: (json['images'] as List<dynamic>?)
+          ?.map((image) => image.toString())
           .toList() ?? [],
       isActive: json['is_active'] ?? false,
       expiresAt: json['expires_at'] != null ? DateTime.parse(json['expires_at']) : null,
       isExpired: json['is_expired'] ?? false,
-      renewalCount: json['renewal_count'] ?? 0,
+      renewalCount: json['renewal_count'] != null ? int.tryParse(json['renewal_count'].toString()) ?? 0 : 0,
       createdAt: DateTime.parse(json['created_at']),
       updatedAt: DateTime.parse(json['updated_at']),
       createdBy: json['created_by'] ?? '',
@@ -173,7 +179,8 @@ class UpdateStandaloneClassRequest {
   final String? instructor;
   final int? capacity;
   final List<ClassSchedule>? schedule;
-  final MonthlySchedule? monthlySchedule;
+  final int? duration;
+  final List<String>? images;
   final bool? isActive;
 
   UpdateStandaloneClassRequest({
@@ -182,7 +189,8 @@ class UpdateStandaloneClassRequest {
     this.instructor,
     this.capacity,
     this.schedule,
-    this.monthlySchedule,
+    this.duration,
+    this.images,
     this.isActive,
   });
 
@@ -193,7 +201,8 @@ class UpdateStandaloneClassRequest {
     if (instructor != null) data['instructor'] = instructor;
     if (capacity != null) data['capacity'] = capacity;
     if (schedule != null) data['schedule'] = schedule!.map((s) => s.toJson()).toList();
-    if (monthlySchedule != null) data['monthly_schedule'] = monthlySchedule!.toJson();
+    if (duration != null) data['duration'] = duration;
+    if (images != null) data['images'] = images;
     if (isActive != null) data['is_active'] = isActive;
     return data;
   }
@@ -230,9 +239,9 @@ class StandaloneClassListResponse {
 
   factory StandaloneClassListResponse.fromJson(Map<String, dynamic> json) {
     return StandaloneClassListResponse(
-      classes: (json['classes'] as List)
-          .map((classData) => StandaloneClassResponse.fromJson(classData))
-          .toList(),
+      classes: (json['classes'] as List<dynamic>?)
+          ?.map((classData) => StandaloneClassResponse.fromJson(classData))
+          .toList() ?? [],
       total: json['total'] ?? 0,
       page: json['page'] ?? 1,
       limit: json['limit'] ?? 20,

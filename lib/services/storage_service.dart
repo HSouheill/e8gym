@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/auth_models.dart';
+import '../utils/secure_logger.dart';
+import 'secure_storage_service.dart';
 
 class StorageService {
   static const String _accessTokenKey = 'access_token';
@@ -17,64 +19,43 @@ class StorageService {
   /// Initialize the storage service
   Future<void> init() async {
     _prefs = await SharedPreferences.getInstance();
+    await SecureStorageService.init();
+    SecureLogger.debug('Storage service initialized with both secure and shared preferences');
   }
 
-  /// Save authentication tokens
+  /// Save authentication tokens (uses secure storage)
   Future<void> saveAuthTokens({
     required String accessToken,
     required String refreshToken,
   }) async {
-    await _prefs.setString(_accessTokenKey, accessToken);
-    await _prefs.setString(_refreshTokenKey, refreshToken);
+    // Use secure storage for sensitive data
+    await SecureStorageService.saveAuthTokens(
+      accessToken: accessToken,
+      refreshToken: refreshToken,
+    );
+    
+    // Keep non-sensitive login status in shared preferences for quick access
     await _prefs.setBool(_isLoggedInKey, true);
   }
 
-  /// Get access token
-  String? getAccessToken() {
-    return _prefs.getString(_accessTokenKey);
+  /// Get access token (from secure storage)
+  Future<String?> getAccessToken() async {
+    return await SecureStorageService.getAccessToken();
   }
 
-  /// Get refresh token
-  String? getRefreshToken() {
-    return _prefs.getString(_refreshTokenKey);
+  /// Get refresh token (from secure storage)
+  Future<String?> getRefreshToken() async {
+    return await SecureStorageService.getRefreshToken();
   }
 
-  /// Save user data
+  /// Save user data (uses secure storage)
   Future<void> saveUserData(UserResponse user) async {
-    try {
-      final userJson = jsonEncode(user);
-      print('Saving user data: $userJson'); // Debug log
-      await _prefs.setString(_userDataKey, userJson);
-      print('User data saved successfully'); // Debug log
-    } catch (e) {
-      print('Error saving user data: $e'); // Debug log
-      rethrow;
-    }
+    await SecureStorageService.saveUserData(user);
   }
 
-  /// Get user data
-  UserResponse? getUserData() {
-    try {
-      final userJson = _prefs.getString(_userDataKey);
-      print('Retrieved user data JSON: $userJson'); // Debug log
-      
-      if (userJson != null) {
-        try {
-          final userMap = jsonDecode(userJson) as Map<String, dynamic>;
-          print('Parsed user map: $userMap'); // Debug log
-          return UserResponse.fromJson(userMap);
-        } catch (e) {
-          print('Error parsing user data: $e'); // Debug log
-          // If parsing fails, remove the corrupted data
-          _prefs.remove(_userDataKey);
-          return null;
-        }
-      }
-      return null;
-    } catch (e) {
-      print('Error getting user data: $e'); // Debug log
-      return null;
-    }
+  /// Get user data (from secure storage)
+  Future<UserResponse?> getUserData() async {
+    return await SecureStorageService.getUserData();
   }
 
   /// Check if user is logged in
@@ -82,16 +63,14 @@ class StorageService {
     return _prefs.getBool(_isLoggedInKey) ?? false;
   }
 
-  /// Clear all authentication data
+  /// Clear all authentication data (from both secure and shared storage)
   Future<void> clearAuthData() async {
-    await _prefs.remove(_accessTokenKey);
-    await _prefs.remove(_refreshTokenKey);
-    await _prefs.remove(_userDataKey);
+    await SecureStorageService.clearAuthData();
     await _prefs.setBool(_isLoggedInKey, false);
   }
 
-  /// Update access token (for refresh token flow)
+  /// Update access token (for refresh token flow) - uses secure storage
   Future<void> updateAccessToken(String newAccessToken) async {
-    await _prefs.setString(_accessTokenKey, newAccessToken);
+    await SecureStorageService.updateAccessToken(newAccessToken);
   }
 }

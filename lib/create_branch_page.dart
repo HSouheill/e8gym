@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'dart:io';
+import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'services/api_service.dart';
 import 'models/auth_models.dart';
 import 'models/standalone_class_models.dart';
@@ -16,6 +19,7 @@ class CreateBranchPage extends StatefulWidget {
 }
 
 class _CreateBranchPageState extends State<CreateBranchPage> {
+  final TextEditingController _branchIdController = TextEditingController();
   final TextEditingController _branchNameController = TextEditingController();
   final TextEditingController _adminNameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
@@ -41,12 +45,94 @@ class _CreateBranchPageState extends State<CreateBranchPage> {
   final TextEditingController _teamMemberRoleController = TextEditingController();
   String _selectedCountryCode = '+1';
   bool _showAddTeamMemberForm = false;
+  
+  // Image handling
+  final ImagePicker _imagePicker = ImagePicker();
+  File? _branchImageFile;
+  Map<String, File?> _teamMemberImages = {}; // teamMemberId -> File
+  bool _isUploadingBranchImage = false;
+  Map<String, bool> _isUploadingTeamMemberImages = {}; // teamMemberId -> bool
+  
+  // Background image
+  String? _backgroundImageUrl;
 
 
   @override
   void initState() {
     super.initState();
+    _loadBackgroundImage();
     _loadAvailableClasses();
+  }
+
+  Future<void> _loadBackgroundImage() async {
+    try {
+      // First try to get from API
+      final result = await ApiService.getAppSettings(widget.accessToken);
+      if (result['success'] && result['data'] != null) {
+        final data = result['data'];
+        String? backgroundImage;
+        
+        // Try different possible keys for background image
+        if (data['background_image'] != null) {
+          backgroundImage = data['background_image'];
+        } else if (data['backgroundImage'] != null) {
+          backgroundImage = data['backgroundImage'];
+        } else if (data['background'] != null) {
+          backgroundImage = data['background'];
+        }
+        
+        if (backgroundImage != null && backgroundImage.isNotEmpty) {
+          // Normalize the URL
+          String normalizedUrl = _normalizeUrl(backgroundImage);
+          setState(() {
+            _backgroundImageUrl = normalizedUrl;
+          });
+          
+          // Cache the URL
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('background_image_url', normalizedUrl);
+          return;
+        }
+      }
+      
+      // Fallback to cached URL
+      final prefs = await SharedPreferences.getInstance();
+      final cachedUrl = prefs.getString('background_image_url');
+      if (cachedUrl != null && cachedUrl.isNotEmpty) {
+        setState(() {
+          _backgroundImageUrl = cachedUrl;
+        });
+      }
+    } catch (e) {
+      print('Error loading background image: $e');
+      // Fallback to cached URL
+      final prefs = await SharedPreferences.getInstance();
+      final cachedUrl = prefs.getString('background_image_url');
+      if (cachedUrl != null && cachedUrl.isNotEmpty) {
+        setState(() {
+          _backgroundImageUrl = cachedUrl;
+        });
+      }
+    }
+  }
+
+  String _normalizeUrl(String url) {
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      return url;
+    }
+    
+    // Handle relative paths
+    if (url.startsWith('/app/')) {
+      return 'https://e8gym.online/uploads$url';
+    } else if (url.startsWith('app/')) {
+      return 'https://e8gym.online/uploads/$url';
+    } else if (url.startsWith('/uploads/')) {
+      return 'https://e8gym.online$url';
+    } else if (url.startsWith('uploads/')) {
+      return 'https://e8gym.online/$url';
+    }
+    
+    return 'https://e8gym.online/uploads/$url';
   }
 
   Future<void> _loadAvailableClasses() async {
@@ -62,16 +148,38 @@ class _CreateBranchPageState extends State<CreateBranchPage> {
 
       if (result['success']) {
         final data = result['data'];
-        final classListResponse = StandaloneClassListResponse.fromJson(data);
-        
-        setState(() {
-          _availableClasses = classListResponse.classes.where((c) => c.isActive).toList();
-        });
+        if (data != null) {
+          try {
+            final classListResponse = StandaloneClassListResponse.fromJson(data);
+            
+            setState(() {
+              _availableClasses = classListResponse.classes.where((c) => c.isActive).toList();
+            });
+          } catch (parseError) {
+            print('Error parsing class data: $parseError');
+            _showSnackBar('Error parsing class data. Please try again.');
+            setState(() {
+              _availableClasses = [];
+            });
+          }
+        } else {
+          print('API returned null data for classes');
+          setState(() {
+            _availableClasses = [];
+          });
+        }
       } else {
         _showSnackBar(result['message'] ?? 'Failed to load available classes');
+        setState(() {
+          _availableClasses = [];
+        });
       }
     } catch (e) {
+      print('Exception in _loadAvailableClasses: $e');
       _showSnackBar('An error occurred while loading classes: $e');
+      setState(() {
+        _availableClasses = [];
+      });
     } finally {
       setState(() {
         _isLoadingClasses = false;
@@ -81,6 +189,7 @@ class _CreateBranchPageState extends State<CreateBranchPage> {
 
   @override
   void dispose() {
+    _branchIdController.dispose();
     _branchNameController.dispose();
     _adminNameController.dispose();
     _emailController.dispose();
@@ -101,26 +210,52 @@ class _CreateBranchPageState extends State<CreateBranchPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
-          ),
-        ),
-        child: Container(
-          decoration: const BoxDecoration(
-            image: DecorationImage(
-              image: AssetImage('assets/background/background.png'),
-              fit: BoxFit.cover,
-              colorFilter: ColorFilter.mode(
-                Color(0x50000000),
-                BlendMode.darken,
+      body: Stack(
+        children: [
+          // Base gradient background
+          Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
               ),
             ),
           ),
-          child: SafeArea(
+          
+          // Static background image
+          Container(
+            decoration: const BoxDecoration(
+              image: DecorationImage(
+                image: AssetImage('assets/background/background.png'),
+                fit: BoxFit.cover,
+              ),
+            ),
+          ),
+          
+          // Dynamic background image overlay
+          if (_backgroundImageUrl != null)
+            Positioned.fill(
+              child: Image.network(
+                _backgroundImageUrl!,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  return const SizedBox.shrink();
+                },
+              ),
+            ),
+          
+          // Dark overlay
+          Positioned.fill(
+            child: Container(
+              decoration: const BoxDecoration(
+                color: Color(0x50000000),
+              ),
+            ),
+          ),
+          
+          // Main content
+          SafeArea(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 18.0, vertical: 20),
               child: Column(
@@ -172,6 +307,16 @@ class _CreateBranchPageState extends State<CreateBranchPage> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          // Branch ID field
+                          _buildSectionTitle('Branch ID'),
+                          _buildInputField(
+                            controller: _branchIdController,
+                            hintText: 'Enter branch ID',
+                            icon: Icons.tag,
+                          ),
+                          
+                          const SizedBox(height: 24),
+                          
                           // Branch Name field
                           _buildSectionTitle('Branch Name'),
                           _buildInputField(
@@ -252,6 +397,103 @@ class _CreateBranchPageState extends State<CreateBranchPage> {
                             controller: _locationController,
                             hintText: 'Enter branch location/address',
                             icon: Icons.location_on,
+                          ),
+                          
+                          const SizedBox(height: 24),
+                          
+                          // Branch Image Upload Section
+                          _buildSectionTitle('Branch Image'),
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Colors.white.withOpacity(0.3)),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.image,
+                                      color: Colors.white,
+                                      size: 24,
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          const Text(
+                                            'Branch Image',
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                          Text(
+                                            _branchImageFile != null 
+                                                ? 'Image selected' 
+                                                : 'No image selected',
+                                            style: const TextStyle(
+                                              color: Colors.white70,
+                                              fontSize: 14,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    GestureDetector(
+                                      onTap: _handleBranchImageUpload,
+                                      child: Container(
+                                        padding: const EdgeInsets.all(8),
+                                        decoration: BoxDecoration(
+                                          gradient: const LinearGradient(
+                                            begin: Alignment.topCenter,
+                                            end: Alignment.bottomCenter,
+                                            colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
+                                          ),
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        child: const Icon(
+                                          Icons.camera_alt,
+                                          color: Colors.black,
+                                          size: 20,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                if (_branchImageFile != null) ...[
+                                  const SizedBox(height: 12),
+                                  Container(
+                                    height: 100,
+                                    width: double.infinity,
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(color: Colors.white.withOpacity(0.3)),
+                                    ),
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(8),
+                                      child: Image.file(
+                                        _branchImageFile!,
+                                        fit: BoxFit.cover,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                                const SizedBox(height: 8),
+                                const Text(
+                                  'Upload a representative image for this branch. This will be displayed in branch listings and details.',
+                                  style: TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                           
                           const SizedBox(height: 24),
@@ -539,7 +781,29 @@ class _CreateBranchPageState extends State<CreateBranchPage> {
                                                 dropdownColor: Colors.black,
                                                 style: const TextStyle(color: Colors.white),
                                                 underline: Container(),
-                                                items: ['+1', '+44', '+33', '+49', '+81', '+86', '+91', '+971']
+                                                items: [
+                                                  '+1', '+7', '+20', '+27', '+30', '+31', '+32', '+33', '+34', '+36',
+                                                  '+39', '+40', '+41', '+43', '+44', '+45', '+46', '+47', '+48', '+49',
+                                                  '+51', '+52', '+53', '+54', '+55', '+56', '+57', '+58', '+60', '+61',
+                                                  '+62', '+63', '+64', '+65', '+66', '+81', '+82', '+84', '+86', '+90',
+                                                  '+91', '+92', '+93', '+94', '+95', '+98', '+212', '+213', '+216', '+218',
+                                                  '+220', '+221', '+222', '+223', '+224', '+225', '+226', '+227', '+228', '+229',
+                                                  '+230', '+231', '+232', '+233', '+234', '+235', '+236', '+237', '+238', '+239',
+                                                  '+240', '+241', '+242', '+243', '+244', '+245', '+246', '+248', '+249', '+250',
+                                                  '+251', '+252', '+253', '+254', '+255', '+256', '+257', '+258', '+260', '+261',
+                                                  '+262', '+263', '+264', '+265', '+266', '+267', '+268', '+269', '+290', '+291',
+                                                  '+297', '+298', '+299', '+350', '+351', '+352', '+353', '+354', '+355', '+356',
+                                                  '+357', '+358', '+359', '+370', '+371', '+372', '+373', '+374', '+375', '+376',
+                                                  '+377', '+378', '+380', '+381', '+382', '+383', '+385', '+386', '+387', '+389',
+                                                  '+420', '+421', '+423', '+500', '+501', '+502', '+503', '+504', '+505', '+506',
+                                                  '+507', '+508', '+509', '+590', '+591', '+592', '+593', '+594', '+595', '+596',
+                                                  '+597', '+598', '+599', '+670', '+672', '+673', '+674', '+675', '+676', '+677',
+                                                  '+678', '+679', '+680', '+681', '+682', '+683', '+684', '+685', '+686', '+687',
+                                                  '+688', '+689', '+690', '+691', '+692', '+850', '+852', '+853', '+855', '+856',
+                                                  '+880', '+886', '+960', '+961', '+962', '+963', '+964', '+965', '+966', '+967',
+                                                  '+968', '+970', '+971', '+972', '+973', '+974', '+975', '+976', '+977', '+992',
+                                                  '+993', '+994', '+995', '+996', '+998'
+                                                ]
                                                     .map((code) => DropdownMenuItem(
                                                           value: code,
                                                           child: Text(code),
@@ -589,7 +853,7 @@ class _CreateBranchPageState extends State<CreateBranchPage> {
                                 if (_teamMembers.isNotEmpty) ...[
                                   const SizedBox(height: 16),
                                   Container(
-                                    height: 150,
+                                    height: 200,
                                     decoration: BoxDecoration(
                                       color: Colors.black.withOpacity(0.2),
                                       borderRadius: BorderRadius.circular(8),
@@ -599,39 +863,122 @@ class _CreateBranchPageState extends State<CreateBranchPage> {
                                       itemCount: _teamMembers.length,
                                       itemBuilder: (context, index) {
                                         final member = _teamMembers[index];
-                                        return ListTile(
-                                          title: Text(
+                                        final memberId = 'temp_$index';
+                                        final hasImage = _teamMemberImages[memberId] != null;
+                                        
+                                        return Container(
+                                          margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                                          padding: const EdgeInsets.all(8),
+                                          decoration: BoxDecoration(
+                                            color: Colors.white.withOpacity(0.1),
+                                            borderRadius: BorderRadius.circular(8),
+                                          ),
+                                          child: Row(
+                                            children: [
+                                              // Team member image or placeholder
+                                              GestureDetector(
+                                                onTap: () => _handleTeamMemberImageUpload(memberId),
+                                                child: Container(
+                                                  width: 40,
+                                                  height: 40,
+                                                  decoration: BoxDecoration(
+                                                    color: const Color(0xFFF8BB0C),
+                                                    borderRadius: BorderRadius.circular(20),
+                                                  ),
+                                                  child: hasImage
+                                                      ? ClipRRect(
+                                                          borderRadius: BorderRadius.circular(20),
+                                                          child: Image.file(
+                                                            _teamMemberImages[memberId]!,
+                                                            fit: BoxFit.cover,
+                                                            width: 40,
+                                                            height: 40,
+                                                          ),
+                                                        )
+                                                      : Text(
+                                                          member.fullName[0].toUpperCase(),
+                                                          style: const TextStyle(
+                                                            color: Colors.black,
+                                                            fontWeight: FontWeight.bold,
+                                                            fontSize: 16,
+                                                          ),
+                                                        ),
+                                                ),
+                                              ),
+                                              const SizedBox(width: 12),
+                                              
+                                              // Team member info
+                                              Expanded(
+                                                child: Column(
+                                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                                  children: [
+                                                    Text(
                                             member.fullName,
                                             style: const TextStyle(
                                               color: Colors.white,
                                               fontWeight: FontWeight.w600,
+                                                        fontSize: 14,
                                             ),
                                           ),
-                                          subtitle: Text(
+                                                    Text(
                                             '${member.role} • ${member.email}',
                                             style: const TextStyle(
                                               color: Colors.white70,
-                                              fontSize: 12,
+                                                        fontSize: 11,
                                             ),
                                           ),
-                                          trailing: Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
                                               Text(
                                                 '${member.countryCode}${member.phoneNumber}',
                                                 style: const TextStyle(
                                                   color: Colors.white70,
-                                                  fontSize: 12,
+                                                        fontSize: 11,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                              
+                                              // Action buttons
+                                              Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  // Image upload button
+                                                  GestureDetector(
+                                                    onTap: () => _handleTeamMemberImageUpload(memberId),
+                                                    child: Container(
+                                                      padding: const EdgeInsets.all(6),
+                                                      decoration: BoxDecoration(
+                                                        color: hasImage 
+                                                            ? Colors.green.withOpacity(0.3)
+                                                            : const Color(0xFFF8BB0C),
+                                                        borderRadius: BorderRadius.circular(6),
+                                                      ),
+                                                      child: Icon(
+                                                        hasImage ? Icons.check : Icons.camera_alt,
+                                                        color: Colors.black,
+                                                        size: 16,
+                                                      ),
                                                 ),
                                               ),
                                               const SizedBox(width: 8),
+                                                  
+                                                  // Delete button
                                               GestureDetector(
                                                 onTap: () => _removeTeamMember(index),
+                                                    child: Container(
+                                                      padding: const EdgeInsets.all(6),
+                                                      decoration: BoxDecoration(
+                                                        color: Colors.red.withOpacity(0.3),
+                                                        borderRadius: BorderRadius.circular(6),
+                                                      ),
                                                 child: const Icon(
                                                   Icons.delete,
                                                   color: Colors.red,
-                                                  size: 20,
+                                                        size: 16,
+                                                      ),
                                                 ),
+                                                  ),
+                                                ],
                                               ),
                                             ],
                                           ),
@@ -672,51 +1019,8 @@ class _CreateBranchPageState extends State<CreateBranchPage> {
                             ),
                           ),
                           
-                          const SizedBox(height: 32),
                           
-                          // Branch Setup Info
-                          _buildSectionTitle('Branch Setup'),
-                          const SizedBox(height: 16),
                           
-                          Container(
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: Colors.white.withOpacity(0.3)),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    const Icon(
-                                      Icons.info_outline,
-                                      color: Colors.white,
-                                      size: 24,
-                                    ),
-                                    const SizedBox(width: 12),
-                                    const Text(
-                                      'Branch Setup Information',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 8),
-                                const Text(
-                                  'After branch creation, you can assign existing classes and add team members through the branch management interface.',
-                                  style: TextStyle(
-                                    color: Colors.white70,
-                                    fontSize: 14,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
                           
                           const SizedBox(height: 40),
                           
@@ -788,7 +1092,7 @@ class _CreateBranchPageState extends State<CreateBranchPage> {
               ),
             ),
           ),
-        ),
+        ],
       ),
     );
   }
@@ -870,7 +1174,8 @@ class _CreateBranchPageState extends State<CreateBranchPage> {
 
   void _createBranch() async {
     // Validate inputs
-    if (_branchNameController.text.isEmpty ||
+    if (_branchIdController.text.isEmpty ||
+        _branchNameController.text.isEmpty ||
         _adminNameController.text.isEmpty ||
         _emailController.text.isEmpty ||
         _passwordController.text.isEmpty ||
@@ -897,6 +1202,18 @@ class _CreateBranchPageState extends State<CreateBranchPage> {
       return;
     }
 
+    // Branch ID validation
+    if (_branchIdController.text.length < 3) {
+      _showSnackBar('Branch ID must be at least 3 characters');
+      return;
+    }
+
+    // Check if Branch ID contains only alphanumeric characters
+    if (!RegExp(r'^[a-zA-Z0-9]+$').hasMatch(_branchIdController.text)) {
+      _showSnackBar('Branch ID can only contain letters and numbers');
+      return;
+    }
+
     // Set loading state
     setState(() {
       _isLoading = true;
@@ -907,13 +1224,15 @@ class _CreateBranchPageState extends State<CreateBranchPage> {
       final selectedClassModels = _selectedClasses.map((standaloneClass) => ClassModel(
         name: standaloneClass.name,
         description: standaloneClass.description,
-        duration: 60, // Default duration for branch classes
+        duration: standaloneClass.duration,
         capacity: standaloneClass.capacity,
         instructor: standaloneClass.instructor,
+        schedule: standaloneClass.schedule, // Include the schedule from the original class
       )).toList();
 
       // Create branch request data
       final branchData = CreateBranchRequest(
+        branchID: _branchIdController.text,
         branchName: _branchNameController.text,
         adminName: _adminNameController.text,
         email: _emailController.text,
@@ -933,7 +1252,32 @@ class _CreateBranchPageState extends State<CreateBranchPage> {
       if (result['success']) {
         _showSnackBar(result['message'] ?? 'Branch created successfully!');
         
+        // Get the created branch ID for image uploads
+        final branchId = result['data']['id'] ?? result['data']['_id'];
+        
+        // Upload branch image if selected
+        if (_branchImageFile != null && branchId != null) {
+          await _uploadBranchImageAfterCreation(branchId);
+        }
+        
+        // Upload team member images if selected
+        if (_teamMemberImages.isNotEmpty && branchId != null) {
+          // Get the created team members from the response
+          final createdTeamMembers = result['data']['team_members'] as List<dynamic>? ?? [];
+          
+          for (int i = 0; i < _teamMemberImages.length && i < createdTeamMembers.length; i++) {
+            final tempId = 'temp_$i';
+            final imageFile = _teamMemberImages[tempId];
+            final teamMemberId = createdTeamMembers[i]['id'] ?? createdTeamMembers[i]['_id'];
+            
+            if (imageFile != null && teamMemberId != null) {
+              await _uploadTeamMemberImageAfterCreation(branchId, teamMemberId);
+            }
+          }
+        }
+        
         // Clear form
+        _branchIdController.clear();
         _branchNameController.clear();
         _adminNameController.clear();
         _emailController.clear();
@@ -950,6 +1294,12 @@ class _CreateBranchPageState extends State<CreateBranchPage> {
         // Clear team members
         setState(() {
           _teamMembers.clear();
+        });
+        
+        // Clear images
+        setState(() {
+          _branchImageFile = null;
+          _teamMemberImages.clear();
         });
         
         // Navigate back or show success page
@@ -1072,7 +1422,19 @@ class _CreateBranchPageState extends State<CreateBranchPage> {
 
   void _removeTeamMember(int index) {
     setState(() {
+      // Remove the team member
       _teamMembers.removeAt(index);
+      
+      // Reindex the remaining images
+      final updatedImages = <String, File?>{};
+      for (int i = 0; i < _teamMembers.length; i++) {
+        // If we're at or after the removed index, look for the image that was one position higher
+        final oldKey = i >= index ? 'temp_${i + 1}' : 'temp_$i';
+        if (_teamMemberImages.containsKey(oldKey)) {
+          updatedImages['temp_$i'] = _teamMemberImages[oldKey];
+        }
+      }
+      _teamMemberImages = updatedImages;
     });
     _showSnackBar('Team member removed');
   }
@@ -1083,5 +1445,164 @@ class _CreateBranchPageState extends State<CreateBranchPage> {
     _teamMemberPhoneController.clear();
     _teamMemberRoleController.clear();
     _selectedCountryCode = '+1';
+  }
+
+  // Image Upload Methods
+  Future<void> _handleBranchImageUpload() async {
+    if (_isUploadingBranchImage) return;
+
+    // Show image source selection dialog
+    final ImageSource? source = await showDialog<ImageSource>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Select Branch Image'),
+        content: const Text('Choose where to pick the branch image from'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(ImageSource.camera),
+            child: const Text('Camera'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(ImageSource.gallery),
+            child: const Text('Gallery'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+        ],
+      ),
+    );
+
+    if (source == null) return;
+
+    try {
+      final XFile? image = await _imagePicker.pickImage(
+        source: source,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 85,
+      );
+
+      if (image == null) return;
+
+      setState(() {
+        _branchImageFile = File(image.path);
+      });
+
+      _showSnackBar('Branch image selected successfully!');
+    } catch (e) {
+      _showSnackBar('An error occurred: $e');
+    }
+  }
+
+  Future<void> _handleTeamMemberImageUpload(String teamMemberId) async {
+    if (_isUploadingTeamMemberImages[teamMemberId] == true) return;
+
+    // Show image source selection dialog
+    final ImageSource? source = await showDialog<ImageSource>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Select Team Member Image'),
+        content: const Text('Choose where to pick the team member image from'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(ImageSource.camera),
+            child: const Text('Camera'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(ImageSource.gallery),
+            child: const Text('Gallery'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+        ],
+      ),
+    );
+
+    if (source == null) return;
+
+    try {
+      final XFile? image = await _imagePicker.pickImage(
+        source: source,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 85,
+      );
+
+      if (image == null) return;
+
+      setState(() {
+        _teamMemberImages[teamMemberId] = File(image.path);
+      });
+
+      _showSnackBar('Team member image selected successfully!');
+    } catch (e) {
+      _showSnackBar('An error occurred: $e');
+    }
+  }
+
+  Future<void> _uploadBranchImageAfterCreation(String branchId) async {
+    if (_branchImageFile == null) return;
+
+    setState(() {
+      _isUploadingBranchImage = true;
+    });
+
+    try {
+      final result = await ApiService.uploadBranchImage(
+        branchId,
+        _branchImageFile!,
+        widget.accessToken,
+      );
+
+      if (result['success']) {
+        _showSnackBar('Branch image uploaded successfully!');
+      } else {
+        _showSnackBar(result['message'] ?? 'Failed to upload branch image');
+      }
+    } catch (e) {
+      _showSnackBar('An error occurred: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isUploadingBranchImage = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _uploadTeamMemberImageAfterCreation(String branchId, String teamMemberId) async {
+    final imageFile = _teamMemberImages[teamMemberId];
+    if (imageFile == null) return;
+
+    setState(() {
+      _isUploadingTeamMemberImages[teamMemberId] = true;
+    });
+
+    try {
+      final result = await ApiService.uploadTeamMemberImage(
+        branchId,
+        teamMemberId,
+        imageFile,
+        widget.accessToken,
+      );
+
+      if (result['success']) {
+        _showSnackBar('Team member image uploaded successfully!');
+      } else {
+        _showSnackBar(result['message'] ?? 'Failed to upload team member image');
+      }
+    } catch (e) {
+      _showSnackBar('An error occurred: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isUploadingTeamMemberImages[teamMemberId] = false;
+        });
+      }
+    }
   }
 }

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<data-extraction-rules>
+    <cloud-backup>
+        <!-- Exclude specific files that shouldn't be backed up -->
+        <exclude domain="sharedpref" path="sensitive_data.xml"/>
+        <exclude domain="database" path="secure_storage.db"/>
+        <exclude domain="file" path="private/"/>
+    </cloud-backup>
+    
+    <device-transfer>
+        <!-- Allow device transfer for most data -->
+        <exclude domain="sharedpref" path="sensitive_data.xml"/>
+        <exclude domain="database" path="secure_storage.db"/>
+        <exclude domain="file" path="private/"/>
+    </device-transfer>
+</data-extraction-rules>

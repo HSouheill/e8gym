@@ -1,4 +1,4 @@
-
+import 'standalone_class_models.dart';
 
 /// Signup request model
 class SignupRequest {
@@ -8,6 +8,7 @@ class SignupRequest {
   final String phoneNumber;
   final String countryCode;
   final DateTime dateOfBirth;
+  final String? branchId;
 
   SignupRequest({
     required this.fullName,
@@ -16,10 +17,11 @@ class SignupRequest {
     required this.phoneNumber,
     required this.countryCode,
     required this.dateOfBirth,
+    this.branchId,
   });
 
   Map<String, dynamic> toJson() {
-    return {
+    final Map<String, dynamic> data = {
       'full_name': fullName,
       'email': email,
       'password': password,
@@ -27,6 +29,12 @@ class SignupRequest {
       'country_code': countryCode,
       'date_of_birth': dateOfBirth.toUtc().toIso8601String(),
     };
+    
+    if (branchId != null) {
+      data['branch_id'] = branchId;
+    }
+    
+    return data;
   }
 
   factory SignupRequest.fromJson(Map<String, dynamic> json) {
@@ -37,6 +45,7 @@ class SignupRequest {
       phoneNumber: json['phone_number'],
       countryCode: json['country_code'],
       dateOfBirth: DateTime.parse(json['date_of_birth']),
+      branchId: json['branch_id'],
     );
   }
 }
@@ -203,11 +212,13 @@ class BranchLoginRequest {
 /// Branch Response Model
 class BranchResponse {
   final String id;
+  final String? branchId;
   final String branchName;
   final String adminName;
   final String email;
   final String phoneNumber;
   final String location;
+  final String? image;
   final List<ClassModel> classes;
   final List<TeamMemberModel> teamMembers;
   final DateTime createdAt;
@@ -216,11 +227,13 @@ class BranchResponse {
 
   BranchResponse({
     required this.id,
+    this.branchId,
     required this.branchName,
     required this.adminName,
     required this.email,
     required this.phoneNumber,
     required this.location,
+    this.image,
     required this.classes,
     required this.teamMembers,
     required this.createdAt,
@@ -229,13 +242,37 @@ class BranchResponse {
   });
 
   factory BranchResponse.fromJson(Map<String, dynamic> json) {
+    print('=== BranchResponse.fromJson Debug ===');
+    print('Branch Name: ${json['branch_name']}');
+    print('Branch ID: ${json['branch_id']}');
+    print('Image field: ${json['image']}');
+    print('Image URL field: ${json['image_url']}');
+    print('Image type: ${json['image'].runtimeType}');
+    print('Image is null: ${json['image'] == null}');
+    print('Image is empty: ${json['image']?.toString().isEmpty ?? true}');
+    print('====================================');
+    
+    // Construct full image URL
+    String? imageUrl;
+    if (json['image_url'] != null && json['image_url'].toString().isNotEmpty) {
+      final imagePath = json['image_url'].toString();
+      imageUrl = 'https://e8gym.online/uploads/$imagePath';
+      print('Constructed image URL: $imageUrl');
+    } else if (json['image'] != null && json['image'].toString().isNotEmpty) {
+      final imagePath = json['image'].toString();
+      imageUrl = 'https://e8gym.online/uploads/$imagePath';
+      print('Constructed image URL from image field: $imageUrl');
+    }
+    
     return BranchResponse(
       id: json['id'] ?? '',
+      branchId: json['branch_id'] ?? '',
       branchName: json['branch_name'] ?? '',
       adminName: json['admin_name'] ?? '',
       email: json['email'] ?? '',
       phoneNumber: json['phone_number'] ?? '',
       location: json['location'] ?? '',
+      image: imageUrl,
       classes: (json['classes'] as List<dynamic>?)
           ?.map((c) => ClassModel.fromJson(c))
           .toList() ?? [],
@@ -330,6 +367,7 @@ class ClassModel {
   final int duration;
   final int capacity;
   final String instructor;
+  final List<ClassSchedule> schedule;
 
   ClassModel({
     required this.name,
@@ -337,6 +375,7 @@ class ClassModel {
     required this.duration,
     required this.capacity,
     required this.instructor,
+    this.schedule = const [],
   });
 
   Map<String, dynamic> toJson() {
@@ -346,6 +385,7 @@ class ClassModel {
       'duration': duration,
       'capacity': capacity,
       'instructor': instructor,
+      'schedule': schedule.map((s) => s.toJson()).toList(),
     };
   }
 
@@ -356,6 +396,9 @@ class ClassModel {
       duration: json['duration'] ?? 0,
       capacity: json['capacity'] ?? 0,
       instructor: json['instructor'] ?? '',
+      schedule: (json['schedule'] as List<dynamic>?)
+          ?.map((s) => ClassSchedule.fromJson(s))
+          .toList() ?? [],
     );
   }
 }
@@ -401,6 +444,7 @@ class TeamMemberModel {
 
 /// Create Branch Request Model
 class CreateBranchRequest {
+  final String branchID;
   final String branchName;
   final String adminName;
   final String email;
@@ -411,6 +455,7 @@ class CreateBranchRequest {
   final List<TeamMemberModel> teamMembers;
 
   CreateBranchRequest({
+    required this.branchID,
     required this.branchName,
     required this.adminName,
     required this.email,
@@ -423,6 +468,7 @@ class CreateBranchRequest {
 
   Map<String, dynamic> toJson() {
     return {
+      'branch_id': branchID,
       'branch_name': branchName,
       'admin_name': adminName,
       'email': email,
@@ -437,21 +483,25 @@ class CreateBranchRequest {
 
 /// Update Branch Request Model
 class UpdateBranchRequest {
+  final String? branchId;
   final String? branchName;
   final String? adminName;
   final String? email;
   final String? phoneNumber;
   final String? location;
+  final String? image;
   final List<ClassModel>? classes;
   final List<TeamMemberModel>? teamMembers;
   final bool? isActive;
 
   UpdateBranchRequest({
+    this.branchId,
     this.branchName,
     this.adminName,
     this.email,
     this.phoneNumber,
     this.location,
+    this.image,
     this.classes,
     this.teamMembers,
     this.isActive,
@@ -459,15 +509,76 @@ class UpdateBranchRequest {
 
   Map<String, dynamic> toJson() {
     final Map<String, dynamic> data = {};
+    if (branchId != null) data['branch_id'] = branchId;
     if (branchName != null) data['branch_name'] = branchName;
     if (adminName != null) data['admin_name'] = adminName;
     if (email != null) data['email'] = email;
     if (phoneNumber != null) data['phone_number'] = phoneNumber;
     if (location != null) data['location'] = location;
+    if (image != null) data['image'] = image;
     if (classes != null) data['classes'] = classes!.map((c) => c.toJson()).toList();
     if (teamMembers != null) data['team_members'] = teamMembers!.map((t) => t.toJson()).toList();
     if (isActive != null) data['is_active'] = isActive;
     return data;
+  }
+}
+
+/// BMI Response Model
+class BMIResponse {
+  final double bmi;
+  final String category;
+  final String description;
+  final double height;
+  final double weight;
+  final String healthAdvice;
+  final List<String> citations;
+  final String disclaimer;
+
+  BMIResponse({
+    required this.bmi,
+    required this.category,
+    required this.description,
+    required this.height,
+    required this.weight,
+    required this.healthAdvice,
+    this.citations = const [
+      'World Health Organization (WHO) - BMI Classification Standards',
+      'Centers for Disease Control and Prevention (CDC) - BMI Calculator and Information',
+      'National Heart, Lung, and Blood Institute - BMI Guidelines',
+    ],
+    this.disclaimer = 'BMI information is for educational purposes only and should not be considered medical advice. Consult healthcare professionals for medical decisions.',
+  });
+
+  factory BMIResponse.fromJson(Map<String, dynamic> json) {
+    return BMIResponse(
+      bmi: (json['bmi'] ?? 0.0).toDouble(),
+      category: json['category'] ?? '',
+      description: json['description'] ?? '',
+      height: (json['height'] ?? 0.0).toDouble(),
+      weight: (json['weight'] ?? 0.0).toDouble(),
+      healthAdvice: json['health_advice'] ?? '',
+      citations: (json['citations'] as List<dynamic>?)
+          ?.map((c) => c.toString())
+          .toList() ?? [
+        'World Health Organization (WHO) - BMI Classification Standards',
+        'Centers for Disease Control and Prevention (CDC) - BMI Calculator and Information',
+        'National Heart, Lung, and Blood Institute - BMI Guidelines',
+      ],
+      disclaimer: json['disclaimer'] ?? 'BMI information is for educational purposes only and should not be considered medical advice. Consult healthcare professionals for medical decisions.',
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'bmi': bmi,
+      'category': category,
+      'description': description,
+      'height': height,
+      'weight': weight,
+      'health_advice': healthAdvice,
+      'citations': citations,
+      'disclaimer': disclaimer,
+    };
   }
 }
 
@@ -493,6 +604,87 @@ class BranchListResponse {
       total: json['total'] ?? 0,
       page: json['page'] ?? 1,
       limit: json['limit'] ?? 20,
+    );
+  }
+}
+
+/// Update User Data Request Model
+class UpdateUserDataRequest {
+  final String? fullName;
+  final String? phoneNumber;
+  final String? countryCode;
+  final DateTime? dateOfBirth;
+  final double? height;
+  final double? weight;
+
+  UpdateUserDataRequest({
+    this.fullName,
+    this.phoneNumber,
+    this.countryCode,
+    this.dateOfBirth,
+    this.height,
+    this.weight,
+  });
+
+  Map<String, dynamic> toJson() {
+    final Map<String, dynamic> data = {};
+    if (fullName != null) data['full_name'] = fullName;
+    if (phoneNumber != null) data['phone_number'] = phoneNumber;
+    if (countryCode != null) data['country_code'] = countryCode;
+    if (dateOfBirth != null) data['date_of_birth'] = dateOfBirth!.toUtc().toIso8601String();
+    if (height != null) data['height'] = height;
+    if (weight != null) data['weight'] = weight;
+    return data;
+  }
+}
+
+/// Change Password Request Model
+class ChangePasswordRequest {
+  final String currentPassword;
+  final String newPassword;
+
+  ChangePasswordRequest({
+    required this.currentPassword,
+    required this.newPassword,
+  });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'current_password': currentPassword,
+      'new_password': newPassword,
+    };
+  }
+}
+
+/// Change Branch Request Model
+class ChangeBranchRequest {
+  final String branchId;
+
+  ChangeBranchRequest({
+    required this.branchId,
+  });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'branch_id': branchId,
+    };
+  }
+}
+
+/// Change Branch Response Model
+class ChangeBranchResponse {
+  final UserResponse user;
+  final BranchResponse branch;
+
+  ChangeBranchResponse({
+    required this.user,
+    required this.branch,
+  });
+
+  factory ChangeBranchResponse.fromJson(Map<String, dynamic> json) {
+    return ChangeBranchResponse(
+      user: UserResponse.fromJson(json['user']),
+      branch: BranchResponse.fromJson(json['branch']),
     );
   }
 }

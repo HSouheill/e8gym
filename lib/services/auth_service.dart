@@ -2,6 +2,9 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/auth_models.dart';
 import '../utils/api_config.dart';
+import '../utils/secure_logger.dart';
+import '../utils/secure_error_handler.dart';
+import 'security_service.dart';
 
 class AuthService {
   static final AuthService _instance = AuthService._internal();
@@ -9,7 +12,7 @@ class AuthService {
   AuthService._internal();
 
   final String _baseUrl = ApiConfig.baseUrl;
-  final Map<String, String> _headers = {
+  Map<String, String> _headers = {
     'Content-Type': 'application/json',
   };
 
@@ -23,11 +26,54 @@ class AuthService {
     _headers.remove('Authorization');
   }
 
+  // Update headers with security features
+  Future<void> _updateSecurityHeaders() async {
+    final deviceId = await SecurityService.getDeviceId();
+    _headers = SecurityService.getSecurityHeaders(_headers['Authorization']?.replaceFirst('Bearer ', ''));
+    _headers['X-Device-ID'] = deviceId;
+  }
+
   /// Sign up a new user
   Future<AuthResponse> signup(SignupRequest request) async {
     try {
-      final requestBody = jsonEncode(request.toJson());
-      print('Signup Request Body: $requestBody'); // Debug log
+      // Validate input
+      if (!SecurityService.validateInput(request.email) || !SecurityService.validateInput(request.password)) {
+        SecurityService.logSecurityEvent('invalid_signup_input', details: {'email_length': request.email.length, 'password_length': request.password.length});
+        throw AuthException(
+          message: 'Invalid input data',
+          statusCode: 400,
+          details: 'Input validation failed',
+        );
+      }
+      
+      // Sanitize input
+      final sanitizedEmail = SecurityService.sanitizeInput(request.email);
+      
+      // Validate SSL certificate
+      if (!SecurityService.validateSSLCertificate('$_baseUrl/api/auth/signup')) {
+        SecurityService.logSecurityEvent('invalid_ssl_certificate', details: {'url': '$_baseUrl/api/auth/signup'});
+        throw AuthException(
+          message: 'Security validation failed',
+          statusCode: 400,
+          details: 'Invalid SSL certificate',
+        );
+      }
+      
+      // Update security headers
+      await _updateSecurityHeaders();
+      
+      final sanitizedRequest = SignupRequest(
+        fullName: SecurityService.sanitizeInput(request.fullName),
+        email: sanitizedEmail,
+        password: request.password,
+        phoneNumber: SecurityService.sanitizeInput(request.phoneNumber),
+        countryCode: SecurityService.sanitizeInput(request.countryCode),
+        dateOfBirth: request.dateOfBirth,
+        branchId: request.branchId,
+      );
+      
+      final requestBody = jsonEncode(sanitizedRequest.toJson());
+      SecureLogger.apiRequest('POST', '$_baseUrl/api/auth/signup', body: sanitizedRequest.toJson());
       
       final response = await http.post(
         Uri.parse('$_baseUrl/api/auth/signup'),
@@ -35,8 +81,7 @@ class AuthService {
         body: requestBody,
       );
 
-      print('Response Status: ${response.statusCode}'); // Debug log
-      print('Response Body: ${response.body}'); // Debug log
+      SecureLogger.apiResponse(response.statusCode, '$_baseUrl/api/auth/signup', body: response.body);
       
       final responseData = jsonDecode(response.body);
       
@@ -64,10 +109,41 @@ class AuthService {
   /// Login user
   Future<AuthResponse> login(LoginRequest request) async {
     try {
+      // Validate input
+      if (!SecurityService.validateInput(request.email) || !SecurityService.validateInput(request.password)) {
+        SecurityService.logSecurityEvent('invalid_login_input', details: {'email_length': request.email.length, 'password_length': request.password.length});
+        throw AuthException(
+          message: 'Invalid input data',
+          statusCode: 400,
+          details: 'Input validation failed',
+        );
+      }
+      
+      // Sanitize input
+      final sanitizedEmail = SecurityService.sanitizeInput(request.email);
+      
+      // Validate SSL certificate
+      if (!SecurityService.validateSSLCertificate('$_baseUrl/api/auth/login')) {
+        SecurityService.logSecurityEvent('invalid_ssl_certificate', details: {'url': '$_baseUrl/api/auth/login'});
+        throw AuthException(
+          message: 'Security validation failed',
+          statusCode: 400,
+          details: 'Invalid SSL certificate',
+        );
+      }
+      
+      // Update security headers
+      await _updateSecurityHeaders();
+      
+      final sanitizedRequest = LoginRequest(
+        email: sanitizedEmail,
+        password: request.password,
+      );
+      
       final response = await http.post(
         Uri.parse('$_baseUrl/api/auth/login'),
         headers: _headers,
-        body: jsonEncode(request.toJson()),
+        body: jsonEncode(sanitizedRequest.toJson()),
       );
 
       final responseData = jsonDecode(response.body);
@@ -96,6 +172,29 @@ class AuthService {
   /// Refresh access token
   Future<RefreshTokenResponse> refreshToken(String refreshToken) async {
     try {
+      // Validate input
+      if (!SecurityService.validateInput(refreshToken)) {
+        SecurityService.logSecurityEvent('invalid_refresh_token_input', details: {'token_length': refreshToken.length});
+        throw AuthException(
+          message: 'Invalid token data',
+          statusCode: 400,
+          details: 'Input validation failed',
+        );
+      }
+      
+      // Validate SSL certificate
+      if (!SecurityService.validateSSLCertificate('$_baseUrl/api/auth/refresh')) {
+        SecurityService.logSecurityEvent('invalid_ssl_certificate', details: {'url': '$_baseUrl/api/auth/refresh'});
+        throw AuthException(
+          message: 'Security validation failed',
+          statusCode: 400,
+          details: 'Invalid SSL certificate',
+        );
+      }
+      
+      // Update security headers
+      await _updateSecurityHeaders();
+      
       final response = await http.post(
         Uri.parse('$_baseUrl/api/auth/refresh'),
         headers: _headers,
@@ -128,23 +227,75 @@ class AuthService {
   /// Logout user
   Future<void> logout() async {
     try {
+      // Ensure token doesn't already have Bearer prefix
+      final token = _headers['Authorization'] ?? '';
+      final cleanToken = token.startsWith('Bearer ') 
+          ? token.substring(7) 
+          : token;
+      
+      // Validate input
+      if (cleanToken.isNotEmpty && !SecurityService.validateInput(cleanToken)) {
+        SecurityService.logSecurityEvent('invalid_logout_token_input', details: {'token_length': cleanToken.length});
+        throw AuthException(
+          message: 'Invalid token data',
+          statusCode: 400,
+          details: 'Input validation failed',
+        );
+      }
+      
+      // Validate SSL certificate
+      if (!SecurityService.validateSSLCertificate('$_baseUrl/api/auth/logout')) {
+        SecurityService.logSecurityEvent('invalid_ssl_certificate', details: {'url': '$_baseUrl/api/auth/logout'});
+        throw AuthException(
+          message: 'Security validation failed',
+          statusCode: 400,
+          details: 'Invalid SSL certificate',
+        );
+      }
+      
+      print('=== AuthService Logout Debug ===');
+      print('Original token: ${token.isNotEmpty ? token.substring(0, 20) + '...' : 'empty'}');
+      print('Clean token: ${cleanToken.isNotEmpty ? cleanToken.substring(0, 20) + '...' : 'empty'}');
+      
+      // Update security headers
+      await _updateSecurityHeaders();
+      
       final response = await http.post(
         Uri.parse('$_baseUrl/api/auth/logout'),
         headers: _headers,
       );
 
-      if (response.statusCode != 200) {
+      print('Logout response status: ${response.statusCode}');
+      print('Logout response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        // Success - clear auth token
+        clearAuthToken();
+      } else {
         final responseData = jsonDecode(response.body);
+        
+        // If token is expired or invalid, consider this a successful logout
+        if (response.statusCode == 401 && 
+            (responseData['error']?.toString().contains('expired') == true ||
+             responseData['message']?.toString().contains('expired') == true ||
+             responseData['error']?.toString().contains('invalid') == true ||
+             responseData['message']?.toString().contains('invalid') == true)) {
+          print('Token expired or invalid, treating as successful logout');
+          clearAuthToken();
+          return;
+        }
+        
         throw AuthException(
           message: responseData['message'] ?? 'Logout failed',
           statusCode: response.statusCode,
           details: responseData['details'] ?? 'Unknown error',
         );
       }
-
-      // Clear auth token after successful logout
-      clearAuthToken();
     } catch (e) {
+      // Even if there's an error, clear the auth token to ensure logout
+      print('Logout error, but clearing auth token: $e');
+      clearAuthToken();
+      
       if (e is AuthException) {
         rethrow;
       }

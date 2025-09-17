@@ -1,15 +1,40 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'dart:async';
+import 'splash_screen.dart';
 import 'signup_page.dart';
 import 'admin_login_page.dart';
 import 'services/auth_service.dart';
 import 'services/storage_service.dart';
+import 'services/api_service.dart';
 import 'user_dashboard.dart';
 import 'models/auth_models.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
-  runApp(const MyApp());
+  // Enable better error handling for release builds
+  FlutterError.onError = (FlutterErrorDetails details) {
+    // In release mode, don't show the red screen
+    if (kReleaseMode) {
+      print('Flutter error: ${details.exception}');
+    } else {
+      FlutterError.presentError(details);
+    }
+  };
+
+  runZonedGuarded(() {
+    runApp(const MyApp());
+  }, (error, stackTrace) {
+    // Log error but don't crash the app
+    print('App error: $error');
+    print('Stack trace: $stackTrace');
+    
+    // In release mode, try to recover gracefully
+    if (kReleaseMode) {
+      // Could add crash reporting here
+    }
+  });
 }
 
 class MyApp extends StatelessWidget {
@@ -23,7 +48,15 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFFF8BB0C)),
         useMaterial3: true,
       ),
-      home: const LoginPage(),
+      initialRoute: '/',
+      routes: {
+        '/': (context) => const SplashScreen(),
+        '/login': (context) => const LoginPage(),
+        '/dashboard': (context) => const UserDashboard(),
+      },
+      builder: (context, child) {
+        return child!;
+      },
     );
   }
 }
@@ -41,10 +74,93 @@ class _LoginPageState extends State<LoginPage> {
   final AuthService _authService = AuthService();
   final StorageService _storageService = StorageService();
   bool _isLoading = false;
+  bool _obscurePassword = true;
+  String? _backgroundImageUrl;
 
   @override
   void initState() {
     super.initState();
+    // Load background image asynchronously to prevent blocking UI
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadBackgroundImage();
+    });
+  }
+
+  Future<void> _loadBackgroundImage() async {
+    try {
+      // First try to get from API with timeout
+      final resp = await ApiService.getAppSettings('').timeout(
+        const Duration(seconds: 10), // Increased timeout for release builds
+        onTimeout: () => {'success': false, 'message': 'Timeout'},
+      );
+      
+      if (resp['success'] == true && resp['data'] != null) {
+        final data = resp['data'];
+        String? backgroundPath;
+        
+        // Extract background image path from various possible keys
+        if (data is Map) {
+          backgroundPath = data['background_image'] ?? 
+                          data['BackgroundImage'] ?? 
+                          data['backgroundImage'];
+        }
+        
+        if (backgroundPath != null && backgroundPath.isNotEmpty) {
+          // Normalize the URL (convert /app/ to /uploads/app/)
+          String normalizedUrl = backgroundPath;
+          if (backgroundPath.startsWith('app/')) {
+            normalizedUrl = 'uploads/$backgroundPath';
+          } else if (!backgroundPath.startsWith('http')) {
+            normalizedUrl = backgroundPath.startsWith('/') ? backgroundPath : '/$backgroundPath';
+          }
+          
+          final fullUrl = normalizedUrl.startsWith('http') 
+              ? normalizedUrl 
+              : 'https://e8gym.online/$normalizedUrl';
+          
+          if (mounted) {
+            setState(() {
+              _backgroundImageUrl = fullUrl;
+            });
+          }
+          
+          // Cache the URL for future use
+          try {
+            final prefs = await SharedPreferences.getInstance();
+            await prefs.setString('app_background_url', fullUrl);
+          } catch (_) {
+            // Ignore caching errors
+          }
+          return;
+        }
+      }
+      
+      // Fallback to cached value if API didn't return a background
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        final cachedUrl = prefs.getString('app_background_url');
+        if (mounted && cachedUrl != null && cachedUrl.isNotEmpty) {
+          setState(() {
+            _backgroundImageUrl = cachedUrl;
+          });
+        }
+      } catch (_) {
+        // Ignore caching errors
+      }
+    } catch (e) {
+      // Fallback to cached value on error
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        final cachedUrl = prefs.getString('app_background_url');
+        if (mounted && cachedUrl != null && cachedUrl.isNotEmpty) {
+          setState(() {
+            _backgroundImageUrl = cachedUrl;
+          });
+        }
+      } catch (_) {
+        // Ignore errors, fallback to default background
+      }
+    }
   }
 
   @override
@@ -89,12 +205,9 @@ class _LoginPageState extends State<LoginPage> {
         _isLoading = false;
       });
 
-      // Navigate to classes page
+      // Navigate to dashboard
       if (mounted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const UserDashboard()),
-        );
+        Navigator.pushReplacementNamed(context, '/dashboard');
       }
     } catch (e) {
       setState(() {
@@ -119,29 +232,82 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
+    final screenSize = MediaQuery.of(context).size;
+    final screenHeight = screenSize.height;
+    final screenWidth = screenSize.width;
+    
+    // Responsive sizing calculations
+    final horizontalPadding = screenWidth * 0.05; // 5% of screen width
+    final topPadding = screenHeight * 0.03; // 3% of screen height
+    final spacingSmall = screenHeight * 0.015; // 1.5% of screen height
+    final spacingMedium = screenHeight * 0.025; // 2.5% of screen height
+    final spacingLarge = screenHeight * 0.035; // 3.5% of screen height
+    
+    // Responsive font sizes
+    final fontSizeSmall = screenWidth * 0.035; // 3.5% of screen width
+    final fontSizeMedium = screenWidth * 0.045; // 4.5% of screen width
+    final fontSizeLarge = screenWidth * 0.055; // 5.5% of screen width
+    
+    // Responsive icon sizes
+    final iconSizeSmall = screenWidth * 0.04; // 4% of screen width
+    final iconSizeMedium = screenWidth * 0.05; // 5% of screen width
+    
+    // Responsive container sizes
+    final profileIconSize = screenWidth * 0.1; // 10% of screen width
+    final buttonHeight = screenHeight * 0.08; // 8% of screen height
+    final buttonWidth = screenWidth * 0.5; // 50% of screen width
+
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
-          ),
-        ),
-        child: Container(
-          decoration: const BoxDecoration(
-            image: DecorationImage(
-              image: AssetImage('assets/background/background.png'),
-              fit: BoxFit.cover,
-              colorFilter: ColorFilter.mode(
-                Color(0x50000000), // Dark overlay for better text readability
-                BlendMode.darken,
+      body: Stack(
+        children: [
+          Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
               ),
             ),
           ),
-          child: SafeArea(
+          // Static background fallback
+          Positioned.fill(
+            child: Image.asset(
+              'assets/background/background.png',
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) {
+                // If background image fails, show gradient only
+                return Container(
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+          // Dynamic background overlay
+          if (_backgroundImageUrl != null)
+            Positioned.fill(
+              child: Image.network(
+                _backgroundImageUrl!,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  // If network image fails, show nothing (fallback to static background)
+                  return const SizedBox.shrink();
+                },
+              ),
+            ),
+          const Positioned.fill(
+            child: ColoredBox(
+              color: Color(0x50000000),
+            ),
+          ),
+          SafeArea(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 18.0),
+              padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
               child: Column(
                 children: [
                   // Top right profile icon
@@ -155,9 +321,9 @@ class _LoginPageState extends State<LoginPage> {
                         );
                       },
                       child: Container(
-                        margin: const EdgeInsets.only(top: 0),
-                        width: 40,
-                        height: 40,
+                        margin: EdgeInsets.only(top: topPadding),
+                        width: profileIconSize,
+                        height: profileIconSize,
                         decoration: BoxDecoration(
                           gradient: const LinearGradient(
                             begin: Alignment.topCenter,
@@ -166,66 +332,66 @@ class _LoginPageState extends State<LoginPage> {
                           ),
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(
+                        child: Icon(
                           Icons.person,
                           color: Colors.black,
-                          size: 24,
+                          size: iconSizeMedium,
                         ),
                       ),
                     ),
                   ),
                   
-                  const SizedBox(height: 22),
+                  SizedBox(height: spacingMedium),
                   
                   // Welcome text
-                  const Text(
+                  Text(
                     'WELCOME TO',
                     style: TextStyle(
                       color: Colors.white,
-                      fontSize: 20,
+                      fontSize: fontSizeMedium,
                       fontWeight: FontWeight.w500,
                       letterSpacing: 1.5,
                     ),
                   ),
                   
-                  const SizedBox(height: 6),
+                  SizedBox(height: spacingSmall),
                   
-                  const Text(
+                  Text(
                     'ENDURANCE EIGHT',
                     style: TextStyle(
                       color: Colors.white,
-                      fontSize: 26,
+                      fontSize: fontSizeLarge,
                       fontWeight: FontWeight.bold,
                       letterSpacing: 0.5,
                     ),
                   ),
                   
-                  const SizedBox(height: 14),
+                  SizedBox(height: spacingSmall),
                   
                   // Brand description
-                  const Text(
+                  Text(
                     'Endurance Eight is a sports brand, dedicated to elevating the standards in the sports industry, through our E8 Gym and E8 online products and services',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: Colors.white,
-                      fontSize: 14,
+                      fontSize: fontSizeSmall,
                       height: 1.3,
                     ),
                   ),
                   
-                  const SizedBox(height: 22),
+                  SizedBox(height: spacingMedium),
                   
                   // Explore section
-                  const Text(
+                  Text(
                     'Explore our:',
                     style: TextStyle(
                       color: Colors.white,
-                      fontSize: 18,
+                      fontSize: fontSizeMedium,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
                   
-                  const SizedBox(height: 10),
+                  SizedBox(height: spacingSmall),
                   
                   // Gym option
                   Row(
@@ -240,26 +406,26 @@ class _LoginPageState extends State<LoginPage> {
                           ),
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        padding: const EdgeInsets.all(3),
-                        child: const Icon(
+                        padding: EdgeInsets.all(screenWidth * 0.008),
+                        child: Icon(
                           Icons.fitness_center,
                           color: Colors.white,
-                          size: 16,
+                          size: iconSizeSmall,
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      const Text(
+                      SizedBox(width: screenWidth * 0.02),
+                      Text(
                         'Gym - "Place for Athletes"',
                         style: TextStyle(
                           color: Colors.white,
-                          fontSize: 14,
+                          fontSize: fontSizeSmall,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
                     ],
                   ),
                   
-                  const SizedBox(height: 8),
+                  SizedBox(height: spacingSmall),
                   
                   // Products & Services option
                   Row(
@@ -274,38 +440,38 @@ class _LoginPageState extends State<LoginPage> {
                           ),
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        padding: const EdgeInsets.all(3),
-                        child: const Icon(
+                        padding: EdgeInsets.all(screenWidth * 0.008),
+                        child: Icon(
                           Icons.local_drink,
                           color: Colors.white,
-                          size: 16,
+                          size: iconSizeSmall,
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      const Text(
+                      SizedBox(width: screenWidth * 0.02),
+                      Text(
                         'Products & Services - "Place for Athletes"',
                         style: TextStyle(
                           color: Colors.white,
-                          fontSize: 14,
+                          fontSize: fontSizeSmall,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
                     ],
                   ),
                   
-                  const SizedBox(height: 27),
+                  SizedBox(height: spacingLarge),
                   
                   // Login section
-                  const Text(
+                  Text(
                     'Log in',
                     style: TextStyle(
                       color: Colors.white,
-                      fontSize: 22,
+                      fontSize: fontSizeLarge,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                   
-                  const SizedBox(height: 22),
+                  SizedBox(height: spacingMedium),
                   
                   // Email field
                   Container(
@@ -328,21 +494,21 @@ class _LoginPageState extends State<LoginPage> {
                             ),
                             borderRadius: BorderRadius.circular(8),
                           ),
-                          padding: const EdgeInsets.all(6),
-                          child: const Icon(
+                          padding: EdgeInsets.all(screenWidth * 0.015),
+                          child: Icon(
                             Icons.email,
                             color: Colors.white,
-                            size: 20,
+                            size: iconSizeMedium,
                           ),
                         ),
-                        const SizedBox(width: 12),
+                        SizedBox(width: screenWidth * 0.03),
                         Expanded(
                           child: TextField(
                             controller: _emailController,
-                            style: const TextStyle(color: Colors.white, fontSize: 14),
-                            decoration: const InputDecoration(
+                            style: TextStyle(color: Colors.white, fontSize: fontSizeSmall),
+                            decoration: InputDecoration(
                               hintText: 'Email',
-                              hintStyle: TextStyle(color: Colors.white70, fontSize: 14),
+                              hintStyle: TextStyle(color: Colors.white70, fontSize: fontSizeSmall),
                               border: InputBorder.none,
                             ),
                           ),
@@ -351,7 +517,7 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                   ),
                   
-                  const SizedBox(height: 18),
+                  SizedBox(height: spacingMedium),
                   
                   // Password field
                   Container(
@@ -374,23 +540,47 @@ class _LoginPageState extends State<LoginPage> {
                             ),
                             borderRadius: BorderRadius.circular(8),
                           ),
-                          padding: const EdgeInsets.all(6),
-                          child: const Icon(
+                          padding: EdgeInsets.all(screenWidth * 0.015),
+                          child: Icon(
                             Icons.lock,
                             color: Colors.white,
-                            size: 20,
+                            size: iconSizeMedium,
                           ),
                         ),
-                        const SizedBox(width: 12),
+                        SizedBox(width: screenWidth * 0.03),
                         Expanded(
                           child: TextField(
                             controller: _passwordController,
-                            obscureText: true,
-                            style: const TextStyle(color: Colors.white, fontSize: 14),
-                            decoration: const InputDecoration(
+                            obscureText: _obscurePassword,
+                            style: TextStyle(color: Colors.white, fontSize: fontSizeSmall),
+                            decoration: InputDecoration(
                               hintText: 'Password',
-                              hintStyle: TextStyle(color: Colors.white70, fontSize: 14),
+                              hintStyle: TextStyle(color: Colors.white70, fontSize: fontSizeSmall),
                               border: InputBorder.none,
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: screenWidth * 0.02),
+                        GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              _obscurePassword = !_obscurePassword;
+                            });
+                          },
+                          child: Container(
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
+                              ),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            padding: EdgeInsets.all(screenWidth * 0.015),
+                            child: Icon(
+                              _obscurePassword ? Icons.visibility : Icons.visibility_off,
+                              color: Colors.white,
+                              size: iconSizeMedium,
                             ),
                           ),
                         ),
@@ -398,30 +588,31 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                   ),
                   
-                  const SizedBox(height: 27),
+                  SizedBox(height: spacingLarge),
                   
                   // Login button
                   SizedBox(
-                    width: MediaQuery.of(context).size.width * 0.5,
-                    height: 65,
+                    width: buttonWidth,
+                    height: buttonHeight,
                     child: GestureDetector(
                       onTap: _isLoading ? null : _handleLogin,
                       child: _isLoading
-                          ? const Center(
+                          ? Center(
                               child: CircularProgressIndicator(
-                                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFF8BB0C)),
+                                valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFF8BB0C)),
+                                strokeWidth: screenWidth * 0.008,
                               ),
                             )
                           : SvgPicture.asset(
                               'assets/img/Button.svg',
-                              width: MediaQuery.of(context).size.width * 0.4,
-                              height: 40,
+                              width: buttonWidth * 0.8,
+                              height: buttonHeight * 0.6,
                               fit: BoxFit.cover,
                             ),
                     ),
                   ),
                   
-                  const SizedBox(height: 22),
+                  SizedBox(height: spacingMedium),
                   
                   // Create account link
                   GestureDetector(
@@ -434,9 +625,9 @@ class _LoginPageState extends State<LoginPage> {
                     child: RichText(
                       text: TextSpan(
                         text: "Don't have an account? ",
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: Colors.white,
-                          fontSize: 14,
+                          fontSize: fontSizeSmall,
                         ),
                         children: [
                           TextSpan(
@@ -447,7 +638,7 @@ class _LoginPageState extends State<LoginPage> {
                                   begin: Alignment.centerLeft,
                                   end: Alignment.centerRight,
                                   colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
-                                ).createShader(const Rect.fromLTWH(0, 0, 200, 0)),
+                                ).createShader(Rect.fromLTWH(0, 0, screenWidth * 0.5, 0)),
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -456,12 +647,12 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                   ),
                   
-                  const SizedBox(height: 22),
+                  SizedBox(height: spacingMedium),
                 ],
               ),
             ),
           ),
-        ),
+        ],
       ),
     );
   }

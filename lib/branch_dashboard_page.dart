@@ -49,21 +49,50 @@ class _BranchDashboardPageState extends State<BranchDashboardPage> {
     });
 
     try {
+      print('=== Loading Branch Classes ===');
       final result = await ApiService.getBranchClasses(accessToken);
+      print('Branch classes API response: $result');
       
       if (result['success']) {
-        final classListResponse = BranchClassListResponse.fromJson(result['data']);
-        setState(() {
-          _classes = classListResponse.classes;
-          _isLoadingClasses = false;
-        });
+        final data = result['data'];
+        print('Branch classes data: $data');
+        
+        // Check if data contains classes field
+        if (data != null) {
+          print('Data keys: ${data.keys}');
+          print('Classes field exists: ${data.containsKey('classes')}');
+          print('Classes field value: ${data['classes']}');
+          
+          if (data['classes'] != null) {
+            final classListResponse = BranchClassListResponse.fromJson(data);
+            setState(() {
+              _classes = classListResponse.classes;
+              _isLoadingClasses = false;
+            });
+            print('Successfully loaded ${_classes.length} classes');
+          } else {
+            print('Classes field is null, setting empty list');
+            setState(() {
+              _classes = [];
+              _isLoadingClasses = false;
+            });
+          }
+        } else {
+          print('Data is null');
+          setState(() {
+            _classes = [];
+            _isLoadingClasses = false;
+          });
+        }
       } else {
+        print('API returned error: ${result['message']}');
         setState(() {
           _errorMessage = result['message'] ?? 'Failed to load classes';
           _isLoadingClasses = false;
         });
       }
     } catch (e) {
+      print('Error loading classes: $e');
       setState(() {
         _errorMessage = 'An error occurred: $e';
         _isLoadingClasses = false;
@@ -103,30 +132,9 @@ class _BranchDashboardPageState extends State<BranchDashboardPage> {
                 children: [
                   // Header with back button and logout
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    mainAxisAlignment: MainAxisAlignment.end,
                     children: [
-                      GestureDetector(
-                        onTap: () {
-                          Navigator.pop(context);
-                        },
-                        child: Container(
-                          width: 50,
-                          height: 50,
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
-                            ),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            Icons.arrow_back,
-                            color: Colors.black,
-                            size: 30,
-                          ),
-                        ),
-                      ),
+                      
                       GestureDetector(
                         onTap: () async {
                           await _handleLogout();
@@ -357,38 +365,9 @@ class _BranchDashboardPageState extends State<BranchDashboardPage> {
           
           const SizedBox(height: 30),
           
-          // Session info
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.black.withOpacity(0.3),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Column(
-              children: [
-                const Text(
-                  'Session Information',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Token expires in ${((widget.branchData['expires_in'] ?? 3600) / 3600).toStringAsFixed(1)} hours',
-                  style: const TextStyle(
-                    color: Colors.white70,
-                    fontSize: 14,
-                  ),
-                ),
-              ],
-            ),
-          ),
+        
           
-          // Add some bottom padding to prevent overflow
-          const SizedBox(height: 20),
+        
         ],
       ),
     );
@@ -761,8 +740,11 @@ class _BranchDashboardPageState extends State<BranchDashboardPage> {
   Widget _buildScheduleItem(ClassSchedule schedule) {
     final days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     final dayName = days[schedule.dayOfWeek];
-    final startTime = '${schedule.startTime.hour.toString().padLeft(2, '0')}:${schedule.startTime.minute.toString().padLeft(2, '0')}';
-    final endTime = '${schedule.endTime.hour.toString().padLeft(2, '0')}:${schedule.endTime.minute.toString().padLeft(2, '0')}';
+    // Convert UTC times to local for display
+    final localStartTime = schedule.startTime.toLocal();
+    final localEndTime = schedule.endTime.toLocal();
+    final startTime = '${localStartTime.hour.toString().padLeft(2, '0')}:${localStartTime.minute.toString().padLeft(2, '0')}';
+    final endTime = '${localEndTime.hour.toString().padLeft(2, '0')}:${localEndTime.minute.toString().padLeft(2, '0')}';
     
     // Check if this is a next week schedule (has specific date)
     final isNextWeekSchedule = schedule.startTime.year > 2024 || 
@@ -895,15 +877,18 @@ class _BranchDashboardPageState extends State<BranchDashboardPage> {
                 ...classData.schedule.map((schedule) {
                   final days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
                   final dayName = days[schedule.dayOfWeek];
-                  final startTime = '${schedule.startTime.hour.toString().padLeft(2, '0')}:${schedule.startTime.minute.toString().padLeft(2, '0')}';
-                  final endTime = '${schedule.endTime.hour.toString().padLeft(2, '0')}:${schedule.endTime.minute.toString().padLeft(2, '0')}';
+                  // Convert UTC times to local for display
+                  final localStartTime = schedule.startTime.toLocal();
+                  final localEndTime = schedule.endTime.toLocal();
+                  final startTime = '${localStartTime.hour.toString().padLeft(2, '0')}:${localStartTime.minute.toString().padLeft(2, '0')}';
+                  final endTime = '${localEndTime.hour.toString().padLeft(2, '0')}:${localEndTime.minute.toString().padLeft(2, '0')}';
                   
                   // Check if this is a next week schedule
                   final isNextWeekSchedule = schedule.startTime.year > 2024 || 
                                             (schedule.startTime.year == 2024 && schedule.startTime.month > 1);
                   
                   if (isNextWeekSchedule) {
-                    final date = schedule.startTime;
+                    final date = localStartTime;
                     return Text('${date.day}/${date.month}/${date.year} ($dayName): $startTime - $endTime');
                   } else {
                     return Text('$dayName: $startTime - $endTime');
@@ -946,8 +931,11 @@ class _BranchDashboardPageState extends State<BranchDashboardPage> {
                     final index = entry.key;
                     final schedule = entry.value;
                     final dayName = days[schedule.dayOfWeek];
-                    final startTime = '${schedule.startTime.hour.toString().padLeft(2, '0')}:${schedule.startTime.minute.toString().padLeft(2, '0')}';
-                    final endTime = '${schedule.endTime.hour.toString().padLeft(2, '0')}:${schedule.endTime.minute.toString().padLeft(2, '0')}';
+                    // Convert UTC times to local for display
+                    final localStartTime = schedule.startTime.toLocal();
+                    final localEndTime = schedule.endTime.toLocal();
+                    final startTime = '${localStartTime.hour.toString().padLeft(2, '0')}:${localStartTime.minute.toString().padLeft(2, '0')}';
+                    final endTime = '${localEndTime.hour.toString().padLeft(2, '0')}:${localEndTime.minute.toString().padLeft(2, '0')}';
                     
                     // Check if this is a next week schedule
                     final isNextWeekSchedule = schedule.startTime.year > 2024 || 
@@ -1041,10 +1029,10 @@ class _BranchDashboardPageState extends State<BranchDashboardPage> {
   void _showScheduleItemDialog(StateSetter setDialogState, List<ClassSchedule> schedules, {int? editingIndex}) {
     int selectedDay = editingIndex != null ? schedules[editingIndex].dayOfWeek : 0;
     TimeOfDay startTime = editingIndex != null 
-        ? TimeOfDay.fromDateTime(schedules[editingIndex].startTime)
+        ? TimeOfDay.fromDateTime(schedules[editingIndex].startTime.toLocal())
         : const TimeOfDay(hour: 9, minute: 0);
     TimeOfDay endTime = editingIndex != null 
-        ? TimeOfDay.fromDateTime(schedules[editingIndex].endTime)
+        ? TimeOfDay.fromDateTime(schedules[editingIndex].endTime.toLocal())
         : const TimeOfDay(hour: 10, minute: 0);
     final List<String> days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     
@@ -1057,17 +1045,33 @@ class _BranchDashboardPageState extends State<BranchDashboardPage> {
       builder: (context) => StatefulBuilder(
         builder: (context, setTimeDialogState) => AlertDialog(
           backgroundColor: Colors.white,
-          title: Text(editingIndex != null ? 'Edit Schedule' : 'Add Schedule'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
+          title: Text(
+            editingIndex != null ? 'Edit Schedule' : 'Add Schedule',
+            style: const TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
+          ),
+          content: Container(
+            width: double.maxFinite,
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
               // Schedule type selection
               Row(
                 children: [
                   Expanded(
                     child: RadioListTile<bool>(
-                      title: const Text('Recurring'),
-                      subtitle: const Text('Every week'),
+                      title: const Text(
+                        'Recurring Every week',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.black87,
+                        ),
+                      ),
                       value: false,
                       groupValue: isNextWeekSchedule,
                       onChanged: (value) {
@@ -1076,12 +1080,19 @@ class _BranchDashboardPageState extends State<BranchDashboardPage> {
                           selectedDate = null;
                         });
                       },
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     ),
                   ),
                   Expanded(
                     child: RadioListTile<bool>(
-                      title: const Text('Next Week'),
-                      subtitle: const Text('Specific date'),
+                      title: const Text(
+                        'Next Week Specific date',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.black87,
+                        ),
+                      ),
                       value: true,
                       groupValue: isNextWeekSchedule,
                       onChanged: (value) {
@@ -1093,6 +1104,7 @@ class _BranchDashboardPageState extends State<BranchDashboardPage> {
                           selectedDate = DateTime(nextWeek.year, nextWeek.month, nextWeek.day);
                         });
                       },
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     ),
                   ),
                 ],
@@ -1184,6 +1196,7 @@ class _BranchDashboardPageState extends State<BranchDashboardPage> {
               ),
             ],
           ),
+        ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
@@ -1213,9 +1226,9 @@ class _BranchDashboardPageState extends State<BranchDashboardPage> {
                   
                   if (isNextWeekSchedule) {
                     // For next week scheduling, check if the selected date conflicts with any existing schedule
-                    if (existingSchedule.dayOfWeek == selectedDate!.weekday % 7) { // Convert to 0-6 format
-                      final existingStart = TimeOfDay.fromDateTime(existingSchedule.startTime);
-                      final existingEnd = TimeOfDay.fromDateTime(existingSchedule.endTime);
+                                      if (existingSchedule.dayOfWeek == selectedDate!.weekday % 7) { // Convert to 0-6 format
+                    final existingStart = TimeOfDay.fromDateTime(existingSchedule.startTime.toLocal());
+                    final existingEnd = TimeOfDay.fromDateTime(existingSchedule.endTime.toLocal());
                       
                       if ((startTime.hour < existingEnd.hour || 
                            (startTime.hour == existingEnd.hour && startTime.minute < existingEnd.minute)) &&
@@ -1227,8 +1240,8 @@ class _BranchDashboardPageState extends State<BranchDashboardPage> {
                   } else {
                     // For recurring schedules, check day of week conflicts
                     if (existingSchedule.dayOfWeek == selectedDay) {
-                      final existingStart = TimeOfDay.fromDateTime(existingSchedule.startTime);
-                      final existingEnd = TimeOfDay.fromDateTime(existingSchedule.endTime);
+                      final existingStart = TimeOfDay.fromDateTime(existingSchedule.startTime.toLocal());
+                      final existingEnd = TimeOfDay.fromDateTime(existingSchedule.endTime.toLocal());
                       
                       if ((startTime.hour < existingEnd.hour || 
                            (startTime.hour == existingEnd.hour && startTime.minute < existingEnd.minute)) &&
@@ -1249,17 +1262,25 @@ class _BranchDashboardPageState extends State<BranchDashboardPage> {
                 if (isNextWeekSchedule) {
                   // Create schedule for specific date
                   final scheduleDate = selectedDate!;
+                  // Create local DateTime first, then convert to UTC
+                  final localStartTime = DateTime(scheduleDate.year, scheduleDate.month, scheduleDate.day, startTime.hour, startTime.minute);
+                  final localEndTime = DateTime(scheduleDate.year, scheduleDate.month, scheduleDate.day, endTime.hour, endTime.minute);
                   newSchedule = ClassSchedule(
                     dayOfWeek: scheduleDate.weekday % 7, // Convert to 0-6 format (Sunday = 0)
-                    startTime: DateTime(scheduleDate.year, scheduleDate.month, scheduleDate.day, startTime.hour, startTime.minute),
-                    endTime: DateTime(scheduleDate.year, scheduleDate.month, scheduleDate.day, endTime.hour, endTime.minute),
+                    date: scheduleDate,
+                    startTime: localStartTime.toUtc(),
+                    endTime: localEndTime.toUtc(),
                   );
                 } else {
                   // Create recurring schedule
+                  // Create local DateTime first, then convert to UTC
+                  final localStartTime = DateTime(2024, 1, 1, startTime.hour, startTime.minute);
+                  final localEndTime = DateTime(2024, 1, 1, endTime.hour, endTime.minute);
                   newSchedule = ClassSchedule(
                     dayOfWeek: selectedDay,
-                    startTime: DateTime(2024, 1, 1, startTime.hour, startTime.minute),
-                    endTime: DateTime(2024, 1, 1, endTime.hour, endTime.minute),
+                    date: DateTime(2024, 1, 1), // Placeholder date for recurring schedules
+                    startTime: localStartTime.toUtc(),
+                    endTime: localEndTime.toUtc(),
                   );
                 }
 
@@ -1319,16 +1340,26 @@ class _BranchDashboardPageState extends State<BranchDashboardPage> {
     });
 
     try {
-      final result = await ApiService.branchLogout(accessToken);
-      
-      if (result['success']) {
-        _showSnackBar('Logged out successfully');
-        Navigator.pop(context); // Go back to login page
-      } else {
-        _showSnackBar(result['message'] ?? 'Logout failed');
+      // Try to call logout API, but don't fail if it doesn't work
+      try {
+        final result = await ApiService.branchLogout(accessToken);
+        if (result['success']) {
+          print('Branch logout API successful');
+        } else {
+          print('Branch logout API failed: ${result['message']}');
+        }
+      } catch (e) {
+        print('Branch logout API failed, but continuing with local logout: $e');
       }
+      
+      // Always show success message and navigate back
+      _showSnackBar('Logged out successfully');
+      Navigator.pop(context); // Go back to login page
     } catch (e) {
-      _showSnackBar('An error occurred during logout: $e');
+      print('Error during logout process: $e');
+      // Even if there's an error, try to navigate back
+      _showSnackBar('Logged out successfully');
+      Navigator.pop(context);
     } finally {
       setState(() {
         _isLoading = false;

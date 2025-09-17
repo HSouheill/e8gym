@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
+import 'dart:io';
+import 'package:image_picker/image_picker.dart';
 import 'services/api_service.dart';
 import 'models/auth_models.dart';
 import 'models/standalone_class_models.dart';
@@ -19,6 +21,7 @@ class EditBranchPage extends StatefulWidget {
 }
 
 class _EditBranchPageState extends State<EditBranchPage> {
+  final TextEditingController _branchIdController = TextEditingController();
   final TextEditingController _branchNameController = TextEditingController();
   final TextEditingController _adminNameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
@@ -38,8 +41,12 @@ class _EditBranchPageState extends State<EditBranchPage> {
   final TextEditingController _teamMemberEmailController = TextEditingController();
   final TextEditingController _teamMemberPhoneController = TextEditingController();
   final TextEditingController _teamMemberRoleController = TextEditingController();
-  String _selectedCountryCode = '+1';
+  final String _selectedCountryCode = '+1';
   bool _showAddTeamMemberForm = false;
+
+  // Image handling
+  final ImagePicker _imagePicker = ImagePicker();
+  File? _branchImageFile;
 
   @override
   void initState() {
@@ -49,11 +56,12 @@ class _EditBranchPageState extends State<EditBranchPage> {
   }
 
   void _initializeControllers() {
+    _branchIdController.text = widget.branch.branchId ?? '';
     _branchNameController.text = widget.branch.branchName;
     _adminNameController.text = widget.branch.adminName;
     _emailController.text = widget.branch.email;
     _phoneNumberController.text = widget.branch.phoneNumber;
-    _locationController.text = widget.branch.location ?? '';
+    _locationController.text = widget.branch.location;
     
     // Initialize team members
     _teamMembers = List.from(widget.branch.teamMembers);
@@ -75,16 +83,29 @@ class _EditBranchPageState extends State<EditBranchPage> {
 
       if (result['success']) {
         final data = result['data'];
-        final classListResponse = StandaloneClassListResponse.fromJson(data);
-        
-
-        
-        setState(() {
-          _availableClasses = classListResponse.classes.where((c) => c.isActive).toList();
-          
-          // Initialize selected classes from existing branch data
-          _initializeSelectedClassesFromBranch();
-        });
+        if (data != null) {
+          try {
+            final classListResponse = StandaloneClassListResponse.fromJson(data);
+            
+            setState(() {
+              _availableClasses = classListResponse.classes.where((c) => c.isActive).toList();
+              
+              // Initialize selected classes from existing branch data
+              _initializeSelectedClassesFromBranch();
+            });
+          } catch (parseError) {
+            print('Error parsing class data: $parseError');
+            _showSnackBar('Error parsing class data. Please try again.');
+            setState(() {
+              _availableClasses = [];
+            });
+          }
+        } else {
+          print('API returned null data for classes');
+          setState(() {
+            _availableClasses = [];
+          });
+        }
       } else {
         _showSnackBar(result['message'] ?? 'Failed to load available classes');
       }
@@ -115,6 +136,7 @@ class _EditBranchPageState extends State<EditBranchPage> {
 
   @override
   void dispose() {
+    _branchIdController.dispose();
     _branchNameController.dispose();
     _adminNameController.dispose();
     _emailController.dispose();
@@ -170,6 +192,24 @@ class _EditBranchPageState extends State<EditBranchPage> {
                 'Branch Information',
                 Icons.business,
                 [
+                  _buildTextField(
+                    controller: _branchIdController,
+                    label: 'Branch ID',
+                    icon: Icons.tag,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Branch ID is required';
+                      }
+                      if (value.length < 3) {
+                        return 'Branch ID must be at least 3 characters';
+                      }
+                      if (!RegExp(r'^[a-zA-Z0-9]+$').hasMatch(value)) {
+                        return 'Branch ID can only contain letters and numbers';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 16),
                   _buildTextField(
                     controller: _branchNameController,
                     label: 'Branch Name',
@@ -234,6 +274,10 @@ class _EditBranchPageState extends State<EditBranchPage> {
                       return null;
                     },
                   ),
+                  const SizedBox(height: 16),
+                  
+                  // Branch Image Upload Section
+                  _buildImageUploadSection(),
                 ],
               ),
               const SizedBox(height: 20),
@@ -480,6 +524,118 @@ class _EditBranchPageState extends State<EditBranchPage> {
     );
   }
 
+  Widget _buildImageUploadSection() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.grey[50],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey[200]!),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(
+                Icons.image,
+                color: Color(0xFFF8BB0C),
+                size: 24,
+              ),
+              const SizedBox(width: 8),
+              const Text(
+                'Branch Image',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black87,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _branchImageFile != null 
+                          ? 'New image selected' 
+                          : widget.branch.image != null 
+                              ? 'Current image available'
+                              : 'No image selected',
+                      style: TextStyle(
+                        color: _branchImageFile != null 
+                            ? Colors.green[700]
+                            : widget.branch.image != null 
+                                ? Colors.blue[700]
+                                : Colors.black54,
+                        fontSize: 14,
+                      ),
+                    ),
+                    if (widget.branch.image != null && _branchImageFile == null)
+                      const Text(
+                        'Click to change image',
+                        style: TextStyle(
+                          color: Colors.black54,
+                          fontSize: 12,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              GestureDetector(
+                onTap: _handleBranchImageUpload,
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: _branchImageFile != null 
+                        ? Colors.green.withValues(alpha: 0.3)
+                        : const Color(0xFFF8BB0C),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    _branchImageFile != null ? Icons.check : Icons.camera_alt,
+                    color: Colors.black,
+                    size: 20,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (_branchImageFile != null) ...[
+            const SizedBox(height: 12),
+            Container(
+              height: 100,
+              width: double.infinity,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.grey[300]!),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.file(
+                  _branchImageFile!,
+                  fit: BoxFit.cover,
+                ),
+              ),
+            ),
+          ],
+          const SizedBox(height: 8),
+          const Text(
+            'Upload a representative image for this branch. This will be displayed in branch listings and details.',
+            style: TextStyle(
+              color: Colors.black54,
+              fontSize: 12,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildSectionCard(String title, IconData icon, List<Widget> children) {
     return Card(
       elevation: 4,
@@ -715,6 +871,25 @@ class _EditBranchPageState extends State<EditBranchPage> {
     );
   }
 
+  Future<void> _handleBranchImageUpload() async {
+    try {
+      final XFile? image = await _imagePicker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 80,
+      );
+
+      if (image != null) {
+        setState(() {
+          _branchImageFile = File(image.path);
+        });
+      }
+    } catch (e) {
+      _showSnackBar('Error selecting image: $e');
+    }
+  }
+
   void _addTeamMember() {
     if (_teamMemberNameController.text.isEmpty ||
         _teamMemberEmailController.text.isEmpty ||
@@ -748,12 +923,25 @@ class _EditBranchPageState extends State<EditBranchPage> {
 
   Future<void> _saveChanges() async {
     // Validate required fields
-    if (_branchNameController.text.isEmpty ||
+    if (_branchIdController.text.isEmpty ||
+        _branchNameController.text.isEmpty ||
         _adminNameController.text.isEmpty ||
         _emailController.text.isEmpty ||
         _phoneNumberController.text.isEmpty ||
         _locationController.text.isEmpty) {
       _showSnackBar('Please fill in all required fields');
+      return;
+    }
+
+    // Branch ID validation
+    if (_branchIdController.text.length < 3) {
+      _showSnackBar('Branch ID must be at least 3 characters');
+      return;
+    }
+
+    // Check if Branch ID contains only alphanumeric characters
+    if (!RegExp(r'^[a-zA-Z0-9]+$').hasMatch(_branchIdController.text)) {
+      _showSnackBar('Branch ID can only contain letters and numbers');
       return;
     }
 
@@ -766,18 +954,21 @@ class _EditBranchPageState extends State<EditBranchPage> {
       final classModels = _selectedClasses.map((standaloneClass) => ClassModel(
         name: standaloneClass.name,
         description: standaloneClass.description,
-        duration: 60, // Default duration in minutes
+        duration: standaloneClass.duration,
         capacity: standaloneClass.capacity,
         instructor: standaloneClass.instructor,
+        schedule: standaloneClass.schedule, // Include the schedule from standalone class
       )).toList();
 
       // Create update request
       final updateRequest = UpdateBranchRequest(
+        branchId: _branchIdController.text.trim(),
         branchName: _branchNameController.text.trim(),
         adminName: _adminNameController.text.trim(),
         email: _emailController.text.trim(),
         phoneNumber: _phoneNumberController.text.trim(),
         location: _locationController.text.trim(),
+        image: _branchImageFile != null ? _branchImageFile!.path : widget.branch.image,
         classes: classModels,
         teamMembers: _teamMembers,
         isActive: true,

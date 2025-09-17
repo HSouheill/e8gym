@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'services/api_service.dart';
 import 'models/branch_user_models.dart';
 
@@ -19,6 +20,7 @@ class _BranchUsersPageState extends State<BranchUsersPage> {
   bool _isLoading = false;
   bool _isLoadingStats = false;
   String? _errorMessage;
+  String? _backgroundImageUrl;
   
   // Users data
   List<BranchUserResponse> _users = [];
@@ -40,6 +42,7 @@ class _BranchUsersPageState extends State<BranchUsersPage> {
   @override
   void initState() {
     super.initState();
+    _loadBackgroundImage();
     _loadUsers();
     _loadStats();
   }
@@ -48,6 +51,77 @@ class _BranchUsersPageState extends State<BranchUsersPage> {
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadBackgroundImage() async {
+    try {
+      // First try to get from API
+      final result = await ApiService.getAppSettings(widget.accessToken);
+      if (result['success'] && result['data'] != null) {
+        final data = result['data'];
+        String? backgroundImage;
+        
+        // Try different possible keys for background image
+        if (data['background_image'] != null) {
+          backgroundImage = data['background_image'];
+        } else if (data['backgroundImage'] != null) {
+          backgroundImage = data['backgroundImage'];
+        } else if (data['background'] != null) {
+          backgroundImage = data['background'];
+        }
+        
+        if (backgroundImage != null && backgroundImage.isNotEmpty) {
+          // Normalize the URL
+          String normalizedUrl = _normalizeUrl(backgroundImage);
+          setState(() {
+            _backgroundImageUrl = normalizedUrl;
+          });
+          
+          // Cache the URL
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('background_image_url', normalizedUrl);
+          return;
+        }
+      }
+      
+      // Fallback to cached URL
+      final prefs = await SharedPreferences.getInstance();
+      final cachedUrl = prefs.getString('background_image_url');
+      if (cachedUrl != null && cachedUrl.isNotEmpty) {
+        setState(() {
+          _backgroundImageUrl = cachedUrl;
+        });
+      }
+    } catch (e) {
+      print('Error loading background image: $e');
+      // Fallback to cached URL
+      final prefs = await SharedPreferences.getInstance();
+      final cachedUrl = prefs.getString('background_image_url');
+      if (cachedUrl != null && cachedUrl.isNotEmpty) {
+        setState(() {
+          _backgroundImageUrl = cachedUrl;
+        });
+      }
+    }
+  }
+
+  String _normalizeUrl(String url) {
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      return url;
+    }
+    
+    // Handle relative paths
+    if (url.startsWith('/app/')) {
+      return 'https://e8gym.online/uploads$url';
+    } else if (url.startsWith('app/')) {
+      return 'https://e8gym.online/uploads/$url';
+    } else if (url.startsWith('/uploads/')) {
+      return 'https://e8gym.online$url';
+    } else if (url.startsWith('uploads/')) {
+      return 'https://e8gym.online/$url';
+    }
+    
+    return 'https://e8gym.online/uploads/$url';
   }
 
   Future<void> _loadUsers({bool refresh = false}) async {
@@ -194,26 +268,52 @@ class _BranchUsersPageState extends State<BranchUsersPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
-          ),
-        ),
-        child: Container(
-          decoration: const BoxDecoration(
-            image: DecorationImage(
-              image: AssetImage('assets/background/background.png'),
-              fit: BoxFit.cover,
-              colorFilter: ColorFilter.mode(
-                Color(0x50000000),
-                BlendMode.darken,
+      body: Stack(
+        children: [
+          // Base gradient background
+          Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
               ),
             ),
           ),
-          child: SafeArea(
+          
+          // Static background image
+          Container(
+            decoration: const BoxDecoration(
+              image: DecorationImage(
+                image: AssetImage('assets/background/background.png'),
+                fit: BoxFit.cover,
+              ),
+            ),
+          ),
+          
+          // Dynamic background image overlay
+          if (_backgroundImageUrl != null)
+            Positioned.fill(
+              child: Image.network(
+                _backgroundImageUrl!,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  return const SizedBox.shrink();
+                },
+              ),
+            ),
+          
+          // Dark overlay
+          Positioned.fill(
+            child: Container(
+              decoration: const BoxDecoration(
+                color: Color(0x50000000),
+              ),
+            ),
+          ),
+          
+          // Main content
+          SafeArea(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 18.0, vertical: 30),
               child: Column(
@@ -275,20 +375,20 @@ class _BranchUsersPageState extends State<BranchUsersPage> {
                     ],
                   ),
                   
-                  const SizedBox(height: 30),
+                  const SizedBox(height: 25), // Reduced spacing
                   
                   // Stats cards
                   if (_stats != null) 
                     _buildStatsCards()
                   else if (_isLoadingStats)
                     const SizedBox(
-                      height: 120,
+                      height: 130, // Updated to match stats cards height
                       child: Center(
                         child: CircularProgressIndicator(color: Colors.white),
                       ),
                     ),
                   
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 15), // Reduced spacing
                   
                   // Search and filters
                   _buildSearchAndFilters(),
@@ -303,14 +403,14 @@ class _BranchUsersPageState extends State<BranchUsersPage> {
               ),
             ),
           ),
-        ),
+        ],
       ),
     );
   }
 
   Widget _buildStatsCards() {
     return SizedBox(
-      height: 120,
+      height: 130, // Increased height to accommodate text
       child: ListView(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -350,7 +450,7 @@ class _BranchUsersPageState extends State<BranchUsersPage> {
   Widget _buildStatCard(String title, String value, IconData icon, Color color) {
     return Container(
       width: 120,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16), // Adjusted padding
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.1),
         borderRadius: BorderRadius.circular(12),
@@ -358,24 +458,30 @@ class _BranchUsersPageState extends State<BranchUsersPage> {
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min, // Added to prevent overflow
         children: [
-          Icon(icon, color: color, size: 24),
-          const SizedBox(height: 8),
+          Icon(icon, color: color, size: 22), // Slightly reduced icon size
+          const SizedBox(height: 6), // Reduced spacing
           Text(
             value,
             style: const TextStyle(
               color: Colors.white,
-              fontSize: 20,
+              fontSize: 18, // Slightly reduced font size
               fontWeight: FontWeight.bold,
             ),
           ),
-          Text(
-            title,
-            style: const TextStyle(
-              color: Colors.white70,
-              fontSize: 12,
+          const SizedBox(height: 4), // Added spacing between value and title
+          Flexible( // Wrapped in Flexible to handle text overflow
+            child: Text(
+              title,
+              style: const TextStyle(
+                color: Colors.white70,
+                fontSize: 11, // Slightly reduced font size
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 2, // Allow up to 2 lines
+              overflow: TextOverflow.ellipsis, // Handle overflow gracefully
             ),
-            textAlign: TextAlign.center,
           ),
         ],
       ),
@@ -619,42 +725,7 @@ class _BranchUsersPageState extends State<BranchUsersPage> {
               '${user.countryCode} ${user.phoneNumber}',
               style: const TextStyle(color: Colors.white70, fontSize: 14),
             ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: user.isActive ? Colors.green : Colors.red,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    user.isActive ? 'Active' : 'Inactive',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: user.isVerified ? Colors.blue : Colors.orange,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    user.isVerified ? 'Verified' : 'Unverified',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ],
-            ),
+            
             const SizedBox(height: 8),
             Row(
               children: [
@@ -749,9 +820,7 @@ class BranchUserDetailPage extends StatefulWidget {
 }
 
 class _BranchUserDetailPageState extends State<BranchUserDetailPage> {
-  bool _isLoading = false;
-  String? _errorMessage;
-  BranchUserDetailResponse? _userDetail;
+  String? _backgroundImageUrl;
   List<BranchUserBooking> _bookings = [];
   int _currentPage = 1;
   int _totalPages = 1;
@@ -761,41 +830,81 @@ class _BranchUserDetailPageState extends State<BranchUserDetailPage> {
   @override
   void initState() {
     super.initState();
-    _loadUserDetail();
+    _loadBackgroundImage();
     _loadUserBookings();
   }
 
-  Future<void> _loadUserDetail() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
-
+  Future<void> _loadBackgroundImage() async {
     try {
-      final result = await ApiService.getBranchUserDetail(
-        widget.user.userId,
-        widget.accessToken,
-      );
-
-      if (result['success']) {
-        final userDetail = BranchUserDetailResponse.fromJson(result['data']);
+      // First try to get from API
+      final result = await ApiService.getAppSettings(widget.accessToken);
+      if (result['success'] && result['data'] != null) {
+        final data = result['data'];
+        String? backgroundImage;
+        
+        // Try different possible keys for background image
+        if (data['background_image'] != null) {
+          backgroundImage = data['background_image'];
+        } else if (data['backgroundImage'] != null) {
+          backgroundImage = data['backgroundImage'];
+        } else if (data['background'] != null) {
+          backgroundImage = data['background'];
+        }
+        
+        if (backgroundImage != null && backgroundImage.isNotEmpty) {
+          // Normalize the URL
+          String normalizedUrl = _normalizeUrl(backgroundImage);
+          setState(() {
+            _backgroundImageUrl = normalizedUrl;
+          });
+          
+          // Cache the URL
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('background_image_url', normalizedUrl);
+          return;
+        }
+      }
+      
+      // Fallback to cached URL
+      final prefs = await SharedPreferences.getInstance();
+      final cachedUrl = prefs.getString('background_image_url');
+      if (cachedUrl != null && cachedUrl.isNotEmpty) {
         setState(() {
-          _userDetail = userDetail;
-          _isLoading = false;
-        });
-      } else {
-        setState(() {
-          _errorMessage = result['message'] ?? 'Failed to load user details';
-          _isLoading = false;
+          _backgroundImageUrl = cachedUrl;
         });
       }
     } catch (e) {
-      setState(() {
-        _errorMessage = 'An error occurred: $e';
-        _isLoading = false;
-      });
+      print('Error loading background image: $e');
+      // Fallback to cached URL
+      final prefs = await SharedPreferences.getInstance();
+      final cachedUrl = prefs.getString('background_image_url');
+      if (cachedUrl != null && cachedUrl.isNotEmpty) {
+        setState(() {
+          _backgroundImageUrl = cachedUrl;
+        });
+      }
     }
   }
+
+  String _normalizeUrl(String url) {
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      return url;
+    }
+    
+    // Handle relative paths
+    if (url.startsWith('/app/')) {
+      return 'https://e8gym.online/uploads$url';
+    } else if (url.startsWith('app/')) {
+      return 'https://e8gym.online/uploads/$url';
+    } else if (url.startsWith('/uploads/')) {
+      return 'https://e8gym.online$url';
+    } else if (url.startsWith('uploads/')) {
+      return 'https://e8gym.online/$url';
+    }
+    
+    return 'https://e8gym.online/uploads/$url';
+  }
+
 
   Future<void> _loadUserBookings({bool refresh = false}) async {
     if (refresh) {
@@ -836,26 +945,52 @@ class _BranchUserDetailPageState extends State<BranchUserDetailPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
-          ),
-        ),
-        child: Container(
-          decoration: const BoxDecoration(
-            image: DecorationImage(
-              image: AssetImage('assets/background/background.png'),
-              fit: BoxFit.cover,
-              colorFilter: ColorFilter.mode(
-                Color(0x50000000),
-                BlendMode.darken,
+      body: Stack(
+        children: [
+          // Base gradient background
+          Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
               ),
             ),
           ),
-          child: SafeArea(
+          
+          // Static background image
+          Container(
+            decoration: const BoxDecoration(
+              image: DecorationImage(
+                image: AssetImage('assets/background/background.png'),
+                fit: BoxFit.cover,
+              ),
+            ),
+          ),
+          
+          // Dynamic background image overlay
+          if (_backgroundImageUrl != null)
+            Positioned.fill(
+              child: Image.network(
+                _backgroundImageUrl!,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  return const SizedBox.shrink();
+                },
+              ),
+            ),
+          
+          // Dark overlay
+          Positioned.fill(
+            child: Container(
+              decoration: const BoxDecoration(
+                color: Color(0x50000000),
+              ),
+            ),
+          ),
+          
+          // Main content
+          SafeArea(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 18.0, vertical: 30),
               child: Column(
@@ -912,7 +1047,7 @@ class _BranchUserDetailPageState extends State<BranchUserDetailPage> {
               ),
             ),
           ),
-        ),
+        ],
       ),
     );
   }
@@ -963,42 +1098,6 @@ class _BranchUserDetailPageState extends State<BranchUserDetailPage> {
             children: [
               _buildInfoItem('Phone', '${widget.user.countryCode} ${widget.user.phoneNumber}'),
               _buildInfoItem('Bookings', widget.user.totalBookings.toString()),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: widget.user.isActive ? Colors.green : Colors.red,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  widget.user.isActive ? 'Active' : 'Inactive',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: widget.user.isVerified ? Colors.blue : Colors.orange,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  widget.user.isVerified ? 'Verified' : 'Unverified',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
             ],
           ),
         ],

@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'dart:io';
+import 'package:image_picker/image_picker.dart';
 import 'services/api_service.dart';
 import 'models/standalone_class_models.dart';
-import 'create_standalone_class_page.dart';
 
 class EditStandaloneClassPage extends StatefulWidget {
   final String accessToken;
@@ -24,16 +25,23 @@ class _EditStandaloneClassPageState extends State<EditStandaloneClassPage> {
   final _descriptionController = TextEditingController();
   final _instructorController = TextEditingController();
   final _capacityController = TextEditingController();
+  final _durationController = TextEditingController();
   
   bool _isLoading = false;
   List<ClassSchedule> _schedules = [];
-  MonthlySchedule? _monthlySchedule;
-  bool _useMonthlySchedule = false;
   bool _isActive = true;
   
-  final List<String> _daysOfWeek = [
-    'Sunday (0)', 'Monday (1)', 'Tuesday (2)', 'Wednesday (3)', 'Thursday (4)', 'Friday (5)', 'Saturday (6)'
-  ];
+  // Multi-date selection
+  Set<DateTime> _selectedDates = {};
+  TimeOfDay _defaultStartTime = const TimeOfDay(hour: 9, minute: 0);
+  TimeOfDay _defaultEndTime = const TimeOfDay(hour: 10, minute: 0);
+  
+  // Image handling
+  final ImagePicker _imagePicker = ImagePicker();
+  List<File> _selectedImages = [];
+  List<String> _existingImages = [];
+  bool _isUploadingImages = false;
+  
 
   @override
   void initState() {
@@ -46,14 +54,23 @@ class _EditStandaloneClassPageState extends State<EditStandaloneClassPage> {
     _descriptionController.text = widget.classData.description;
     _instructorController.text = widget.classData.instructor;
     _capacityController.text = widget.classData.capacity.toString();
+    _durationController.text = widget.classData.duration.toString();
     _isActive = widget.classData.isActive;
+    
+    // Initialize existing images
+    _existingImages = List.from(widget.classData.images);
     
     // Initialize schedules
     if (widget.classData.schedule.isNotEmpty) {
       _schedules = List.from(widget.classData.schedule);
-      _useMonthlySchedule = false;
+      // Populate selected dates from existing schedules
+      _selectedDates = _schedules.map((schedule) => schedule.date).toSet();
+      // Set default times from first schedule
+      if (_schedules.isNotEmpty) {
+        _defaultStartTime = TimeOfDay.fromDateTime(_schedules.first.startTime);
+        _defaultEndTime = TimeOfDay.fromDateTime(_schedules.first.endTime);
+      }
     }
-    // TODO: Initialize monthly schedule if available
   }
 
   @override
@@ -62,127 +79,134 @@ class _EditStandaloneClassPageState extends State<EditStandaloneClassPage> {
     _descriptionController.dispose();
     _instructorController.dispose();
     _capacityController.dispose();
+    _durationController.dispose();
     super.dispose();
   }
 
-  void _addSchedule() {
+  void _toggleDateSelection(DateTime date) {
     setState(() {
-      // Use a fixed date (e.g., next Monday) to avoid date-related validation issues
-      final now = DateTime.now();
-      // Monday = 1 in Dart, Monday = 1 in backend
-      final nextMonday = now.add(Duration(days: (8 - now.weekday) % 7));
-      
-      // Ensure the date matches the day of week
-      final targetDate = DateTime(nextMonday.year, nextMonday.month, nextMonday.day);
+      if (_selectedDates.contains(date)) {
+        _selectedDates.remove(date);
+      } else {
+        _selectedDates.add(date);
+      }
+      _generateSchedulesFromSelectedDates();
+    });
+  }
+
+  void _generateSchedulesFromSelectedDates() {
+    _schedules.clear();
+    for (final date in _selectedDates) {
+      final dartWeekday = date.weekday;
+      final backendDayOfWeek = dartWeekday == 7 ? 0 : dartWeekday;
       
       _schedules.add(ClassSchedule(
-        dayOfWeek: 1, // Monday (1) in backend format
-        startTime: DateTime(targetDate.year, targetDate.month, targetDate.day, 9, 0), // 9:00 AM
-        endTime: DateTime(targetDate.year, targetDate.month, targetDate.day, 10, 0), // 10:00 AM
+        dayOfWeek: backendDayOfWeek,
+        date: date,
+        startTime: DateTime.utc(date.year, date.month, date.day, _defaultStartTime.hour, _defaultStartTime.minute),
+        endTime: DateTime.utc(date.year, date.month, date.day, _defaultEndTime.hour, _defaultEndTime.minute),
       ));
-    });
-  }
-
-  void _removeSchedule(int index) {
-    setState(() {
-      _schedules.removeAt(index);
-    });
-  }
-
-  void _updateSchedule(int index, ClassSchedule schedule) {
-    setState(() {
-      _schedules[index] = schedule;
-    });
-  }
-
-  void _updateScheduleDay(int index, int newDayOfWeek) {
-    if (index >= 0 && index < _schedules.length) {
-      final currentSchedule = _schedules[index];
-      final now = DateTime.now();
-      
-      // Convert backend day format (0=Sunday, 1=Monday, ..., 6=Saturday) to Dart format (1=Monday, ..., 7=Sunday)
-      int dartWeekday;
-      if (newDayOfWeek == 0) {
-        dartWeekday = 7; // Sunday
-      } else {
-        dartWeekday = newDayOfWeek; // Monday=1, Tuesday=2, etc.
-      }
-      
-      // Find the next occurrence of the selected day
-      int daysToAdd = (dartWeekday - now.weekday + 7) % 7;
-      if (daysToAdd == 0) daysToAdd = 7; // If today is the selected day, go to next week
-      
-      final targetDate = now.add(Duration(days: daysToAdd));
-      
-      final newSchedule = ClassSchedule(
-        dayOfWeek: newDayOfWeek,
-        startTime: DateTime(
-          targetDate.year,
-          targetDate.month,
-          targetDate.day,
-          currentSchedule.startTime.hour,
-          currentSchedule.startTime.minute,
-        ),
-        endTime: DateTime(
-          targetDate.year,
-          targetDate.month,
-          targetDate.day,
-          currentSchedule.endTime.hour,
-          currentSchedule.endTime.minute,
-        ),
-      );
-      
-      _updateSchedule(index, newSchedule);
     }
   }
 
-  void _toggleScheduleMode() {
+  void _updateDefaultTimes() {
     setState(() {
-      _useMonthlySchedule = !_useMonthlySchedule;
-      if (_useMonthlySchedule) {
-        _schedules.clear();
-      } else {
-        _monthlySchedule = null;
-      }
+      _generateSchedulesFromSelectedDates();
     });
   }
 
-  void _openMonthlySchedulePicker() async {
-    final result = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => MonthlySchedulePickerPage(
-          initialSchedule: _monthlySchedule,
+  Future<void> _pickImages() async {
+    try {
+      final List<XFile> images = await _imagePicker.pickMultiImage(
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 85,
+      );
+
+      if (images.isNotEmpty) {
+        setState(() {
+          _selectedImages.addAll(images.map((image) => File(image.path)));
+        });
+      }
+    } catch (e) {
+      _showSnackBar('Error picking images: $e');
+    }
+  }
+
+  Future<void> _pickImageFromCamera() async {
+    try {
+      final XFile? image = await _imagePicker.pickImage(
+        source: ImageSource.camera,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 85,
+      );
+
+      if (image != null) {
+        setState(() {
+          _selectedImages.add(File(image.path));
+        });
+      }
+    } catch (e) {
+      _showSnackBar('Error taking photo: $e');
+    }
+  }
+
+  void _removeNewImage(int index) {
+    setState(() {
+      _selectedImages.removeAt(index);
+    });
+  }
+
+  void _removeExistingImage(int index) {
+    setState(() {
+      _existingImages.removeAt(index);
+    });
+  }
+
+  void _showSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: const Color(0xFFF8BB0C),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
         ),
       ),
     );
-    
-    if (result != null) {
-      setState(() {
-        _monthlySchedule = result;
-      });
-    }
   }
+
+
+  bool _schedulesChanged() {
+    if (_schedules.length != widget.classData.schedule.length) {
+      return true;
+    }
+    
+    for (int i = 0; i < _schedules.length; i++) {
+      final currentSchedule = _schedules[i];
+      final originalSchedule = widget.classData.schedule[i];
+      
+      if (currentSchedule.dayOfWeek != originalSchedule.dayOfWeek ||
+          currentSchedule.date != originalSchedule.date ||
+          currentSchedule.startTime != originalSchedule.startTime ||
+          currentSchedule.endTime != originalSchedule.endTime) {
+        return true;
+      }
+    }
+    
+    return false;
+  }
+
 
   Future<void> _submitForm() async {
     if (!_formKey.currentState!.validate()) return;
 
-    // Validate that at least one schedule is provided
-    if (!_useMonthlySchedule && _schedules.isEmpty) {
+    // Validate that at least one date is selected
+    if (_selectedDates.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please add at least one schedule'),
-          backgroundColor: Colors.red,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-      return;
-    }
-
-    if (_useMonthlySchedule && _monthlySchedule == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please select a monthly schedule'),
+          content: Text('Please select at least one date for the class schedule'),
           backgroundColor: Colors.red,
           behavior: SnackBarBehavior.floating,
         ),
@@ -191,34 +215,46 @@ class _EditStandaloneClassPageState extends State<EditStandaloneClassPage> {
     }
 
     // Validate that all schedules have valid times
-    if (!_useMonthlySchedule) {
-      for (int i = 0; i < _schedules.length; i++) {
-        final schedule = _schedules[i];
-        if (schedule.endTime.isBefore(schedule.startTime) || schedule.endTime.isAtSameMomentAs(schedule.startTime)) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Schedule ${i + 1}: End time must be after start time'),
-              backgroundColor: Colors.red,
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-          return;
-        }
-        
-        // Validate that the date matches the day of week
-        // Dart weekday: 1=Monday, 7=Sunday; Backend expects: 0=Sunday, 6=Saturday
-        final dartWeekday = schedule.startTime.weekday;
-        final expectedDayOfWeek = dartWeekday == 7 ? 0 : dartWeekday;
-        if (expectedDayOfWeek != schedule.dayOfWeek) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Schedule ${i + 1}: Date does not match selected day of week'),
-              backgroundColor: Colors.red,
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-          return;
-        }
+    for (int i = 0; i < _schedules.length; i++) {
+      final schedule = _schedules[i];
+      
+      // Validate that the date is not in the past (matching backend validation)
+      if (schedule.date.isBefore(DateTime.now().subtract(const Duration(days: 1)))) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Schedule ${i + 1}: Class date cannot be in the past'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        return;
+      }
+      
+      // Validate that end time is after start time
+      if (schedule.endTime.isBefore(schedule.startTime) || schedule.endTime.isAtSameMomentAs(schedule.startTime)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Schedule ${i + 1}: End time must be after start time'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        return;
+      }
+      
+      // Validate that start and end times are on the same date as the schedule date
+      final scheduleDate = DateTime(schedule.date.year, schedule.date.month, schedule.date.day);
+      final startDate = DateTime(schedule.startTime.year, schedule.startTime.month, schedule.startTime.day);
+      final endDate = DateTime(schedule.endTime.year, schedule.endTime.month, schedule.endTime.day);
+      if (!startDate.isAtSameMomentAs(scheduleDate) || !endDate.isAtSameMomentAs(scheduleDate)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Schedule ${i + 1}: Start and end times must be on the same date as the schedule date'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        return;
       }
     }
 
@@ -227,31 +263,71 @@ class _EditStandaloneClassPageState extends State<EditStandaloneClassPage> {
     });
 
     try {
+      // Check if images have changed
+      final imagesChanged = _existingImages.length != widget.classData.images.length ||
+          !_existingImages.every((image) => widget.classData.images.contains(image)) ||
+          _selectedImages.isNotEmpty;
+
+      // Only include fields that have changed
       final request = UpdateStandaloneClassRequest(
-        name: _nameController.text.trim(),
-        description: _descriptionController.text.trim(),
-        instructor: _instructorController.text.trim(),
-        capacity: int.parse(_capacityController.text),
-        schedule: _schedules,
-        monthlySchedule: _monthlySchedule,
-        isActive: _isActive,
+        name: _nameController.text.trim() != widget.classData.name ? _nameController.text.trim() : null,
+        description: _descriptionController.text.trim() != widget.classData.description ? _descriptionController.text.trim() : null,
+        instructor: _instructorController.text.trim() != widget.classData.instructor ? _instructorController.text.trim() : null,
+        capacity: int.parse(_capacityController.text) != widget.classData.capacity ? int.parse(_capacityController.text) : null,
+        duration: int.parse(_durationController.text) != widget.classData.duration ? int.parse(_durationController.text) : null,
+        schedule: _schedulesChanged() ? _schedules : null,
+        images: imagesChanged ? _existingImages : null,
+        isActive: _isActive != widget.classData.isActive ? _isActive : null,
       );
 
-      print('=== Form Submission Debug ===');
-      if (_useMonthlySchedule && _monthlySchedule != null) {
-        print('Monthly Schedule: ${_monthlySchedule!.month}/${_monthlySchedule!.year}');
-        print('Schedules count: ${_monthlySchedule!.schedules.length}');
-        for (int i = 0; i < _monthlySchedule!.schedules.length; i++) {
-          final schedule = _monthlySchedule!.schedules[i];
-          print('Schedule $i: Day ${schedule.dayOfWeek}, Start: ${schedule.startTime}, End: ${schedule.endTime}');
+      // Check if any fields have been changed
+      final hasChanges = request.name != null ||
+          request.description != null ||
+          request.instructor != null ||
+          request.capacity != null ||
+          request.duration != null ||
+          request.schedule != null ||
+          request.images != null ||
+          request.isActive != null;
+
+      if (!hasChanges) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('No changes detected. Please modify at least one field before updating.'),
+              backgroundColor: Colors.orange,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
         }
-      } else {
-        print('Regular Schedules count: ${_schedules.length}');
-        for (int i = 0; i < _schedules.length; i++) {
-          final schedule = _schedules[i];
-          print('Schedule $i: Day ${schedule.dayOfWeek}, Start: ${schedule.startTime}, End: ${schedule.endTime}');
+        setState(() {
+          _isLoading = false;
+        });
+        return;
+      }
+
+      print('=== Form Submission Debug ===');
+      print('Fields being updated:');
+      print('Name: ${request.name != null ? "Updated to: ${request.name}" : "No change"}');
+      print('Description: ${request.description != null ? "Updated to: ${request.description}" : "No change"}');
+      print('Instructor: ${request.instructor != null ? "Updated to: ${request.instructor}" : "No change"}');
+      print('Capacity: ${request.capacity != null ? "Updated to: ${request.capacity}" : "No change"}');
+      print('Duration: ${request.duration != null ? "Updated to: ${request.duration}" : "No change"}');
+      print('Schedule: ${request.schedule != null ? "Updated (${request.schedule!.length} schedules)" : "No change"}');
+      print('IsActive: ${request.isActive != null ? "Updated to: ${request.isActive}" : "No change"}');
+      
+      if (request.schedule != null) {
+        print('Schedule details:');
+        for (int i = 0; i < request.schedule!.length; i++) {
+          final schedule = request.schedule![i];
+          final days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+          final dayName = days[schedule.dayOfWeek];
+          print('Schedule $i: Day $dayName (${schedule.dayOfWeek}), Date: ${schedule.date.toIso8601String()}, Start: ${schedule.startTime.toIso8601String()}, End: ${schedule.endTime.toIso8601String()}');
+          print('Schedule $i JSON: ${schedule.toJson()}');
         }
       }
+      
+      print('Full request JSON: ${request.toJson()}');
 
       final result = await ApiService.updateStandaloneClass(
         widget.classData.id,
@@ -260,6 +336,28 @@ class _EditStandaloneClassPageState extends State<EditStandaloneClassPage> {
       );
 
       if (result['success']) {
+        // Upload new images if any are selected
+        if (_selectedImages.isNotEmpty) {
+          setState(() {
+            _isUploadingImages = true;
+          });
+
+          for (final imageFile in _selectedImages) {
+            try {
+              final uploadResult = await ApiService.uploadStandaloneClassImage(
+                imageFile,
+                widget.classData.id,
+                widget.accessToken,
+              );
+              if (!uploadResult['success']) {
+                print('Failed to upload image: ${uploadResult['message']}');
+              }
+            } catch (e) {
+              print('Error uploading image: $e');
+            }
+          }
+        }
+
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -295,6 +393,7 @@ class _EditStandaloneClassPageState extends State<EditStandaloneClassPage> {
       if (mounted) {
         setState(() {
           _isLoading = false;
+          _isUploadingImages = false;
         });
       }
     }
@@ -455,6 +554,29 @@ class _EditStandaloneClassPageState extends State<EditStandaloneClassPage> {
                             ),
                             const SizedBox(height: 16),
 
+                            // Duration Field
+                            TextFormField(
+                              controller: _durationController,
+                              decoration: const InputDecoration(
+                                labelText: 'Duration (minutes) *',
+                                border: OutlineInputBorder(),
+                                prefixIcon: Icon(Icons.timer),
+                              ),
+                              keyboardType: TextInputType.number,
+                              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                              validator: (value) {
+                                if (value == null || value.isEmpty) {
+                                  return 'Please enter duration';
+                                }
+                                final duration = int.tryParse(value);
+                                if (duration == null || duration <= 0) {
+                                  return 'Duration must be greater than 0';
+                                }
+                                return null;
+                              },
+                            ),
+                            const SizedBox(height: 16),
+
                             // Active Status
                             Row(
                               children: [
@@ -487,52 +609,9 @@ class _EditStandaloneClassPageState extends State<EditStandaloneClassPage> {
                             ),
                             const SizedBox(height: 24),
 
-                            // Schedule Mode Toggle
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'Schedule Type:',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                const SizedBox(height: 12),
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: ChoiceChip(
-                                        label: const Text('Weekly'),
-                                        selected: !_useMonthlySchedule,
-                                        onSelected: (selected) {
-                                          if (selected) _toggleScheduleMode();
-                                        },
-                                        selectedColor: const Color(0xFFF8BB0C),
-                                        labelStyle: const TextStyle(fontSize: 14),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: ChoiceChip(
-                                        label: const Text('Monthly'),
-                                        selected: _useMonthlySchedule,
-                                        onSelected: (selected) {
-                                          if (selected) _toggleScheduleMode();
-                                        },
-                                        selectedColor: const Color(0xFFF8BB0C),
-                                        labelStyle: const TextStyle(fontSize: 14),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 16),
-
-                            // Schedule Section
+                            // Images Section
                             const Text(
-                              'Schedule *',
+                              'Class Images',
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
@@ -540,66 +619,386 @@ class _EditStandaloneClassPageState extends State<EditStandaloneClassPage> {
                             ),
                             const SizedBox(height: 8),
                             
-                            if (_useMonthlySchedule) ...[
-                              const Text(
-                                'Select schedules for the entire month',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: Colors.grey,
-                                ),
+                            const Text(
+                              'Manage existing images and add new ones',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey,
                               ),
-                              const SizedBox(height: 16),
-                              
-                              // Monthly Schedule Picker Button
-                              SizedBox(
-                                width: double.infinity,
-                                child: ElevatedButton.icon(
-                                  onPressed: _openMonthlySchedulePicker,
-                                  icon: const Icon(Icons.calendar_month),
-                                  label: Text(_monthlySchedule != null 
-                                      ? 'Edit Monthly Schedule (${_monthlySchedule!.schedules.length} schedules)'
-                                      : 'Select Monthly Schedule'),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(0xFFF8BB0C),
-                                    foregroundColor: Colors.black,
-                                    padding: const EdgeInsets.symmetric(vertical: 12),
-                                  ),
-                                ),
-                              ),
-                            ] else ...[
-                              const Text(
-                                'At least one schedule is required',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: Colors.grey,
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-
-                              // Add Schedule Button
-                              SizedBox(
-                                width: double.infinity,
-                                child: ElevatedButton.icon(
-                                  onPressed: _addSchedule,
-                                  icon: const Icon(Icons.add),
-                                  label: const Text('Add Schedule'),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(0xFFF8BB0C),
-                                    foregroundColor: Colors.black,
-                                    padding: const EdgeInsets.symmetric(vertical: 12),
-                                  ),
-                                ),
-                              ),
-                            ],
+                            ),
                             const SizedBox(height: 16),
 
-                            // Schedule List
-                            if (_schedules.isNotEmpty) ...[
-                              ..._schedules.asMap().entries.map((entry) {
-                                final index = entry.key;
-                                final schedule = entry.value;
-                                return _buildScheduleCard(index, schedule);
+                            // Image Selection Buttons
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: ElevatedButton.icon(
+                                    onPressed: _pickImages,
+                                    icon: const Icon(Icons.photo_library, size: 18),
+                                    label: const Text('Add Images'),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: const Color(0xFFF8BB0C),
+                                      foregroundColor: Colors.black,
+                                      padding: const EdgeInsets.symmetric(vertical: 12),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: ElevatedButton.icon(
+                                    onPressed: _pickImageFromCamera,
+                                    icon: const Icon(Icons.camera_alt, size: 18),
+                                    label: const Text('Take Photo'),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.blue[600],
+                                      foregroundColor: Colors.white,
+                                      padding: const EdgeInsets.symmetric(vertical: 12),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 16),
+
+                            // Existing Images Display
+                            if (_existingImages.isNotEmpty) ...[
+                              Container(
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: Colors.grey[50],
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: Colors.grey[300]!),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Existing Images (${_existingImages.length})',
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 12),
+                                    GridView.builder(
+                                      shrinkWrap: true,
+                                      physics: const NeverScrollableScrollPhysics(),
+                                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                                        crossAxisCount: 3,
+                                        crossAxisSpacing: 8,
+                                        mainAxisSpacing: 8,
+                                        childAspectRatio: 1,
+                                      ),
+                                      itemCount: _existingImages.length,
+                                      itemBuilder: (context, index) {
+                                        return Stack(
+                                          children: [
+                                            Container(
+                                              decoration: BoxDecoration(
+                                                borderRadius: BorderRadius.circular(8),
+                                                border: Border.all(color: Colors.grey[300]!),
+                                              ),
+                                              child: ClipRRect(
+                                                borderRadius: BorderRadius.circular(8),
+                                                child: Image.network(
+                                                  _existingImages[index],
+                                                  fit: BoxFit.cover,
+                                                  errorBuilder: (context, error, stackTrace) {
+                                                    return Container(
+                                                      color: Colors.grey[200],
+                                                      child: const Icon(
+                                                        Icons.broken_image,
+                                                        color: Colors.grey,
+                                                      ),
+                                                    );
+                                                  },
+                                                ),
+                                              ),
+                                            ),
+                                            Positioned(
+                                              top: 4,
+                                              right: 4,
+                                              child: GestureDetector(
+                                                onTap: () => _removeExistingImage(index),
+                                                child: Container(
+                                                  width: 20,
+                                                  height: 20,
+                                                  decoration: const BoxDecoration(
+                                                    color: Colors.red,
+                                                    shape: BoxShape.circle,
+                                                  ),
+                                                  child: const Icon(
+                                                    Icons.close,
+                                                    color: Colors.white,
+                                                    size: 12,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        );
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                            ],
+
+                            // New Images Display
+                            if (_selectedImages.isNotEmpty) ...[
+                              Container(
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF8BB0C).withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: const Color(0xFFF8BB0C)),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'New Images (${_selectedImages.length})',
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                        color: Color(0xFFF8BB0C),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 12),
+                                    GridView.builder(
+                                      shrinkWrap: true,
+                                      physics: const NeverScrollableScrollPhysics(),
+                                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                                        crossAxisCount: 3,
+                                        crossAxisSpacing: 8,
+                                        mainAxisSpacing: 8,
+                                        childAspectRatio: 1,
+                                      ),
+                                      itemCount: _selectedImages.length,
+                                      itemBuilder: (context, index) {
+                                        return Stack(
+                                          children: [
+                                            Container(
+                                              decoration: BoxDecoration(
+                                                borderRadius: BorderRadius.circular(8),
+                                                border: Border.all(color: const Color(0xFFF8BB0C)),
+                                              ),
+                                              child: ClipRRect(
+                                                borderRadius: BorderRadius.circular(8),
+                                                child: Image.file(
+                                                  _selectedImages[index],
+                                                  fit: BoxFit.cover,
+                                                ),
+                                              ),
+                                            ),
+                                            Positioned(
+                                              top: 4,
+                                              right: 4,
+                                              child: GestureDetector(
+                                                onTap: () => _removeNewImage(index),
+                                                child: Container(
+                                                  width: 20,
+                                                  height: 20,
+                                                  decoration: const BoxDecoration(
+                                                    color: Colors.red,
+                                                    shape: BoxShape.circle,
+                                                  ),
+                                                  child: const Icon(
+                                                    Icons.close,
+                                                    color: Colors.white,
+                                                    size: 12,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        );
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                            ],
+
+                            // Schedule Section
+                            const Text(
+                              'Class Schedule *',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            
+                            const Text(
+                              'Select dates and set times for your class',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+
+                            // Default Time Settings
+                            Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: Colors.grey[50],
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: Colors.grey[300]!),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'Default Times (applied to all selected dates)',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: TextFormField(
+                                          readOnly: true,
+                                          decoration: InputDecoration(
+                                            labelText: 'Start Time',
+                                            border: const OutlineInputBorder(),
+                                            suffixIcon: IconButton(
+                                              onPressed: () async {
+                                                final time = await showTimePicker(
+                                                  context: context,
+                                                  initialTime: _defaultStartTime,
+                                                );
+                                                if (time != null) {
+                                                  setState(() {
+                                                    _defaultStartTime = time;
+                                                    _updateDefaultTimes();
+                                                  });
+                                                }
+                                              },
+                                              icon: const Icon(Icons.access_time),
+                                            ),
+                                          ),
+                                          initialValue: '${_defaultStartTime.hour.toString().padLeft(2, '0')}:${_defaultStartTime.minute.toString().padLeft(2, '0')}',
+                                        ),
+                                      ),
+                                      const SizedBox(width: 16),
+                                      Expanded(
+                                        child: TextFormField(
+                                          readOnly: true,
+                                          decoration: InputDecoration(
+                                            labelText: 'End Time',
+                                            border: const OutlineInputBorder(),
+                                            suffixIcon: IconButton(
+                                              onPressed: () async {
+                                                final time = await showTimePicker(
+                                                  context: context,
+                                                  initialTime: _defaultEndTime,
+                                                );
+                                                if (time != null) {
+                                                  setState(() {
+                                                    _defaultEndTime = time;
+                                                    _updateDefaultTimes();
+                                                  });
+                                                }
+                                              },
+                                              icon: const Icon(Icons.access_time),
+                                            ),
+                                          ),
+                                          initialValue: '${_defaultEndTime.hour.toString().padLeft(2, '0')}:${_defaultEndTime.minute.toString().padLeft(2, '0')}',
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+
+                            // Multi-Date Calendar
+                            Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: Colors.grey[300]!),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Select Dates (${_selectedDates.length} selected)',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.grey[700],
+                                    ),
+                                  ),
+                                  const SizedBox(height: 12),
+                            SizedBox(
+                                    height: 300,
+                                    child: _buildMultiDateCalendar(),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+
+                            // Selected Dates Summary
+                            if (_selectedDates.isNotEmpty) ...[
+                              Container(
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF8BB0C).withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: const Color(0xFFF8BB0C)),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        const Icon(Icons.calendar_today, color: Color(0xFFF8BB0C)),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          'Selected Dates (${_selectedDates.length})',
+                                          style: const TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w600,
+                                            color: Color(0xFFF8BB0C),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Wrap(
+                                      spacing: 8,
+                                      runSpacing: 4,
+                                      children: _selectedDates.map((date) {
+                                        return Chip(
+                                          label: Text(_formatDateWithDay(date)),
+                                          backgroundColor: const Color(0xFFF8BB0C),
+                                          labelStyle: const TextStyle(color: Colors.black),
+                                          deleteIcon: const Icon(Icons.close, color: Colors.black, size: 18),
+                                          onDeleted: () => _toggleDateSelection(date),
+                                        );
                               }).toList(),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 16),
                             ],
 
                             const SizedBox(height: 32),
@@ -617,9 +1016,27 @@ class _EditStandaloneClassPageState extends State<EditStandaloneClassPage> {
                                     borderRadius: BorderRadius.circular(12),
                                   ),
                                 ),
-                                child: _isLoading
-                                    ? const CircularProgressIndicator(
-                                        valueColor: AlwaysStoppedAnimation<Color>(Colors.black),
+                                child: _isLoading || _isUploadingImages
+                                    ? Row(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          const SizedBox(
+                                            width: 20,
+                                            height: 20,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                              valueColor: AlwaysStoppedAnimation<Color>(Colors.black),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 12),
+                                          Text(
+                                            _isUploadingImages ? 'Uploading Images...' : 'Updating Class...',
+                                            style: const TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ],
                                       )
                                     : const Text(
                                         'Update Class',
@@ -644,138 +1061,163 @@ class _EditStandaloneClassPageState extends State<EditStandaloneClassPage> {
     );
   }
 
-  Widget _buildScheduleCard(int index, ClassSchedule schedule) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.grey[100],
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey[300]!),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Schedule ${index + 1}',
+  Widget _buildMultiDateCalendar() {
+    final now = DateTime.now();
+    final currentMonth = DateTime(now.year, now.month);
+    
+    return StatefulBuilder(
+      builder: (context, setState) {
+        DateTime displayMonth = currentMonth;
+        
+        return Column(
+          children: [
+            // Month navigation
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                IconButton(
+                  onPressed: () {
+                    setState(() {
+                      displayMonth = DateTime(displayMonth.year, displayMonth.month - 1);
+                    });
+                  },
+                  icon: const Icon(Icons.chevron_left),
+                ),
+                Text(
+                  '${_getMonthName(displayMonth.month)} ${displayMonth.year}',
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                IconButton(
+                  onPressed: () {
+                    setState(() {
+                      displayMonth = DateTime(displayMonth.year, displayMonth.month + 1);
+                    });
+                  },
+                  icon: const Icon(Icons.chevron_right),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            
+            // Calendar grid
+            Expanded(
+              child: _buildMultiDateCalendarGrid(displayMonth),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildMultiDateCalendarGrid(DateTime month) {
+    final firstDayOfMonth = DateTime(month.year, month.month, 1);
+    final lastDayOfMonth = DateTime(month.year, month.month + 1, 0);
+    final firstDayWeekday = firstDayOfMonth.weekday % 7; // Convert to 0-6 (Sunday = 0)
+    final daysInMonth = lastDayOfMonth.day;
+    
+    final days = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+    
+    return Column(
+      children: [
+        // Days of week header
+        Row(
+          children: days.map((day) => Expanded(
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Text(
+                day,
+                textAlign: TextAlign.center,
                 style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                  color: Colors.grey,
                 ),
               ),
-              IconButton(
-                onPressed: () => _removeSchedule(index),
-                icon: const Icon(Icons.delete, color: Colors.red),
-                tooltip: 'Remove Schedule',
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-
-          // Day of Week
-          DropdownButtonFormField<int>(
-            value: schedule.dayOfWeek,
-            decoration: const InputDecoration(
-              labelText: 'Day of Week',
-              border: OutlineInputBorder(),
             ),
-            items: _daysOfWeek.asMap().entries.map((entry) {
-              return DropdownMenuItem(
-                value: entry.key,
-                child: Text(entry.value),
-              );
-            }).toList(),
-            onChanged: (value) {
-              if (value != null) {
-                _updateScheduleDay(index, value);
+          )).toList(),
+        ),
+        
+        // Calendar days
+        Expanded(
+          child: GridView.builder(
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 7,
+              childAspectRatio: 1,
+            ),
+            itemCount: 42, // 6 weeks * 7 days
+            itemBuilder: (context, index) {
+              final dayNumber = index - firstDayWeekday + 1;
+              final isCurrentMonth = dayNumber > 0 && dayNumber <= daysInMonth;
+              final isToday = isCurrentMonth && 
+                DateTime(month.year, month.month, dayNumber).day == DateTime.now().day &&
+                DateTime(month.year, month.month, dayNumber).month == DateTime.now().month &&
+                DateTime(month.year, month.month, dayNumber).year == DateTime.now().year;
+              final isSelected = isCurrentMonth && 
+                _selectedDates.contains(DateTime(month.year, month.month, dayNumber));
+              final isPast = isCurrentMonth && 
+                DateTime(month.year, month.month, dayNumber).isBefore(DateTime.now().subtract(const Duration(days: 1)));
+              
+              if (!isCurrentMonth) {
+                return Container(); // Empty cell for days outside current month
               }
+              
+              return GestureDetector(
+                onTap: isPast ? null : () {
+                  final selectedDay = DateTime(month.year, month.month, dayNumber);
+                  _toggleDateSelection(selectedDay);
+                },
+                child: Container(
+                  margin: const EdgeInsets.all(2),
+                  decoration: BoxDecoration(
+                    color: isSelected 
+                        ? const Color(0xFFF8BB0C) 
+                        : isToday 
+                            ? Colors.blue[50] 
+                            : Colors.transparent,
+                    borderRadius: BorderRadius.circular(8),
+                    border: isToday && !isSelected 
+                        ? Border.all(color: Colors.blue, width: 2) 
+                        : null,
+                  ),
+                  child: Center(
+                    child: Text(
+                      dayNumber.toString(),
+                      style: TextStyle(
+                        fontWeight: isSelected || isToday ? FontWeight.bold : FontWeight.normal,
+                        color: isPast 
+                            ? Colors.grey[400]
+                            : isSelected 
+                                ? Colors.black 
+                                : isToday 
+                                    ? Colors.blue 
+                                    : Colors.black,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
+                ),
+              );
             },
           ),
-          const SizedBox(height: 16),
-
-          // Time Row
-          Row(
-            children: [
-              Expanded(
-                child: TextFormField(
-                  readOnly: true,
-                  decoration: InputDecoration(
-                    labelText: 'Start Time',
-                    border: const OutlineInputBorder(),
-                    suffixIcon: IconButton(
-                      onPressed: () async {
-                        final time = await showTimePicker(
-                          context: context,
-                          initialTime: TimeOfDay.fromDateTime(schedule.startTime),
-                        );
-                        if (time != null) {
-                          // Create a new DateTime with the selected time but keep the same date
-                          final newDateTime = DateTime(
-                            schedule.startTime.year,
-                            schedule.startTime.month,
-                            schedule.startTime.day,
-                            time.hour,
-                            time.minute,
-                          );
-                          _updateSchedule(index, ClassSchedule(
-                            dayOfWeek: schedule.dayOfWeek,
-                            startTime: newDateTime,
-                            endTime: schedule.endTime,
-                          ));
-                        }
-                      },
-                      icon: const Icon(Icons.access_time),
-                    ),
-                  ),
-                  controller: TextEditingController(
-                    text: '${schedule.startTime.hour.toString().padLeft(2, '0')}:${schedule.startTime.minute.toString().padLeft(2, '0')}',
-                  ),
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: TextFormField(
-                  readOnly: true,
-                  decoration: InputDecoration(
-                    labelText: 'End Time',
-                    border: const OutlineInputBorder(),
-                    suffixIcon: IconButton(
-                      onPressed: () async {
-                        final time = await showTimePicker(
-                          context: context,
-                          initialTime: TimeOfDay.fromDateTime(schedule.endTime),
-                        );
-                        if (time != null) {
-                          // Create a new DateTime with the selected time but keep the same date
-                          final newDateTime = DateTime(
-                            schedule.endTime.year,
-                            schedule.endTime.month,
-                            schedule.endTime.day,
-                            time.hour,
-                            time.minute,
-                          );
-                          _updateSchedule(index, ClassSchedule(
-                            dayOfWeek: schedule.dayOfWeek,
-                            startTime: schedule.startTime,
-                            endTime: newDateTime,
-                          ));
-                        }
-                      },
-                      icon: const Icon(Icons.access_time),
-                    ),
-                  ),
-                  controller: TextEditingController(
-                    text: '${schedule.endTime.hour.toString().padLeft(2, '0')}:${schedule.endTime.minute.toString().padLeft(2, '0')}',
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
+        ),
+      ],
     );
+  }
+
+
+  String _formatDateWithDay(DateTime date) {
+    final days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return '${days[date.weekday % 7]}, ${months[date.month - 1]} ${date.day}, ${date.year}';
+  }
+
+
+  String _getMonthName(int month) {
+    const months = ['January', 'February', 'March', 'April', 'May', 'June',
+                    'July', 'August', 'September', 'October', 'November', 'December'];
+    return months[month - 1];
   }
 }

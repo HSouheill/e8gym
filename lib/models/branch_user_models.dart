@@ -1,3 +1,91 @@
+/// Branch With Users Response Model
+class BranchWithUsersResponse {
+  final String id;
+  final String? branchId;
+  final String branchName;
+  final String adminName;
+  final String email;
+  final String phoneNumber;
+  final String location;
+  final String? imageUrl;
+  final List<String> images;
+  final List<dynamic> classes;
+  final List<dynamic> teamMembers;
+  final List<BranchUserResponse> users;
+  final int userCount;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  final String createdBy;
+
+  BranchWithUsersResponse({
+    required this.id,
+    this.branchId,
+    required this.branchName,
+    required this.adminName,
+    required this.email,
+    required this.phoneNumber,
+    required this.location,
+    this.imageUrl,
+    required this.images,
+    required this.classes,
+    required this.teamMembers,
+    required this.users,
+    required this.userCount,
+    required this.createdAt,
+    required this.updatedAt,
+    required this.createdBy,
+  });
+
+  factory BranchWithUsersResponse.fromJson(Map<String, dynamic> json) {
+    return BranchWithUsersResponse(
+      id: json['id'] ?? '',
+      branchId: json['branch_id'],
+      branchName: json['branch_name'] ?? '',
+      adminName: json['admin_name'] ?? '',
+      email: json['email'] ?? '',
+      phoneNumber: json['phone_number'] ?? '',
+      location: json['location'] ?? '',
+      imageUrl: json['image_url'],
+      images: (json['images'] as List<dynamic>?)?.cast<String>() ?? [],
+      classes: json['classes'] ?? [],
+      teamMembers: json['team_members'] ?? [],
+      users: (json['users'] as List<dynamic>?)
+          ?.map((userData) => BranchUserResponse.fromJson(userData))
+          .toList() ?? [],
+      userCount: json['user_count'] ?? 0,
+      createdAt: DateTime.parse(json['created_at']),
+      updatedAt: DateTime.parse(json['updated_at']),
+      createdBy: json['created_by'] ?? '',
+    );
+  }
+}
+
+/// Branch With Users List Response Model
+class BranchWithUsersListResponse {
+  final List<BranchWithUsersResponse> branches;
+  final int total;
+  final int page;
+  final int limit;
+
+  BranchWithUsersListResponse({
+    required this.branches,
+    required this.total,
+    required this.page,
+    required this.limit,
+  });
+
+  factory BranchWithUsersListResponse.fromJson(Map<String, dynamic> json) {
+    return BranchWithUsersListResponse(
+      branches: (json['branches'] as List<dynamic>?)
+          ?.map((branchData) => BranchWithUsersResponse.fromJson(branchData))
+          .toList() ?? [],
+      total: json['total'] ?? 0,
+      page: json['page'] ?? 1,
+      limit: json['limit'] ?? 20,
+    );
+  }
+}
+
 /// Branch User Response Model
 class BranchUserResponse {
   final String id;
@@ -8,8 +96,6 @@ class BranchUserResponse {
   final String phoneNumber;
   final String countryCode;
   final DateTime? dateOfBirth;
-  final bool isActive;
-  final bool isVerified;
   final DateTime? firstBooked;
   final DateTime? lastBooked;
   final int totalBookings;
@@ -25,8 +111,6 @@ class BranchUserResponse {
     required this.phoneNumber,
     required this.countryCode,
     this.dateOfBirth,
-    required this.isActive,
-    required this.isVerified,
     this.firstBooked,
     this.lastBooked,
     required this.totalBookings,
@@ -46,8 +130,6 @@ class BranchUserResponse {
       dateOfBirth: json['date_of_birth'] != null 
           ? DateTime.parse(json['date_of_birth']) 
           : null,
-      isActive: json['is_active'] ?? false,
-      isVerified: json['is_verified'] ?? false,
       firstBooked: json['first_booked'] != null 
           ? DateTime.parse(json['first_booked']) 
           : null,

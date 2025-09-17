@@ -2,11 +2,16 @@ import 'package:flutter/material.dart';
 import 'services/api_service.dart';
 import 'services/storage_service.dart';
 import 'models/auth_models.dart';
+import 'utils/secure_logger.dart';
 import 'create_branch_page.dart';
 import 'standalone_classes_page.dart';
 import 'admin_login_page.dart';
 import 'branch_detail_page.dart';
 import 'edit_branch_page.dart';
+import 'super_admin_users_page.dart';
+import 'super_admin_bookings_page.dart';
+import 'super_admin_settings_page.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class SuperAdminDashboardPage extends StatefulWidget {
   final String accessToken;
@@ -32,6 +37,7 @@ class _SuperAdminDashboardPageState extends State<SuperAdminDashboardPage> {
   bool _hasMorePages = true;
   bool _isSidebarOpen = false;
   bool _isLoggingOut = false;
+  String? _backgroundImageUrl;
   
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
@@ -45,22 +51,85 @@ class _SuperAdminDashboardPageState extends State<SuperAdminDashboardPage> {
     
     // Initialize storage service and check token
     _initializeStorage();
+    _loadBackgroundImage();
   }
 
   Future<void> _initializeStorage() async {
     try {
       await _storageService.init();
-      final storedToken = _storageService.getAccessToken();
-      print('=== Storage Initialization Debug ===');
-      print('Stored token available: ${storedToken != null}');
-      if (storedToken != null) {
-        print('Stored token length: ${storedToken.length}');
-        print('Stored token starts with Bearer: ${storedToken.startsWith('Bearer ')}');
-      }
-      print('Widget access token: ${widget.accessToken}');
-      print('Widget token length: ${widget.accessToken.length}');
+      final storedToken = await _storageService.getAccessToken();
+      SecureLogger.debug('Storage initialization', data: {
+        'stored_token_available': storedToken != null,
+        'stored_token_length': storedToken?.length ?? 0,
+        'widget_token_length': widget.accessToken.length,
+      });
     } catch (e) {
-      print('Error initializing storage: $e');
+      SecureLogger.error('Error initializing storage', error: e);
+    }
+  }
+
+  Future<void> _loadBackgroundImage() async {
+    try {
+      // First try to get from API
+      final resp = await ApiService.getAppSettings(widget.accessToken);
+      if (resp['success'] == true) {
+        final data = resp['data'];
+        String? backgroundPath;
+        
+        // Extract background image path from various possible keys
+        if (data is Map) {
+          backgroundPath = data['background_image'] ?? 
+                          data['BackgroundImage'] ?? 
+                          data['backgroundImage'];
+        }
+        
+        if (backgroundPath != null && backgroundPath.isNotEmpty) {
+          // Normalize the URL (convert /app/ to /uploads/app/)
+          String normalizedUrl = backgroundPath;
+          if (backgroundPath.startsWith('app/')) {
+            normalizedUrl = 'uploads/$backgroundPath';
+          } else if (!backgroundPath.startsWith('http')) {
+            normalizedUrl = backgroundPath.startsWith('/') ? backgroundPath : '/$backgroundPath';
+          }
+          
+          final fullUrl = normalizedUrl.startsWith('http') 
+              ? normalizedUrl 
+              : 'https://e8gym.online/$normalizedUrl';
+          
+          if (mounted) {
+            setState(() {
+              _backgroundImageUrl = fullUrl;
+            });
+          }
+          
+          // Cache the URL for future use
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('app_background_url', fullUrl);
+          return;
+        }
+      }
+      
+      // Fallback to cached value if API didn't return a background
+      final prefs = await SharedPreferences.getInstance();
+      final cachedUrl = prefs.getString('app_background_url');
+      if (mounted && cachedUrl != null && cachedUrl.isNotEmpty) {
+        setState(() {
+          _backgroundImageUrl = cachedUrl;
+        });
+      }
+    } catch (e) {
+      // Fallback to cached value on error
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        final cachedUrl = prefs.getString('app_background_url');
+        if (mounted && cachedUrl != null && cachedUrl.isNotEmpty) {
+          setState(() {
+            _backgroundImageUrl = cachedUrl;
+          });
+        }
+      } catch (_) {
+        // Ignore errors, fallback to default background
+      }
     }
   }
 
@@ -102,6 +171,18 @@ class _SuperAdminDashboardPageState extends State<SuperAdminDashboardPage> {
 
       if (result['success']) {
         final data = result['data'];
+        print('=== API Response Debug ===');
+        print('Raw API data: $data');
+        print('Data type: ${data.runtimeType}');
+        if (data is Map && data.containsKey('branches')) {
+          print('Branches count: ${(data['branches'] as List).length}');
+          for (int i = 0; i < (data['branches'] as List).length; i++) {
+            final branch = data['branches'][i];
+            print('Branch $i: ${branch['branch_name']} - Image: ${branch['image']}');
+          }
+        }
+        print('========================');
+        
         final branchListResponse = BranchListResponse.fromJson(data);
         
         setState(() {
@@ -229,21 +310,42 @@ class _SuperAdminDashboardPageState extends State<SuperAdminDashboardPage> {
       print('Token starts with Bearer: ${widget.accessToken.startsWith('Bearer ')}');
       
       // Get stored token for comparison
-      final storedToken = _storageService.getAccessToken();
-      print('Stored token: ${storedToken != null ? '${storedToken.substring(0, 20)}...' : 'null'}');
+      final storedToken = await _storageService.getAccessToken();
+      SecureLogger.debug('Logout token check', data: {
+        'stored_token_available': storedToken != null,
+        'widget_token_length': widget.accessToken.length,
+      });
       
       // Use stored token if available, otherwise use widget token
       final tokenToUse = storedToken ?? widget.accessToken;
-      print('Token to use for logout: ${tokenToUse.substring(0, 20)}...');
       
-      final result = await ApiService.superAdminLogout(tokenToUse);
+      // Try to call logout API, but don't fail if it doesn't work
+      try {
+        final result = await ApiService.superAdminLogout(tokenToUse);
+        print('Logout API result: ${result['success']}');
+      } catch (e) {
+        print('Logout API failed, but continuing with local logout: $e');
+      }
       
-      if (result['success']) {
-        // Clear stored auth data
+      // Always clear stored auth data regardless of API response
+      await _storageService.clearAuthData();
+      print('Local auth data cleared successfully');
+      
+      if (mounted) {
+        // Navigate back to admin login page
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(
+            builder: (context) => const AdminLoginPage(),
+          ),
+          (route) => false,
+        );
+      }
+    } catch (e) {
+      print('Error during logout process: $e');
+      // Even if there's an error, try to clear local data and navigate
+      try {
         await _storageService.clearAuthData();
-        
         if (mounted) {
-          // Navigate back to admin login page
           Navigator.of(context).pushAndRemoveUntil(
             MaterialPageRoute(
               builder: (context) => const AdminLoginPage(),
@@ -251,14 +353,11 @@ class _SuperAdminDashboardPageState extends State<SuperAdminDashboardPage> {
             (route) => false,
           );
         }
-      } else {
+      } catch (clearError) {
+        print('Error clearing auth data: $clearError');
         if (mounted) {
-          _showSnackBar(result['message'] ?? 'Logout failed');
+          _showSnackBar('An error occurred during logout: $e');
         }
-      }
-    } catch (e) {
-      if (mounted) {
-        _showSnackBar('An error occurred during logout: $e');
       }
     } finally {
       if (mounted) {
@@ -268,6 +367,7 @@ class _SuperAdminDashboardPageState extends State<SuperAdminDashboardPage> {
       }
     }
   }
+
 
   Widget _buildSidebarMenuItem({
     required IconData icon,
@@ -279,7 +379,7 @@ class _SuperAdminDashboardPageState extends State<SuperAdminDashboardPage> {
     
     return Container(
       decoration: BoxDecoration(
-        color: isSelected ? const Color(0xFFF8BB0C).withOpacity(0.2) : Colors.transparent,
+        color: isSelected ? const Color(0xFFF8BB0C).withValues(alpha: 0.2) : Colors.transparent,
         borderRadius: BorderRadius.circular(10),
       ),
       child: ListTile(
@@ -327,47 +427,70 @@ class _SuperAdminDashboardPageState extends State<SuperAdminDashboardPage> {
             colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
           ),
         ),
-        child: Container(
-          decoration: const BoxDecoration(
-            image: DecorationImage(
-              image: AssetImage('assets/background/background.png'),
-              fit: BoxFit.cover,
-              colorFilter: ColorFilter.mode(
-                Color(0x50000000),
-                BlendMode.darken,
+        child: Stack(
+          children: [
+            // Static background fallback
+            Container(
+              decoration: const BoxDecoration(
+                image: DecorationImage(
+                  image: AssetImage('assets/background/background.png'),
+                  fit: BoxFit.cover,
+                  colorFilter: ColorFilter.mode(
+                    Color(0x50000000),
+                    BlendMode.darken,
+                  ),
+                ),
               ),
             ),
-          ),
-          child: SafeArea(
-            child: Stack(
-              children: [
-                // Main Content
-                Column(
-                  children: [
-                    // Header
-                    Padding(
-                      padding: const EdgeInsets.all(18.0),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'SuperAdmin Dashboard',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 24,
-                                    fontWeight: FontWeight.bold,
+            // Dynamic background overlay
+            if (_backgroundImageUrl != null)
+              Positioned.fill(
+                child: Image.network(
+                  _backgroundImageUrl!,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    // If network image fails, show nothing (fallback to static background)
+                    return const SizedBox.shrink();
+                  },
+                ),
+              ),
+            // Dark overlay
+            const Positioned.fill(
+              child: ColoredBox(
+                color: Color(0x50000000),
+              ),
+            ),
+            // Main content
+            SafeArea(
+              child: Stack(
+                children: [
+                  // Main Content
+                  Column(
+                    children: [
+                      // Header
+                      Padding(
+                        padding: const EdgeInsets.all(18.0),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'SuperAdmin Dashboard',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 24,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
-                                ),
-                                Text(
-                                  'Welcome, ${widget.userEmail}',
-                                  style: const TextStyle(
-                                    color: Colors.white70,
-                                    fontSize: 16,
+                                  Text(
+                                    'Welcome, ${widget.userEmail}',
+                                    style: const TextStyle(
+                                      color: Colors.white70,
+                                      fontSize: 16,
+                                    ),
                                   ),
-                                ),
                               ],
                             ),
                           ),
@@ -438,9 +561,9 @@ class _SuperAdminDashboardPageState extends State<SuperAdminDashboardPage> {
                       padding: const EdgeInsets.symmetric(horizontal: 18.0),
                       child: Container(
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.1),
+                          color: Colors.white.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.white.withOpacity(0.3)),
+                          border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
                         ),
                         child: TextField(
                           controller: _searchController,
@@ -507,12 +630,45 @@ class _SuperAdminDashboardPageState extends State<SuperAdminDashboardPage> {
                               fontWeight: FontWeight.bold,
                             ),
                           ),
-                          Text(
-                            '${_branches.length} of $_totalBranches',
-                            style: const TextStyle(
-                              color: Colors.white70,
-                              fontSize: 14,
-                            ),
+                          Row(
+                            children: [
+                              Text(
+                                '${_branches.length} of $_totalBranches',
+                                style: const TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 14,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              GestureDetector(
+                                onTap: _isLoading ? null : () => _loadBranches(refresh: true),
+                                child: Container(
+                                  width: 36,
+                                  height: 36,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withValues(alpha: 0.2),
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
+                                  ),
+                                  child: _isLoading
+                                      ? const Center(
+                                          child: SizedBox(
+                                            width: 16,
+                                            height: 16,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                            ),
+                                          ),
+                                        )
+                                      : const Icon(
+                                          Icons.refresh,
+                                          color: Colors.white,
+                                          size: 20,
+                                        ),
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
@@ -559,14 +715,14 @@ class _SuperAdminDashboardPageState extends State<SuperAdminDashboardPage> {
                     child: Container(
                       width: 250,
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.95),
+                        color: Colors.white.withValues(alpha: 0.95),
                         borderRadius: const BorderRadius.only(
                           topLeft: Radius.circular(20),
                           bottomLeft: Radius.circular(20),
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.2),
+                            color: Colors.black.withValues(alpha: 0.2),
                             blurRadius: 10,
                             offset: const Offset(-2, 0),
                           ),
@@ -661,7 +817,33 @@ class _SuperAdminDashboardPageState extends State<SuperAdminDashboardPage> {
                                   title: 'Users',
                                   isSelected: false,
                                   onTap: () {
-                                    // TODO: Implement Users page
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => SuperAdminUsersPage(
+                                          accessToken: widget.accessToken,
+                                        ),
+                                      ),
+                                    );
+                                    setState(() {
+                                      _isSidebarOpen = false;
+                                    });
+                                  },
+                                ),
+                                const SizedBox(height: 6),
+                                _buildSidebarMenuItem(
+                                  icon: Icons.book_online,
+                                  title: 'Bookings',
+                                  isSelected: false,
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => SuperAdminBookingsPage(
+                                          accessToken: widget.accessToken,
+                                        ),
+                                      ),
+                                    );
                                     setState(() {
                                       _isSidebarOpen = false;
                                     });
@@ -673,7 +855,14 @@ class _SuperAdminDashboardPageState extends State<SuperAdminDashboardPage> {
                                   title: 'Settings',
                                   isSelected: false,
                                   onTap: () {
-                                    // TODO: Implement Users page
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => SuperAdminSettingsPage(
+                                          accessToken: widget.accessToken,
+                                        ),
+                                      ),
+                                    );
                                     setState(() {
                                       _isSidebarOpen = false;
                                     });
@@ -691,46 +880,56 @@ class _SuperAdminDashboardPageState extends State<SuperAdminDashboardPage> {
                               children: [
                                 const Divider(),
                                 const SizedBox(height: 8),
-                                Row(
-                                  children: [
-                                    CircleAvatar(
-                                      radius: 18,
-                                      backgroundColor: const Color(0xFFF8BB0C),
-                                      child: Text(
-                                        widget.userEmail[0].toUpperCase(),
-                                        style: const TextStyle(
-                                          color: Colors.black,
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 14,
+                                
+                                // User Info Section
+                                Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey[50],
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(color: Colors.grey[200]!),
+                                  ),
+                                  child: Column(
+                                    children: [
+                                      // User Avatar
+                                      CircleAvatar(
+                                        radius: 25,
+                                        backgroundColor: const Color(0xFFF8BB0C),
+                                        child: Text(
+                                          widget.userEmail[0].toUpperCase(),
+                                          style: const TextStyle(
+                                            color: Colors.black,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 18,
+                                          ),
                                         ),
                                       ),
-                                    ),
-                                    const SizedBox(width: 10),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            widget.userEmail,
-                                            style: const TextStyle(
-                                              fontWeight: FontWeight.w600,
-                                              fontSize: 13,
-                                            ),
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                          const Text(
-                                            'SuperAdmin',
-                                            style: TextStyle(
-                                              fontSize: 11,
-                                              color: Colors.grey,
-                                            ),
-                                          ),
-                                        ],
+                                      const SizedBox(height: 8),
+                                      
+                                      // User Info
+                                      Text(
+                                        widget.userEmail,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 13,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                        textAlign: TextAlign.center,
                                       ),
-                                    ),
-                                  ],
+                                      const Text(
+                                        'SuperAdmin',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          color: Colors.grey,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
+                                
                                 const SizedBox(height: 12),
+                                
+                                // Logout Button
                                 SizedBox(
                                   width: double.infinity,
                                   child: ElevatedButton.icon(
@@ -765,23 +964,22 @@ class _SuperAdminDashboardPageState extends State<SuperAdminDashboardPage> {
                       ),
                     ),
                   ),
-                  ],
-                ),
-              
+                ],
+              ),
             ),
-          ),
+          ],
         ),
-      );
-    
+      ),
+    );
   }
 
   Widget _buildStatCard(String title, String value, IconData icon) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.1),
+        color: Colors.white.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withOpacity(0.3)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
       ),
       child: Column(
         children: [
@@ -813,19 +1011,98 @@ class _SuperAdminDashboardPageState extends State<SuperAdminDashboardPage> {
   }
 
   Widget _buildBranchCard(BranchResponse branch) {
+    // Debug: Print branch image information
+    print('=== Branch Image Debug ===');
+    print('Branch Name: ${branch.branchName}');
+    print('Branch ID: ${branch.branchId}');
+    print('Image URL: ${branch.image}');
+    print('Image is null: ${branch.image == null}');
+    print('Image is empty: ${branch.image?.isEmpty ?? true}');
+    print('Image length: ${branch.image?.length ?? 0}');
+    print('========================');
+    
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.1),
+        color: Colors.white.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withOpacity(0.3)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
+              // Branch Image
+              Container(
+                width: 60,
+                height: 60,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: branch.image != null && branch.image!.isNotEmpty
+                      ? Image.network(
+                          branch.image!,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            print('=== Image Error Debug ===');
+                            print('Branch: ${branch.branchName}');
+                            print('Image URL: ${branch.image}');
+                            print('Error: $error');
+                            print('Stack Trace: $stackTrace');
+                            print('========================');
+                            return Container(
+                              color: const Color(0xFFF8BB0C).withValues(alpha: 0.3),
+                              child: const Icon(
+                                Icons.business,
+                                color: Colors.white,
+                                size: 30,
+                              ),
+                            );
+                          },
+                          loadingBuilder: (context, child, loadingProgress) {
+                            if (loadingProgress == null) {
+                              print('=== Image Loaded Successfully ===');
+                              print('Branch: ${branch.branchName}');
+                              print('Image URL: ${branch.image}');
+                              print('================================');
+                              return child;
+                            }
+                            print('=== Image Loading ===');
+                            print('Branch: ${branch.branchName}');
+                            print('Image URL: ${branch.image}');
+                            print('Progress: ${loadingProgress.cumulativeBytesLoaded}/${loadingProgress.expectedTotalBytes}');
+                            print('====================');
+                            return Container(
+                              color: Colors.white.withValues(alpha: 0.1),
+                              child: const Center(
+                                child: SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                        )
+                      : Container(
+                          color: const Color(0xFFF8BB0C).withValues(alpha: 0.3),
+                          child: const Icon(
+                            Icons.business,
+                            color: Colors.white,
+                            size: 30,
+                          ),
+                        ),
+                ),
+              ),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -846,10 +1123,19 @@ class _SuperAdminDashboardPageState extends State<SuperAdminDashboardPage> {
                         fontSize: 14,
                       ),
                     ),
+                    if (branch.branchId != null && branch.branchId!.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        'ID: ${branch.branchId}',
+                        style: const TextStyle(
+                          color: Colors.white60,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
-              
             ],
           ),
           const SizedBox(height: 12),
@@ -881,11 +1167,33 @@ class _SuperAdminDashboardPageState extends State<SuperAdminDashboardPage> {
                 size: 16,
               ),
               const SizedBox(width: 8),
-              Text(
-                branch.phoneNumber,
-                style: const TextStyle(
-                  color: Colors.white70,
-                  fontSize: 14,
+              Expanded(
+                child: Text(
+                  branch.phoneNumber,
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Icon(
+                Icons.location_on,
+                color: Colors.white70,
+                size: 16,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  branch.location,
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontSize: 14,
+                  ),
                 ),
               ),
             ],
@@ -993,9 +1301,9 @@ class _SuperAdminDashboardPageState extends State<SuperAdminDashboardPage> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.2),
+          color: color.withValues(alpha: 0.2),
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: color.withOpacity(0.5)),
+          border: Border.all(color: color.withValues(alpha: 0.5)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,

@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'create_branch_page.dart';
 import 'services/api_service.dart';
 import 'branch_forgot_password_page.dart';
 import 'branch_dashboard_page.dart';
 import 'super_admin_dashboard_page.dart';
+import 'main.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class AdminLoginPage extends StatefulWidget {
   const AdminLoginPage({super.key});
@@ -19,6 +20,13 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
   String _selectedAdminType = 'Branch';
   bool _isLoading = false;
   bool _obscurePassword = true; // Add this line for password visibility toggle
+  String? _backgroundImageUrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadBackgroundImage();
+  }
 
   @override
   void dispose() {
@@ -27,9 +35,75 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
     super.dispose();
   }
 
+  Future<void> _loadBackgroundImage() async {
+    try {
+      // First try to get from API
+      final resp = await ApiService.getAppSettings('');
+      if (resp['success'] == true) {
+        final data = resp['data'];
+        String? backgroundPath;
+        
+        // Extract background image path from various possible keys
+        if (data is Map) {
+          backgroundPath = data['background_image'] ?? 
+                          data['BackgroundImage'] ?? 
+                          data['backgroundImage'];
+        }
+        
+        if (backgroundPath != null && backgroundPath.isNotEmpty) {
+          // Normalize the URL (convert /app/ to /uploads/app/)
+          String normalizedUrl = backgroundPath;
+          if (backgroundPath.startsWith('app/')) {
+            normalizedUrl = 'uploads/$backgroundPath';
+          } else if (!backgroundPath.startsWith('http')) {
+            normalizedUrl = backgroundPath.startsWith('/') ? backgroundPath : '/$backgroundPath';
+          }
+          
+          final fullUrl = normalizedUrl.startsWith('http') 
+              ? normalizedUrl 
+              : 'https://e8gym.online/$normalizedUrl';
+          
+          if (mounted) {
+            setState(() {
+              _backgroundImageUrl = fullUrl;
+            });
+          }
+          
+          // Cache the URL for future use
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('app_background_url', fullUrl);
+          return;
+        }
+      }
+      
+      // Fallback to cached value if API didn't return a background
+      final prefs = await SharedPreferences.getInstance();
+      final cachedUrl = prefs.getString('app_background_url');
+      if (mounted && cachedUrl != null && cachedUrl.isNotEmpty) {
+        setState(() {
+          _backgroundImageUrl = cachedUrl;
+        });
+      }
+    } catch (e) {
+      // Fallback to cached value on error
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        final cachedUrl = prefs.getString('app_background_url');
+        if (mounted && cachedUrl != null && cachedUrl.isNotEmpty) {
+          setState(() {
+            _backgroundImageUrl = cachedUrl;
+          });
+        }
+      } catch (_) {
+        // Ignore errors, fallback to default background
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      resizeToAvoidBottomInset: true,
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
@@ -38,30 +112,73 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
             colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
           ),
         ),
-        child: Container(
-          decoration: const BoxDecoration(
-            image: DecorationImage(
-              image: AssetImage('assets/background/background.png'),
-              fit: BoxFit.cover,
-              colorFilter: ColorFilter.mode(
-                Color(0x50000000), // Dark overlay for better text readability
-                BlendMode.darken,
+        child: Stack(
+          children: [
+            // Static background fallback
+            Positioned.fill(
+              child: Image.asset(
+                'assets/background/background.png',
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  // Return a dark container with gradient if image fails to load
+                  return Container(
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [Color(0xFF1a1a1a), Color(0xFF000000)],
+                      ),
+                    ),
+                  );
+                },
               ),
             ),
-          ),
-          child: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 18.0, vertical: 30),
-              child: Expanded(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.start,
-                  children: [
+            // Dynamic background overlay
+            if (_backgroundImageUrl != null)
+              Positioned.fill(
+                child: Image.network(
+                  _backgroundImageUrl!,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    // If network image fails, show nothing (fallback to static background)
+                    return const SizedBox.shrink();
+                  },
+                ),
+              ),
+            // Dark overlay for better text readability
+            Positioned.fill(
+              child: Container(
+                decoration: const BoxDecoration(
+                  color: Color(0x80000000), // Stronger dark overlay
+                ),
+              ),
+            ),
+            // Main content
+            SafeArea(
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                padding: EdgeInsets.only(
+                  left: 18.0,
+                  right: 18.0,
+                  top: 20,
+                  bottom: MediaQuery.of(context).viewInsets.bottom + 50,
+                ),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    minHeight: MediaQuery.of(context).size.height - MediaQuery.of(context).padding.top - MediaQuery.of(context).padding.bottom,
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    children: [
                     // Back button
                     Align(
                       alignment: Alignment.topLeft,
                       child: GestureDetector(
                         onTap: () {
-                          Navigator.pop(context);
+                          Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(builder: (context) => const LoginPage()),
+                          );
                         },
                         child: Container(
                           margin: const EdgeInsets.only(top: 0),
@@ -130,41 +247,59 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
                                 end: Alignment.bottomCenter,
                                 colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
                               ),
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(8),
                             ),
                             padding: const EdgeInsets.all(8),
                             child: const Icon(
-                              Icons.admin_panel_settings,
+                              Icons.shield,
                               color: Colors.white,
-                              size: 24,
+                              size: 20,
                             ),
                           ),
                           const SizedBox(width: 16),
                           Expanded(
-                            child: DropdownButtonHideUnderline(
-                              child: DropdownButton<String>(
-                                value: _selectedAdminType,
-                                dropdownColor: Colors.black87,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w500,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Branch',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w500,
+                                  ),
                                 ),
-                                items: ['Branch', 'Super Admin'].map((String value) {
-                                  return DropdownMenuItem<String>(
-                                    value: value,
-                                    child: Text(value),
-                                  );
-                                }).toList(),
-                                onChanged: (String? newValue) {
-                                  if (newValue != null) {
-                                    setState(() {
-                                      _selectedAdminType = newValue;
-                                    });
-                                  }
-                                },
-                              ),
+                                DropdownButtonHideUnderline(
+                                  child: DropdownButton<String>(
+                                    value: _selectedAdminType,
+                                    dropdownColor: Colors.black87,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                    items: ['Branch', 'Super Admin'].map((String value) {
+                                      return DropdownMenuItem<String>(
+                                        value: value,
+                                        child: Text(value),
+                                      );
+                                    }).toList(),
+                                    onChanged: (String? newValue) {
+                                      if (newValue != null) {
+                                        setState(() {
+                                          _selectedAdminType = newValue;
+                                        });
+                                      }
+                                    },
+                                  ),
+                                ),
+                              ],
                             ),
+                          ),
+                          const Icon(
+                            Icons.keyboard_arrow_down,
+                            color: Colors.white,
+                            size: 20,
                           ),
                         ],
                       ),
@@ -172,7 +307,7 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
                     
                     const SizedBox(height: 32),
                     
-                    // Username field
+                    // Email field
                     Container(
                       decoration: BoxDecoration(
                         border: Border(
@@ -191,25 +326,38 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
                                 end: Alignment.bottomCenter,
                                 colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
                               ),
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(8),
                             ),
                             padding: const EdgeInsets.all(8),
                             child: const Icon(
                               Icons.person,
                               color: Colors.white,
-                              size: 24,
+                              size: 20,
                             ),
                           ),
                           const SizedBox(width: 16),
                           Expanded(
-                            child: TextField(
-                              controller: _usernameController,
-                              style: const TextStyle(color: Colors.white),
-                              decoration: const InputDecoration(
-                                hintText: 'Email',
-                                hintStyle: TextStyle(color: Colors.white70),
-                                border: InputBorder.none,
-                              ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Email',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                TextField(
+                                  controller: _usernameController,
+                                  style: const TextStyle(color: Colors.white),
+                                  decoration: const InputDecoration(
+                                    hintText: 'Enter your email',
+                                    hintStyle: TextStyle(color: Colors.white70),
+                                    border: InputBorder.none,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ],
@@ -237,26 +385,39 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
                                 end: Alignment.bottomCenter,
                                 colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
                               ),
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(8),
                             ),
                             padding: const EdgeInsets.all(8),
                             child: const Icon(
                               Icons.lock,
                               color: Colors.white,
-                              size: 24,
+                              size: 20,
                             ),
                           ),
                           const SizedBox(width: 16),
                           Expanded(
-                            child: TextField(
-                              controller: _passwordController,
-                              obscureText: _obscurePassword, // Use the boolean variable
-                              style: const TextStyle(color: Colors.white),
-                              decoration: const InputDecoration(
-                                hintText: 'Password',
-                                hintStyle: TextStyle(color: Colors.white70),
-                                border: InputBorder.none,
-                              ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Password',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                TextField(
+                                  controller: _passwordController,
+                                  obscureText: _obscurePassword,
+                                  style: const TextStyle(color: Colors.white),
+                                  decoration: const InputDecoration(
+                                    hintText: 'Enter your password',
+                                    hintStyle: TextStyle(color: Colors.white70),
+                                    border: InputBorder.none,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                           // Add show/hide password toggle button
@@ -271,7 +432,7 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
                               child: Icon(
                                 _obscurePassword ? Icons.visibility : Icons.visibility_off,
                                 color: Colors.white,
-                                size: 24,
+                                size: 20,
                               ),
                             ),
                           ),
@@ -346,13 +507,15 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
                       ),
                     ),
                     
+                    // Extra spacing for better scrolling
+                    const SizedBox(height: 100),
                     
-                    
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
+          ],
         ),
       ),
     );
