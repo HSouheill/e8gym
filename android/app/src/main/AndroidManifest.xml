@@ -23,7 +23,7 @@
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:enableOnBackInvokedCallback="true">
         <activity
-            android:name=".MainActivity"
+            android:name="com.e8gym.e8gym.MainActivity"
             android:exported="true"
             android:launchMode="singleTop"
             android:taskAffinity=""
