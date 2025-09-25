@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:io';
+import 'dart:convert';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'services/api_service.dart';
@@ -1243,6 +1244,16 @@ class _CreateBranchPageState extends State<CreateBranchPage> {
         teamMembers: _teamMembers,
       );
 
+      // Debug: Print the posted data
+      print('=== Branch Creation Debug ===');
+      print('Team Members Count: ${_teamMembers.length}');
+      for (int i = 0; i < _teamMembers.length; i++) {
+        print('Team Member $i: ${_teamMembers[i].toJson()}');
+      }
+      print('Branch Data JSON:');
+      print(jsonEncode(branchData.toJson()));
+      print('============================');
+
       // Call API to create branch
       final result = await ApiService.createBranch(
         branchData.toJson(),
@@ -1302,8 +1313,8 @@ class _CreateBranchPageState extends State<CreateBranchPage> {
           _teamMemberImages.clear();
         });
         
-        // Navigate back or show success page
-        Navigator.pop(context);
+        // Navigate back with success indicator
+        Navigator.pop(context, true);
       } else {
         _showSnackBar(result['message'] ?? 'Failed to create branch');
         print('Branch creation error: ${result['error']}');

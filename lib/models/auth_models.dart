@@ -5,18 +5,18 @@ class SignupRequest {
   final String fullName;
   final String email;
   final String password;
-  final String phoneNumber;
-  final String countryCode;
-  final DateTime dateOfBirth;
+  final String? phoneNumber;
+  final String? countryCode;
+  final DateTime? dateOfBirth;
   final String? branchId;
 
   SignupRequest({
     required this.fullName,
     required this.email,
     required this.password,
-    required this.phoneNumber,
-    required this.countryCode,
-    required this.dateOfBirth,
+    this.phoneNumber,
+    this.countryCode,
+    this.dateOfBirth,
     this.branchId,
   });
 
@@ -25,10 +25,19 @@ class SignupRequest {
       'full_name': fullName,
       'email': email,
       'password': password,
-      'phone_number': phoneNumber,
-      'country_code': countryCode,
-      'date_of_birth': dateOfBirth.toUtc().toIso8601String(),
     };
+    
+    if (phoneNumber != null && phoneNumber!.isNotEmpty) {
+      data['phone_number'] = phoneNumber;
+    }
+    
+    if (countryCode != null && countryCode!.isNotEmpty) {
+      data['country_code'] = countryCode;
+    }
+    
+    if (dateOfBirth != null) {
+      data['date_of_birth'] = dateOfBirth!.toUtc().toIso8601String();
+    }
     
     if (branchId != null) {
       data['branch_id'] = branchId;
@@ -44,7 +53,7 @@ class SignupRequest {
       password: json['password'],
       phoneNumber: json['phone_number'],
       countryCode: json['country_code'],
-      dateOfBirth: DateTime.parse(json['date_of_birth']),
+      dateOfBirth: json['date_of_birth'] != null ? DateTime.parse(json['date_of_birth']) : null,
       branchId: json['branch_id'],
     );
   }
@@ -80,9 +89,9 @@ class UserResponse {
   final String id;
   final String fullName;
   final String email;
-  final String phoneNumber;
-  final String countryCode;
-  final DateTime dateOfBirth;
+  final String? phoneNumber;
+  final String? countryCode;
+  final DateTime? dateOfBirth;
   final bool isActive;
   final bool isVerified;
   final String role;
@@ -93,9 +102,9 @@ class UserResponse {
     required this.id,
     required this.fullName,
     required this.email,
-    required this.phoneNumber,
-    required this.countryCode,
-    required this.dateOfBirth,
+    this.phoneNumber,
+    this.countryCode,
+    this.dateOfBirth,
     required this.isActive,
     required this.isVerified,
     required this.role,
@@ -104,19 +113,30 @@ class UserResponse {
   });
 
   Map<String, dynamic> toJson() {
-    return {
+    final Map<String, dynamic> data = {
       'id': id,
       'full_name': fullName,
       'email': email,
-      'phone_number': phoneNumber,
-      'country_code': countryCode,
-      'date_of_birth': dateOfBirth.toUtc().toIso8601String(),
       'is_active': isActive,
       'is_verified': isVerified,
       'role': role,
       'created_at': createdAt.toUtc().toIso8601String(),
       'updated_at': updatedAt.toUtc().toIso8601String(),
     };
+    
+    if (phoneNumber != null) {
+      data['phone_number'] = phoneNumber;
+    }
+    
+    if (countryCode != null) {
+      data['country_code'] = countryCode;
+    }
+    
+    if (dateOfBirth != null) {
+      data['date_of_birth'] = dateOfBirth!.toUtc().toIso8601String();
+    }
+    
+    return data;
   }
 
   factory UserResponse.fromJson(Map<String, dynamic> json) {
@@ -126,7 +146,7 @@ class UserResponse {
       email: json['email'],
       phoneNumber: json['phone_number'],
       countryCode: json['country_code'],
-      dateOfBirth: DateTime.parse(json['date_of_birth']),
+      dateOfBirth: json['date_of_birth'] != null ? DateTime.parse(json['date_of_birth']) : null,
       isActive: json['is_active'],
       isVerified: json['is_verified'],
       role: json['role'],

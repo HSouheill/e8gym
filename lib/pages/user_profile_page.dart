@@ -57,8 +57,8 @@ class _UserProfilePageState extends State<UserProfilePage> {
   void _initializeFields() {
     if (_currentUser != null) {
       _fullNameController.text = _currentUser!.fullName;
-      _phoneNumberController.text = _currentUser!.phoneNumber;
-      _countryCodeController.text = _currentUser!.countryCode;
+      _phoneNumberController.text = _currentUser!.phoneNumber ?? '';
+      _countryCodeController.text = _currentUser!.countryCode ?? '';
       _selectedDateOfBirth = _currentUser!.dateOfBirth;
       // Note: Height and weight are not in the current UserResponse model
       // They would need to be added to the model or fetched separately

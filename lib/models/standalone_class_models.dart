@@ -68,16 +68,33 @@ class ClassSchedule {
   });
 
   Map<String, dynamic> toJson() {
-    // Ensure all dates are on the same calendar day
-    final scheduleDate = DateTime.utc(date.year, date.month, date.day);
-    final startDateTime = DateTime.utc(date.year, date.month, date.day, startTime.hour, startTime.minute);
-    final endDateTime = DateTime.utc(date.year, date.month, date.day, endTime.hour, endTime.minute);
+    // For recurring schedules (placeholder date 2024-01-01), use a more appropriate date
+    DateTime scheduleDate;
+    if (date.year == 2024 && date.month == 1 && date.day == 1) {
+      // This is a recurring schedule, use current date as base
+      final now = DateTime.now();
+      scheduleDate = DateTime(now.year, now.month, now.day);
+    } else {
+      // This is a specific date schedule
+      scheduleDate = DateTime(date.year, date.month, date.day);
+    }
+    
+    // Convert UTC times back to local times for storage
+    final localStartTime = startTime.toLocal();
+    final localEndTime = endTime.toLocal();
+    
+    // Create local DateTime objects with the correct date and time
+    final startDateTime = DateTime(scheduleDate.year, scheduleDate.month, scheduleDate.day, localStartTime.hour, localStartTime.minute);
+    final endDateTime = DateTime(scheduleDate.year, scheduleDate.month, scheduleDate.day, localEndTime.hour, localEndTime.minute);
+    
+    // Create date-only DateTime for the date field (no time component)
+    final dateOnly = DateTime.utc(scheduleDate.year, scheduleDate.month, scheduleDate.day);
     
     return {
       'day_of_week': dayOfWeek,
-      'date': scheduleDate.toIso8601String(),
-      'start_time': startDateTime.toIso8601String(),
-      'end_time': endDateTime.toIso8601String(),
+      'date': dateOnly.toIso8601String(),
+      'start_time': startDateTime.toUtc().toIso8601String(),
+      'end_time': endDateTime.toUtc().toIso8601String(),
     };
   }
 

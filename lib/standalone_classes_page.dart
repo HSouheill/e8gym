@@ -22,6 +22,7 @@ class _StandaloneClassesPageState extends State<StandaloneClassesPage> {
   bool _isLoading = false;
   String _searchQuery = '';
   String _selectedFilter = 'All'; // All, Active, Inactive, Expired, Expiring Soon
+  bool _classesModified = false; // Track if classes were modified
   
   final TextEditingController _searchController = TextEditingController();
 
@@ -168,14 +169,23 @@ class _StandaloneClassesPageState extends State<StandaloneClassesPage> {
     );
     
     if (result == true) {
+      setState(() {
+        _classesModified = true;
+      });
       _loadClasses(refresh: true);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Container(
+    return WillPopScope(
+      onWillPop: () async {
+        // Return the modification flag when popping
+        Navigator.of(context).pop(_classesModified);
+        return false; // Prevent default pop behavior since we're handling it manually
+      },
+      child: Scaffold(
+        body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
@@ -473,6 +483,7 @@ class _StandaloneClassesPageState extends State<StandaloneClassesPage> {
           ),
         ),
       ),
+    ),
     );
   }
 
@@ -928,6 +939,9 @@ class _StandaloneClassesPageState extends State<StandaloneClassesPage> {
     );
     
     if (result == true) {
+      setState(() {
+        _classesModified = true;
+      });
       _loadClasses(refresh: true);
     }
   }
@@ -995,6 +1009,9 @@ class _StandaloneClassesPageState extends State<StandaloneClassesPage> {
 
         if (result['success']) {
           _showSnackBar('Class renewed successfully for $weeksActive weeks');
+          setState(() {
+            _classesModified = true;
+          });
           // Refresh the classes list
           _loadClasses(refresh: true);
         } else {
@@ -1036,6 +1053,9 @@ class _StandaloneClassesPageState extends State<StandaloneClassesPage> {
 
         if (result['success']) {
           _showSnackBar('Class deleted successfully');
+          setState(() {
+            _classesModified = true;
+          });
           // Refresh the classes list
           _loadClasses(refresh: true);
         } else {

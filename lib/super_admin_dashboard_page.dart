@@ -262,8 +262,8 @@ class _SuperAdminDashboardPageState extends State<SuperAdminDashboardPage> {
     });
   }
 
-  void _navigateToStandaloneClasses() {
-    Navigator.push(
+  Future<void> _navigateToStandaloneClasses() async {
+    final result = await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => StandaloneClassesPage(
@@ -271,6 +271,11 @@ class _SuperAdminDashboardPageState extends State<SuperAdminDashboardPage> {
         ),
       ),
     );
+    
+    // Refresh branches if classes were modified (which might affect branch stats)
+    if (result == true) {
+      _loadBranches(refresh: true);
+    }
   }
 
   Future<void> _handleLogout() async {
@@ -497,8 +502,8 @@ class _SuperAdminDashboardPageState extends State<SuperAdminDashboardPage> {
                           // Menu Button
                           
                           GestureDetector(
-                            onTap: () {
-                              Navigator.push(
+                            onTap: () async {
+                              final result = await Navigator.push(
                                 context,
                                 MaterialPageRoute(
                                   builder: (context) => CreateBranchPage(
@@ -506,6 +511,11 @@ class _SuperAdminDashboardPageState extends State<SuperAdminDashboardPage> {
                                   ),
                                 ),
                               );
+                              
+                              // Refresh branches if a new branch was created
+                              if (result == true) {
+                                _loadBranches(refresh: true);
+                              }
                             },
                             child: Container(
                               width: 50,
@@ -1336,8 +1346,8 @@ class _SuperAdminDashboardPageState extends State<SuperAdminDashboardPage> {
     );
   }
 
-  void _editBranch(BranchResponse branch) {
-    Navigator.push(
+  Future<void> _editBranch(BranchResponse branch) async {
+    final result = await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => EditBranchPage(
@@ -1346,6 +1356,11 @@ class _SuperAdminDashboardPageState extends State<SuperAdminDashboardPage> {
         ),
       ),
     );
+    
+    // Refresh branches if the branch was updated
+    if (result == true) {
+      _loadBranches(refresh: true);
+    }
   }
 
   Future<void> _deleteBranch(BranchResponse branch) async {

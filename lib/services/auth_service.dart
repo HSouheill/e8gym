@@ -3,7 +3,6 @@ import 'package:http/http.dart' as http;
 import '../models/auth_models.dart';
 import '../utils/api_config.dart';
 import '../utils/secure_logger.dart';
-import '../utils/secure_error_handler.dart';
 import 'security_service.dart';
 
 class AuthService {
@@ -66,8 +65,8 @@ class AuthService {
         fullName: SecurityService.sanitizeInput(request.fullName),
         email: sanitizedEmail,
         password: request.password,
-        phoneNumber: SecurityService.sanitizeInput(request.phoneNumber),
-        countryCode: SecurityService.sanitizeInput(request.countryCode),
+        phoneNumber: request.phoneNumber != null ? SecurityService.sanitizeInput(request.phoneNumber!) : null,
+        countryCode: request.countryCode != null ? SecurityService.sanitizeInput(request.countryCode!) : null,
         dateOfBirth: request.dateOfBirth,
         branchId: request.branchId,
       );

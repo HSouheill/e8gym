@@ -638,11 +638,18 @@ class ApiService {
       final headers = SecurityService.getSecurityHeaders(accessToken);
       headers['X-Device-ID'] = deviceId;
       
+      print('=== API Service Create Branch Debug ===');
+      print('URL: ${ApiConfig.baseUrl}${ApiConfig.createBranch}');
+      print('Request data: ${jsonEncode(branchData)}');
+      
       final response = await http.post(
         Uri.parse('${ApiConfig.baseUrl}${ApiConfig.createBranch}'),
         headers: headers,
         body: jsonEncode(branchData),
       );
+      
+      print('Response status: ${response.statusCode}');
+      print('Response body: ${response.body}');
 
       if (response.statusCode == 201) {
         final data = jsonDecode(response.body);
@@ -2118,6 +2125,12 @@ class ApiService {
       print('=== Update Branch Class Schedule Debug ===');
       print('URL: ${ApiConfig.baseUrl}${ApiConfig.updateBranchClassSchedule}/$classId/schedule');
       print('Request body: ${jsonEncode(scheduleData.toJson())}');
+      print('Schedule count: ${scheduleData.schedule.length}');
+      for (int i = 0; i < scheduleData.schedule.length; i++) {
+        final schedule = scheduleData.schedule[i];
+        print('Schedule $i: dayOfWeek=${schedule.dayOfWeek}, date=${schedule.date}, startTime=${schedule.startTime}, endTime=${schedule.endTime}');
+        print('Schedule $i JSON: ${jsonEncode(schedule.toJson())}');
+      }
       
       final deviceId = await SecurityService.getDeviceId();
       final headers = SecurityService.getSecurityHeaders(accessToken);
@@ -2131,6 +2144,17 @@ class ApiService {
       
       print('Response status: ${response.statusCode}');
       print('Response body: ${response.body}');
+      
+      if (response.statusCode != 200) {
+        print('=== Error Details ===');
+        try {
+          final errorData = jsonDecode(response.body);
+          print('Error message: ${errorData['message']}');
+          print('Error details: ${errorData['error']}');
+        } catch (e) {
+          print('Failed to parse error response: $e');
+        }
+      }
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);

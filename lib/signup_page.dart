@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/auth_service.dart';
@@ -44,7 +43,7 @@ class _SignupPageState extends State<SignupPage> {
   @override
   void initState() {
     super.initState();
-    _countryCodeController.text = '+961'; // Lebanese country code
+    // Country code is now optional, so we don't pre-fill it
     _loadBranches();
     _loadBackgroundImage();
   }
@@ -230,16 +229,6 @@ class _SignupPageState extends State<SignupPage> {
       return;
     }
 
-    if (_parsedDateOfBirth == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please select your date of birth'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
-
     if (!_acceptPolicies) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -255,16 +244,20 @@ class _SignupPageState extends State<SignupPage> {
     });
 
     try {
-      // Debug: Print the date being sent
-      print('Date being sent: ${_parsedDateOfBirth!.toUtc().toIso8601String()}');
+      // Debug: Print the date being sent if available
+      if (_parsedDateOfBirth != null) {
+        print('Date being sent: ${_parsedDateOfBirth!.toUtc().toIso8601String()}');
+      } else {
+        print('No date of birth provided');
+      }
       
       final signupRequest = SignupRequest(
         fullName: _fullNameController.text.trim(),
         email: _emailController.text.trim(),
         password: _passwordController.text,
-        phoneNumber: _phoneController.text.trim(),
-        countryCode: _countryCodeController.text.trim(),
-        dateOfBirth: _parsedDateOfBirth!,
+        phoneNumber: _phoneController.text.trim().isNotEmpty ? _phoneController.text.trim() : null,
+        countryCode: _countryCodeController.text.trim().isNotEmpty ? _countryCodeController.text.trim() : null,
+        dateOfBirth: _parsedDateOfBirth,
         branchId: _selectedBranch?.id,
       );
 
@@ -647,7 +640,7 @@ class _SignupPageState extends State<SignupPage> {
                         isLargeDevice: isLargeDevice,
                       ),
                       
-                      SizedBox(height: spacingMedium),
+                      SizedBox(height: spacingLarge), // Increased spacing for error message
                       
                       // Phone Number field
                       _buildPhoneField(
@@ -811,7 +804,12 @@ class _SignupPageState extends State<SignupPage> {
                 hintText: label,
                 hintStyle: TextStyle(color: Colors.white70, fontSize: fontSizeSmall),
                 border: InputBorder.none,
-                errorStyle: const TextStyle(color: Colors.red),
+                errorStyle: TextStyle(
+                  color: Colors.red,
+                  fontSize: fontSizeSmall * 0.75,
+                  height: 1.4,
+                ),
+                errorMaxLines: 4,
               ),
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
@@ -831,7 +829,7 @@ class _SignupPageState extends State<SignupPage> {
                     break;
                   case 'password':
                     if (!ValidationUtils.isValidPassword(value)) {
-                      return 'Password must be at least 8 characters with uppercase, lowercase, and number';
+                      return 'Password must be 8+ characters with:\n• Uppercase letter (A-Z)\n• Lowercase letter (a-z)\n• Number (0-9)';
                     }
                     break;
                 }
@@ -911,20 +909,24 @@ class _SignupPageState extends State<SignupPage> {
           ),
           SizedBox(width: spacing),
           // Country code field
-          Container(
+          SizedBox(
             width: countryCodeWidth,
             child: TextFormField(
               controller: _countryCodeController,
               style: TextStyle(color: Colors.white, fontSize: fontSizeSmall),
               decoration: InputDecoration(
-                hintText: '+961',
+                hintText: '+961 (Optional)',
                 hintStyle: TextStyle(color: Colors.white70, fontSize: fontSizeSmall),
                 border: InputBorder.none,
-                errorStyle: const TextStyle(color: Colors.red),
+                errorStyle: TextStyle(
+                  color: Colors.red,
+                  fontSize: fontSizeSmall * 0.8,
+                  height: 1.2,
+                ),
               ),
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
-                  return 'Country code is required';
+                  return null; // Optional field
                 }
                 if (!ValidationUtils.isValidCountryCode(value.trim())) {
                   return 'Please enter a valid country code (e.g., +961)';
@@ -940,14 +942,18 @@ class _SignupPageState extends State<SignupPage> {
               controller: _phoneController,
               style: TextStyle(color: Colors.white, fontSize: fontSizeSmall),
               decoration: InputDecoration(
-                hintText: 'Phone number',
+                hintText: 'Phone number (Optional)',
                 hintStyle: TextStyle(color: Colors.white70, fontSize: fontSizeSmall),
                 border: InputBorder.none,
-                errorStyle: const TextStyle(color: Colors.red),
+                errorStyle: TextStyle(
+                  color: Colors.red,
+                  fontSize: fontSizeSmall * 0.8,
+                  height: 1.2,
+                ),
               ),
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
-                  return 'Phone number is required';
+                  return null; // Optional field
                 }
                 if (!ValidationUtils.isValidPhoneNumber(value.trim())) {
                   return 'Please enter a valid phone number';
@@ -1012,14 +1018,18 @@ class _SignupPageState extends State<SignupPage> {
                 enabled: false,
                 style: TextStyle(color: Colors.white, fontSize: fontSizeSmall),
                 decoration: InputDecoration(
-                  hintText: 'Date of Birth',
+                  hintText: 'Date of Birth (Optional)',
                   hintStyle: TextStyle(color: Colors.white70, fontSize: fontSizeSmall),
                   border: InputBorder.none,
-                  errorStyle: const TextStyle(color: Colors.red),
+                  errorStyle: TextStyle(
+                    color: Colors.red,
+                    fontSize: fontSizeSmall * 0.8,
+                    height: 1.2,
+                  ),
                 ),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
-                    return 'Date of birth is required';
+                    return null; // Optional field
                   }
                   if (_parsedDateOfBirth == null) {
                     return 'Please select a valid date of birth';

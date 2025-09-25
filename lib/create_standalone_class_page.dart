@@ -24,6 +24,8 @@ class _CreateStandaloneClassPageState extends State<CreateStandaloneClassPage> {
   final _instructorController = TextEditingController();
   final _capacityController = TextEditingController();
   final _durationController = TextEditingController();
+  final _startTimeController = TextEditingController();
+  final _endTimeController = TextEditingController();
   
   bool _isLoading = false;
   List<ClassSchedule> _schedules = [];
@@ -40,12 +42,20 @@ class _CreateStandaloneClassPageState extends State<CreateStandaloneClassPage> {
   
 
   @override
+  void initState() {
+    super.initState();
+    _updateTimeControllers();
+  }
+
+  @override
   void dispose() {
     _nameController.dispose();
     _descriptionController.dispose();
     _instructorController.dispose();
     _capacityController.dispose();
     _durationController.dispose();
+    _startTimeController.dispose();
+    _endTimeController.dispose();
     super.dispose();
   }
 
@@ -75,8 +85,14 @@ class _CreateStandaloneClassPageState extends State<CreateStandaloneClassPage> {
     }
   }
 
+  void _updateTimeControllers() {
+    _startTimeController.text = '${_defaultStartTime.hour.toString().padLeft(2, '0')}:${_defaultStartTime.minute.toString().padLeft(2, '0')}';
+    _endTimeController.text = '${_defaultEndTime.hour.toString().padLeft(2, '0')}:${_defaultEndTime.minute.toString().padLeft(2, '0')}';
+  }
+
   void _updateDefaultTimes() {
     setState(() {
+      _updateTimeControllers();
       _generateSchedulesFromSelectedDates();
     });
   }
@@ -404,9 +420,14 @@ class _CreateStandaloneClassPageState extends State<CreateStandaloneClassPage> {
                       color: Colors.white.withOpacity(0.95),
                       borderRadius: BorderRadius.circular(16),
                     ),
-                    child: Form(
-                      key: _formKey,
-                      child: SingleChildScrollView(
+                    child: GestureDetector(
+                      onTap: () {
+                        // Unfocus any text field when tapping outside
+                        FocusScope.of(context).unfocus();
+                      },
+                      child: Form(
+                        key: _formKey,
+                        child: SingleChildScrollView(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -682,54 +703,58 @@ class _CreateStandaloneClassPageState extends State<CreateStandaloneClassPage> {
                                   Row(
                                     children: [
                                       Expanded(
-                                        child: TextFormField(
-                                          readOnly: true,
-                                          decoration: InputDecoration(
-                                            labelText: 'Start Time',
-                                            border: const OutlineInputBorder(),
-                                            suffixIcon: IconButton(
-                                              onPressed: () async {
-                                                final time = await showTimePicker(
-                                                  context: context,
-                                                  initialTime: _defaultStartTime,
-                                                );
-                                                if (time != null) {
-                                                  setState(() {
-                                                    _defaultStartTime = time;
-                                                    _updateDefaultTimes();
-                                                  });
-                                                }
-                                              },
-                                              icon: const Icon(Icons.access_time),
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            const Text(
+                                              'Start Time',
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color: Colors.grey,
+                                                fontWeight: FontWeight.w500,
+                                              ),
                                             ),
-                                          ),
-                                          initialValue: '${_defaultStartTime.hour.toString().padLeft(2, '0')}:${_defaultStartTime.minute.toString().padLeft(2, '0')}',
+                                            const SizedBox(height: 4),
+                                            _buildTimePickerField(
+                                              label: 'Start Time',
+                                              time: _defaultStartTime,
+                                              onTimeChanged: (time) {
+                                                setState(() {
+                                                  _defaultStartTime = time;
+                                                  _updateDefaultTimes();
+                                                });
+                                              },
+                                              controller: _startTimeController,
+                                            ),
+                                          ],
                                         ),
                                       ),
                                       const SizedBox(width: 16),
                                       Expanded(
-                                        child: TextFormField(
-                                          readOnly: true,
-                                          decoration: InputDecoration(
-                                            labelText: 'End Time',
-                                            border: const OutlineInputBorder(),
-                                            suffixIcon: IconButton(
-                                              onPressed: () async {
-                                                final time = await showTimePicker(
-                                                  context: context,
-                                                  initialTime: _defaultEndTime,
-                                                );
-                                                if (time != null) {
-                                                  setState(() {
-                                                    _defaultEndTime = time;
-                                                    _updateDefaultTimes();
-                                                  });
-                                                }
-                                              },
-                                              icon: const Icon(Icons.access_time),
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            const Text(
+                                              'End Time',
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color: Colors.grey,
+                                                fontWeight: FontWeight.w500,
+                                              ),
                                             ),
-                                          ),
-                                          initialValue: '${_defaultEndTime.hour.toString().padLeft(2, '0')}:${_defaultEndTime.minute.toString().padLeft(2, '0')}',
+                                            const SizedBox(height: 4),
+                                            _buildTimePickerField(
+                                              label: 'End Time',
+                                              time: _defaultEndTime,
+                                              onTimeChanged: (time) {
+                                                setState(() {
+                                                  _defaultEndTime = time;
+                                                  _updateDefaultTimes();
+                                                });
+                                              },
+                                              controller: _endTimeController,
+                                            ),
+                                          ],
                                         ),
                                       ),
                                     ],
@@ -863,6 +888,7 @@ class _CreateStandaloneClassPageState extends State<CreateStandaloneClassPage> {
                           ],
                         ),
                       ),
+                    ),
                     ),
                   ),
                 ),
@@ -1030,6 +1056,43 @@ class _CreateStandaloneClassPageState extends State<CreateStandaloneClassPage> {
     const months = ['January', 'February', 'March', 'April', 'May', 'June',
                     'July', 'August', 'September', 'October', 'November', 'December'];
     return months[month - 1];
+  }
+
+  Widget _buildTimePickerField({
+    required String label,
+    required TimeOfDay time,
+    required Function(TimeOfDay) onTimeChanged,
+    required TextEditingController controller,
+  }) {
+    return GestureDetector(
+      onTap: () async {
+        final selectedTime = await showTimePicker(
+          context: context,
+          initialTime: time,
+        );
+        if (selectedTime != null) {
+          onTimeChanged(selectedTime);
+        }
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.grey[400]!),
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                controller.text,
+                style: const TextStyle(fontSize: 16),
+              ),
+            ),
+            const Icon(Icons.access_time, color: Colors.grey),
+          ],
+        ),
+      ),
+    );
   }
 
 }
