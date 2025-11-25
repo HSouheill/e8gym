@@ -20,11 +20,19 @@ class BranchDetailPage extends StatefulWidget {
 
 class _BranchDetailPageState extends State<BranchDetailPage> {
   String? _backgroundImageUrl;
+  late BranchResponse _branch;
+  bool _isTogglingVisibility = false;
+  bool _hasUpdatedClasses = false;
+  bool _isBranchLoading = false;
 
   @override
   void initState() {
     super.initState();
+    _branch = widget.branch;
     _loadBackgroundImage();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadBranchDetails(showLoader: true);
+    });
   }
 
   Future<void> _loadBackgroundImage() async {
@@ -79,6 +87,55 @@ class _BranchDetailPageState extends State<BranchDetailPage> {
     }
   }
 
+  Future<void> _loadBranchDetails({bool showLoader = false}) async {
+    final branchIdentifier = _branch.id.isNotEmpty ? _branch.id : (_branch.branchId ?? '');
+    if (branchIdentifier.isEmpty) {
+      return;
+    }
+
+    if (showLoader) {
+      setState(() {
+        _isBranchLoading = true;
+      });
+    }
+
+    try {
+      final result = await ApiService.getBranch(branchIdentifier, widget.accessToken);
+      if (result['success'] == true && result['data'] != null) {
+        final updatedBranch = BranchResponse.fromJson(result['data']);
+        setState(() {
+          _branch = updatedBranch;
+          _hasUpdatedClasses = true;
+        });
+      } else {
+        final message = result['message'] ?? 'Failed to load branch details';
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(message),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error loading branch details: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (showLoader && mounted) {
+        setState(() {
+          _isBranchLoading = false;
+        });
+      }
+    }
+  }
+
   String _normalizeUrl(String url) {
     if (url.startsWith('http://') || url.startsWith('https://')) {
       return url;
@@ -98,17 +155,153 @@ class _BranchDetailPageState extends State<BranchDetailPage> {
     return 'https://e8gym.online/uploads/$url';
   }
 
+  Future<void> _toggleClassVisibility(String classId, int classIndex, bool newVisibility) async {
+    if (_isTogglingVisibility) return;
+
+    // Get current visibility state
+    final currentClass = _branch.classes[classIndex];
+    final currentVisibility = currentClass.isVisible ?? true;
+    
+    // If the new visibility is the same as current, don't do anything
+    if (newVisibility == currentVisibility) {
+      return;
+    }
+
+    setState(() {
+      _isTogglingVisibility = true;
+    });
+
+    try {
+      // Determine which endpoint to use based on whether we have branch context
+      // Super admin viewing branch details should use endpoint with branch ID
+      // Branch admin uses endpoint without branch ID (their token provides context)
+      Map<String, dynamic> result;
+      
+      // For super admin, use branch ID in query parameter
+      // For branch admin, use endpoint without branch ID (token provides context)
+      // Try using branch's id field first (database ID), then branchId if available
+      final branchIdentifier = _branch.id.isNotEmpty ? _branch.id : (_branch.branchId ?? '');
+      
+      if (branchIdentifier.isNotEmpty) {
+        // Super admin endpoint: /api/branch/classes/{classId}/toggle-visibility?branch_id={branchId}
+        print('Using super admin endpoint with branch ID: $branchIdentifier');
+        result = await ApiService.toggleBranchClassVisibilityForSuperAdmin(
+          branchIdentifier,
+          classId,
+          widget.accessToken,
+        );
+      } else {
+        // Branch admin endpoint: /api/branch/classes/{classId}/toggle-visibility
+        print('Using branch admin endpoint (no branch ID available)');
+        result = await ApiService.toggleBranchClassVisibility(
+          classId,
+          widget.accessToken,
+        );
+      }
+
+      if (result['success']) {
+        final classData = result['data'];
+        final updatedIsVisible = classData['is_visible'] ?? classData['IsVisible'] ?? true;
+
+        // Update the class in the branch
+        final updatedClasses = List<ClassModel>.from(_branch.classes);
+        updatedClasses[classIndex] = updatedClasses[classIndex].copyWith(
+          isVisible: updatedIsVisible,
+        );
+
+        setState(() {
+          _branch = BranchResponse(
+            id: _branch.id,
+            branchId: _branch.branchId,
+            branchName: _branch.branchName,
+            adminName: _branch.adminName,
+            email: _branch.email,
+            phoneNumber: _branch.phoneNumber,
+            location: _branch.location,
+            image: _branch.image,
+            classes: updatedClasses,
+            teamMembers: _branch.teamMembers,
+            createdAt: _branch.createdAt,
+            updatedAt: _branch.updatedAt,
+            createdBy: _branch.createdBy,
+          );
+          _hasUpdatedClasses = true;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              result['message'] ?? 
+              (updatedIsVisible ? 'Class is now visible' : 'Class is now hidden'),
+            ),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      } else {
+        // Revert the switch state on error
+        setState(() {
+          _isTogglingVisibility = false;
+        });
+        
+        // Show detailed error message for debugging
+        final errorMessage = result['message'] ?? 'Failed to toggle class visibility';
+        final errorDetails = result['error'] ?? '';
+        print('Toggle visibility error: $errorMessage');
+        print('Error details: $errorDetails');
+        print('Branch ID: ${_branch.branchId}');
+        print('Branch ID (id field): ${_branch.id}');
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMessage),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    } catch (e) {
+      // Revert the switch state on error
+      setState(() {
+        _isTogglingVisibility = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: $e'),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isTogglingVisibility = false;
+        });
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return WillPopScope(
+      onWillPop: () async {
+        Navigator.pop(context, _hasUpdatedClasses);
+        return false;
+      },
+      child: Scaffold(
       appBar: AppBar(
-        title: Text('Branch: ${widget.branch.branchName}'),
+        title: Text('Branch: ${_branch.branchName}'),
         backgroundColor: const Color(0xFFF8BB0C),
         foregroundColor: Colors.black,
         actions: [
           IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _isBranchLoading ? null : () => _loadBranchDetails(showLoader: true),
+            tooltip: 'Refresh Branch',
+          ),
+          IconButton(
             icon: const Icon(Icons.edit),
-            onPressed: () => _editBranch(),
+            onPressed: _isBranchLoading ? null : () => _editBranch(),
             tooltip: 'Edit Branch',
           ),
         ],
@@ -180,7 +373,17 @@ class _BranchDetailPageState extends State<BranchDetailPage> {
               ],
             ),
           ),
+          if (_isBranchLoading)
+            const Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: LinearProgressIndicator(
+                minHeight: 3,
+              ),
+            ),
         ],
+        ),
       ),
     );
   }
@@ -222,15 +425,15 @@ class _BranchDetailPageState extends State<BranchDetailPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        widget.branch.branchName,
-                        style: const TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black87,
-                        ),
+                        _branch.branchName,
+                      style: const TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
                       ),
-                      Text(
-                        'Admin: ${widget.branch.adminName}',
+                    ),
+                    Text(
+                      'Admin: ${_branch.adminName}',
                         style: const TextStyle(
                           fontSize: 16,
                           color: Colors.black54,
@@ -251,7 +454,7 @@ class _BranchDetailPageState extends State<BranchDetailPage> {
                  ),
                  const SizedBox(width: 12),
                  _buildStatusChip(
-                   'Admin: ${widget.branch.adminName}',
+                   'Admin: ${_branch.adminName}',
                    Colors.blue,
                    Icons.person,
                  ),
@@ -307,13 +510,13 @@ class _BranchDetailPageState extends State<BranchDetailPage> {
               ),
             ),
             const SizedBox(height: 16),
-            _buildDetailRow(Icons.email, 'Email', widget.branch.email),
+            _buildDetailRow(Icons.email, 'Email', _branch.email),
             const SizedBox(height: 12),
-            _buildDetailRow(Icons.phone, 'Phone', widget.branch.phoneNumber),
+            _buildDetailRow(Icons.phone, 'Phone', _branch.phoneNumber),
             const SizedBox(height: 12),
-            _buildDetailRow(Icons.location_on, 'Location', widget.branch.location),
+            _buildDetailRow(Icons.location_on, 'Location', _branch.location),
             const SizedBox(height: 12),
-            _buildDetailRow(Icons.calendar_today, 'Created', _formatDate(widget.branch.createdAt)),
+            _buildDetailRow(Icons.calendar_today, 'Created', _formatDate(_branch.createdAt)),
           ],
         ),
       ),
@@ -375,7 +578,7 @@ class _BranchDetailPageState extends State<BranchDetailPage> {
                 ),
                 const Spacer(),
                 Text(
-                  '${widget.branch.classes.length} classes',
+                  '${_branch.classes.length} classes',
                   style: const TextStyle(
                     fontSize: 14,
                     color: Colors.black54,
@@ -384,7 +587,7 @@ class _BranchDetailPageState extends State<BranchDetailPage> {
               ],
             ),
             const SizedBox(height: 16),
-            if (widget.branch.classes.isEmpty)
+            if (_branch.classes.isEmpty)
               const Center(
                 child: Padding(
                   padding: EdgeInsets.all(20),
@@ -401,61 +604,102 @@ class _BranchDetailPageState extends State<BranchDetailPage> {
               ListView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
-                itemCount: widget.branch.classes.length,
+                itemCount: _branch.classes.length,
                 itemBuilder: (context, index) {
-                  final classItem = widget.branch.classes[index];
+                  final classItem = _branch.classes[index];
+                  final isVisible = classItem.isVisible ?? true;
                   return Container(
                     margin: const EdgeInsets.only(bottom: 8),
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Colors.grey[50],
+                      color: isVisible ? Colors.grey[50] : Colors.grey[200],
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.grey[200]!),
+                      border: Border.all(
+                        color: isVisible ? Colors.grey[200]! : Colors.grey[400]!,
+                      ),
                     ),
                     child: Row(
                       children: [
-                                                 Icon(
-                           Icons.fitness_center,
-                           color: Colors.green,
-                           size: 20,
-                         ),
-                         const SizedBox(width: 12),
-                         Expanded(
-                           child: Column(
-                             crossAxisAlignment: CrossAxisAlignment.start,
-                             children: [
-                               Text(
-                                 classItem.name,
-                                 style: const TextStyle(
-                                   fontWeight: FontWeight.w600,
-                                   color: Colors.black87,
-                                 ),
-                               ),
-                               Text(
-                                 'Duration: ${classItem.duration} minutes',
-                                 style: const TextStyle(
-                                   fontSize: 12,
-                                   color: Colors.black54,
-                                 ),
-                               ),
-                             ],
-                           ),
-                         ),
-                         Container(
-                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                           decoration: BoxDecoration(
-                             color: Colors.green,
-                             borderRadius: BorderRadius.circular(12),
-                           ),
-                           child: const Text(
-                             'Active',
-                             style: TextStyle(
-                               color: Colors.white,
-                               fontSize: 10,
-                               fontWeight: FontWeight.w600,
-                             ),
-                           ),
-                         ),
+                        Icon(
+                          Icons.fitness_center,
+                          color: isVisible ? Colors.green : Colors.grey,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      classItem.name,
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                        color: isVisible ? Colors.black87 : Colors.grey[600],
+                                        decoration: isVisible ? null : TextDecoration.lineThrough,
+                                      ),
+                                    ),
+                                  ),
+                                  if (!isVisible)
+                                    Container(
+                                      margin: const EdgeInsets.only(left: 8),
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: Colors.orange,
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      child: const Text(
+                                        'Hidden',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 9,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                              Text(
+                                'Duration: ${classItem.duration} minutes',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: isVisible ? Colors.black54 : Colors.grey[500],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (classItem.id != null && classItem.id!.isNotEmpty)
+                          Switch(
+                            value: isVisible,
+                            onChanged: _isTogglingVisibility
+                                ? null
+                                : (value) {
+                                    // Only toggle if the value actually changed
+                                    if (value != isVisible) {
+                                      _toggleClassVisibility(classItem.id!, index, value);
+                                    }
+                                  },
+                            activeColor: Colors.green,
+                          )
+                        else
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: isVisible ? Colors.green : Colors.grey,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              isVisible ? 'Active' : 'Hidden',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
                       ],
                     ),
                   );
@@ -490,7 +734,7 @@ class _BranchDetailPageState extends State<BranchDetailPage> {
                 ),
                 const Spacer(),
                 Text(
-                  '${widget.branch.teamMembers.length} members',
+                  '${_branch.teamMembers.length} members',
                   style: const TextStyle(
                     fontSize: 14,
                     color: Colors.black54,
@@ -499,7 +743,7 @@ class _BranchDetailPageState extends State<BranchDetailPage> {
               ],
             ),
             const SizedBox(height: 16),
-            if (widget.branch.teamMembers.isEmpty)
+            if (_branch.teamMembers.isEmpty)
               const Center(
                 child: Padding(
                   padding: EdgeInsets.all(20),
@@ -516,9 +760,9 @@ class _BranchDetailPageState extends State<BranchDetailPage> {
               ListView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
-                itemCount: widget.branch.teamMembers.length,
+                itemCount: _branch.teamMembers.length,
                 itemBuilder: (context, index) {
-                  final member = widget.branch.teamMembers[index];
+                  final member = _branch.teamMembers[index];
                   return Container(
                     margin: const EdgeInsets.only(bottom: 8),
                     padding: const EdgeInsets.all(12),
@@ -584,15 +828,22 @@ class _BranchDetailPageState extends State<BranchDetailPage> {
     return '${date.day}/${date.month}/${date.year}';
   }
 
-  void _editBranch() {
-    Navigator.push(
+  Future<void> _editBranch() async {
+    final result = await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => EditBranchPage(
           accessToken: widget.accessToken,
-          branch: widget.branch,
+          branch: _branch,
         ),
       ),
     );
+
+    if (result == true) {
+      await _loadBranchDetails(showLoader: true);
+      setState(() {
+        _hasUpdatedClasses = true;
+      });
+    }
   }
 }

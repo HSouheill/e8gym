@@ -30,6 +30,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
   
   // State
   bool _isLoading = false;
+  bool _isLoadingProfile = false;
   DateTime? _selectedDateOfBirth;
   UserResponse? _currentUser;
   
@@ -41,7 +42,52 @@ class _UserProfilePageState extends State<UserProfilePage> {
     super.initState();
     _currentUser = widget.currentUser;
     _loadBackgroundImage();
-    _initializeFields();
+    _loadUserProfile();
+  }
+  
+  Future<void> _loadUserProfile() async {
+    // If we already have user data from widget, initialize fields first
+    if (_currentUser != null) {
+      _initializeFields();
+    }
+    
+    // Always fetch fresh data from API
+    setState(() {
+      _isLoadingProfile = true;
+    });
+    
+    try {
+      final result = await ApiService.getUserProfile(widget.accessToken);
+      
+      if (result['success'] && result['data'] != null) {
+        final userData = UserResponse.fromJson(result['data']);
+        setState(() {
+          _currentUser = userData;
+        });
+        _initializeFields();
+      } else {
+        // If API call fails but we have widget.currentUser, use that
+        if (_currentUser == null && widget.currentUser != null) {
+          setState(() {
+            _currentUser = widget.currentUser;
+          });
+          _initializeFields();
+        }
+      }
+    } catch (e) {
+      print('Error loading user profile: $e');
+      // If API call fails but we have widget.currentUser, use that
+      if (_currentUser == null && widget.currentUser != null) {
+        setState(() {
+          _currentUser = widget.currentUser;
+        });
+        _initializeFields();
+      }
+    } finally {
+      setState(() {
+        _isLoadingProfile = false;
+      });
+    }
   }
 
   @override
@@ -60,8 +106,14 @@ class _UserProfilePageState extends State<UserProfilePage> {
       _phoneNumberController.text = _currentUser!.phoneNumber ?? '';
       _countryCodeController.text = _currentUser!.countryCode ?? '';
       _selectedDateOfBirth = _currentUser!.dateOfBirth;
-      // Note: Height and weight are not in the current UserResponse model
-      // They would need to be added to the model or fetched separately
+      
+      // Set height and weight if available
+      if (_currentUser!.height != null) {
+        _heightController.text = _currentUser!.height!.toString();
+      }
+      if (_currentUser!.weight != null) {
+        _weightController.text = _currentUser!.weight!.toString();
+      }
     }
   }
 
@@ -301,9 +353,22 @@ class _UserProfilePageState extends State<UserProfilePage> {
                   
                   const SizedBox(height: 24),
                   
+                  // Loading indicator for profile fetch
+                  if (_isLoadingProfile)
+                    const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(16.0),
+                        child: CircularProgressIndicator(
+                          valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFF8BB0C)),
+                        ),
+                      ),
+                    ),
+                  
                   // Form
                   Expanded(
-                    child: SingleChildScrollView(
+                    child: _isLoadingProfile
+                        ? const SizedBox.shrink()
+                        : SingleChildScrollView(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [

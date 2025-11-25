@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'dart:convert';
 import 'services/api_service.dart';
 import 'services/storage_service.dart';
 import 'services/auth_service.dart';
@@ -38,6 +39,10 @@ class _UserDashboardState extends State<UserDashboard> {
   List<BranchClassResponse> _classes = [];
   final TextEditingController _classSearchController = TextEditingController();
   String _classSearchQuery = '';
+  
+  // Booked classes tracking
+  Set<String> _bookedClassIds = {};
+  Map<String, String> _classIdToBookingId = {}; // Map class ID to booking ID for cancellation
   
   // BMI data
   BMIResponse? _userBMI;
@@ -135,6 +140,7 @@ class _UserDashboardState extends State<UserDashboard> {
         await _loadUserBranchClasses();
         await _loadUserBMI();
         await _loadCurrentUser();
+        await _loadUserBookings();
       } else {
         setState(() {
           _errorMessage = 'Authentication required';
@@ -153,26 +159,256 @@ class _UserDashboardState extends State<UserDashboard> {
     if (_accessToken == null) return;
 
     try {
-      // This would typically come from a user profile endpoint
-      // For now, we'll create a basic user object from available data
-      // In a real implementation, you'd call an API to get user details
-      setState(() {
-        _currentUser = UserResponse(
-          id: 'user_id', // This should come from the API
-          fullName: 'User Name', // This should come from the API
-          email: 'user@example.com', // This should come from the API
-          phoneNumber: '+1234567890', // This should come from the API
-          countryCode: '+1', // This should come from the API
-          dateOfBirth: DateTime(1990, 1, 1), // This should come from the API
-          isActive: true,
-          isVerified: true,
-          role: 'user',
-          createdAt: DateTime.now(),
-          updatedAt: DateTime.now(),
-        );
-      });
+      final result = await ApiService.getUserProfile(_accessToken!);
+      
+      if (result['success'] && result['data'] != null) {
+        final userData = UserResponse.fromJson(result['data']);
+        setState(() {
+          _currentUser = userData;
+        });
+      } else {
+        print('Failed to load user profile: ${result['message']}');
+      }
     } catch (e) {
       print('Error loading current user: $e');
+    }
+  }
+
+  Future<void> _loadUserBookings() async {
+    if (_accessToken == null) return;
+
+    try {
+      // Get user bookings from API
+      final result = await ApiService.getUserBookings(_accessToken!);
+      
+      if (result['success']) {
+        final bookingsData = result['data'];
+        
+        // Parse using BookingListResponse model
+        final bookingListResponse = BookingListResponse.fromJson(bookingsData);
+        
+        // Extract class IDs and booking IDs from bookings (only active/confirmed bookings)
+        final bookedIds = <String>{};
+        final classToBookingMap = <String, String>{};
+        for (var booking in bookingListResponse.bookings) {
+          // Only count bookings that are not cancelled
+          if (booking.status != 'cancelled' && booking.classId.isNotEmpty) {
+            bookedIds.add(booking.classId);
+            classToBookingMap[booking.classId] = booking.id;
+          }
+        }
+        
+        setState(() {
+          _bookedClassIds = bookedIds;
+          _classIdToBookingId = classToBookingMap;
+        });
+        await _saveBookedClassesToStorage();
+      } else {
+        // If API call fails, try to load from local storage as fallback
+        await _loadBookedClassesFromStorage();
+      }
+    } catch (e) {
+      print('Error loading user bookings: $e');
+      // Fallback to local storage
+      await _loadBookedClassesFromStorage();
+    }
+  }
+
+  Future<void> _loadBookedClassesFromStorage() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final bookedIdsJson = prefs.getString('booked_class_ids');
+      final bookingIdMapJson = prefs.getString('class_booking_id_map');
+      
+      if (bookedIdsJson != null) {
+        final List<dynamic> bookedIds = jsonDecode(bookedIdsJson);
+        setState(() {
+          _bookedClassIds = bookedIds.map((id) => id.toString()).toSet();
+        });
+      }
+      
+      if (bookingIdMapJson != null) {
+        final Map<String, dynamic> bookingIdMap = jsonDecode(bookingIdMapJson);
+        setState(() {
+          _classIdToBookingId = bookingIdMap.map((key, value) => MapEntry(key.toString(), value.toString()));
+        });
+      }
+    } catch (e) {
+      print('Error loading booked classes from storage: $e');
+    }
+  }
+
+  Future<void> _saveBookedClassesToStorage() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('booked_class_ids', jsonEncode(_bookedClassIds.toList()));
+      await prefs.setString('class_booking_id_map', jsonEncode(_classIdToBookingId));
+    } catch (e) {
+      print('Error saving booked classes to storage: $e');
+    }
+  }
+
+  bool _isClassBooked(String classId) {
+    return _bookedClassIds.contains(classId);
+  }
+
+  Future<void> _handleCancelBooking(BranchClassResponse classData) async {
+    if (_accessToken == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Authentication required'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    // Get booking ID for this class
+    final bookingId = _classIdToBookingId[classData.id];
+    if (bookingId == null || bookingId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Booking ID not found. Please refresh and try again.'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    // Show confirmation dialog
+    final shouldCancel = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1A1A),
+        title: const Text(
+          'Cancel Booking',
+          style: TextStyle(color: Colors.white),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Are you sure you want to cancel your booking for "${classData.name}"?',
+              style: const TextStyle(color: Colors.white70),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Location: ${_userBranch?.branchName}',
+              style: const TextStyle(
+                color: Color(0xFFF8BB0C),
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.red.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: Colors.red.withOpacity(0.3),
+                  width: 1,
+                ),
+              ),
+              child: const Row(
+                children: [
+                  Icon(
+                    Icons.warning_amber_rounded,
+                    color: Colors.orange,
+                    size: 20,
+                  ),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'This action cannot be undone. You will need to book again if you change your mind.',
+                      style: TextStyle(
+                        color: Colors.orange,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text(
+              'Keep Booking',
+              style: TextStyle(color: Colors.white70),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Cancel Booking'),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldCancel != true) return;
+
+    // Show loading indicator
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(
+          valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFF8BB0C)),
+        ),
+      ),
+    );
+
+    try {
+      final result = await ApiService.cancelBooking(bookingId, _accessToken!);
+
+      Navigator.of(context).pop(); // Close loading dialog
+
+      if (result['success']) {
+        // Remove class ID from booked classes
+        setState(() {
+          _bookedClassIds.remove(classData.id);
+          _classIdToBookingId.remove(classData.id);
+        });
+        await _saveBookedClassesToStorage();
+        
+        // Reload bookings to get updated list
+        await _loadUserBookings();
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              result['message'] ?? 'Booking for "${classData.name}" has been cancelled successfully'
+            ),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result['message'] ?? 'Failed to cancel booking'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (e) {
+      Navigator.of(context).pop(); // Close loading dialog
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error cancelling booking: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -267,23 +503,61 @@ class _UserDashboardState extends State<UserDashboard> {
   Future<void> _loadUserBranchClasses({bool refresh = false}) async {
     if (_accessToken == null) return;
 
+    if (!refresh) {
+      setState(() {
+        _isLoading = true;
+      });
+    }
+
     try {
       print('=== Loading User Branch Classes ===');
       final result = await ApiService.getUserBranchClasses(_accessToken!);
       print('User branch classes response: $result');
+      print('Response success: ${result['success']}');
+      print('Response data: ${result['data']}');
 
       if (result['success']) {
         final data = result['data'];
+        print('Data type: ${data.runtimeType}');
+        print('Data keys: ${data is Map ? data.keys.toList() : 'Not a map'}');
+        
+        if (data == null) {
+          setState(() {
+            _errorMessage = 'No data received from server';
+            _isLoading = false;
+            _classes = [];
+          });
+          return;
+        }
+        
+        // Handle different possible data structures
+        String? branchId;
+        String? branchName;
+        String? location;
+        List? classesList;
+        
+        if (data is Map) {
+          branchId = data['branch_id']?.toString() ?? data['branchId']?.toString();
+          branchName = data['branch_name'] ?? data['branchName'] ?? data['branch_name'];
+          location = data['location'] ?? data['Location'];
+          classesList = data['classes'] is List ? data['classes'] as List : null;
+          
+          print('Branch ID: $branchId');
+          print('Branch Name: $branchName');
+          print('Location: $location');
+          print('Classes list: $classesList');
+          print('Classes count: ${classesList?.length ?? 0}');
+        }
         
         // Create branch response from the data
         final branchData = {
-          'id': data['branch_id'],
-          'branch_name': data['branch_name'],
-          'location': data['location'],
+          'id': branchId ?? '',
+          'branch_name': branchName ?? 'Unknown Branch',
+          'location': location ?? '',
           'admin_name': '', // Not provided by this endpoint
           'email': '', // Not provided by this endpoint
           'phone_number': '', // Not provided by this endpoint
-          'classes': data['classes'],
+          'classes': classesList ?? [],
           'team_members': [], // Not provided by this endpoint
           'created_at': DateTime.now().toIso8601String(),
           'updated_at': DateTime.now().toIso8601String(),
@@ -291,10 +565,22 @@ class _UserDashboardState extends State<UserDashboard> {
         };
         
         final branch = BranchResponse.fromJson(branchData);
-        final classesData = data['classes'] as List?;
-        final classes = classesData != null 
-            ? classesData.map((classData) => BranchClassResponse.fromJson(classData)).toList()
-            : <BranchClassResponse>[];
+        final classes = <BranchClassResponse>[];
+        
+        if (classesList != null && classesList.isNotEmpty) {
+          for (var i = 0; i < classesList.length; i++) {
+            try {
+              final classData = classesList[i];
+              print('Parsing class $i: $classData');
+              final branchClass = BranchClassResponse.fromJson(classData);
+              classes.add(branchClass);
+              print('Successfully parsed class: ${branchClass.name}');
+            } catch (e) {
+              print('Error parsing class $i: $e');
+              print('Class data: ${classesList[i]}');
+            }
+          }
+        }
 
         setState(() {
           _userBranch = branch;
@@ -305,15 +591,21 @@ class _UserDashboardState extends State<UserDashboard> {
         
         print('User branch loaded: ${branch.branchName} with ${classes.length} classes');
       } else {
+        final errorMsg = result['message'] ?? 'Failed to load your branch classes';
+        print('Failed to load classes: $errorMsg');
         setState(() {
-          _errorMessage = result['message'] ?? 'Failed to load your branch classes';
+          _errorMessage = errorMsg;
           _isLoading = false;
+          _classes = [];
         });
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
+      print('Exception loading user branch classes: $e');
+      print('Stack trace: $stackTrace');
       setState(() {
         _errorMessage = 'Network error: $e';
         _isLoading = false;
+        _classes = [];
       });
     }
   }
@@ -328,15 +620,38 @@ class _UserDashboardState extends State<UserDashboard> {
   }
 
   List<BranchClassResponse> _getFilteredClasses() {
+    // Filter out expired classes and hidden classes (client-side fallback)
+    // Backend should already filter by visibility, but this ensures hidden classes don't show
+    final activeClasses = _classes.where((classData) {
+      // Hide if expired
+      if (classData.hasExpired) return false;
+      // Hide if visibility is explicitly set to false
+      if (classData.isVisible == false) return false;
+      // Show if visible is true or null (default to visible)
+      return true;
+    }).toList();
+    
+    // Sort by createdAt in descending order (newest first)
+    activeClasses.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    
+    // Then apply search filter if there's a query
     if (_classSearchQuery.isEmpty) {
-      return _classes;
+      return activeClasses;
     }
     
-    return _classes.where((classData) {
+    final filtered = activeClasses.where((classData) {
       return classData.name.toLowerCase().contains(_classSearchQuery.toLowerCase()) ||
              classData.description.toLowerCase().contains(_classSearchQuery.toLowerCase()) ||
              classData.instructor.toLowerCase().contains(_classSearchQuery.toLowerCase());
     }).toList();
+    
+    // Maintain sort order after filtering
+    return filtered;
+  }
+  
+  /// Get count of expired classes
+  int _getExpiredClassesCount() {
+    return _classes.where((classData) => classData.hasExpired).length;
   }
 
   Future<void> _handleLogout() async {
@@ -385,65 +700,34 @@ class _UserDashboardState extends State<UserDashboard> {
       return;
     }
 
-    // Show confirmation dialog with branch information
-    final shouldBook = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1A1A),
-        title: const Text(
-          'Book Class',
-          style: TextStyle(color: Colors.white),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Are you sure you want to book "${classData.name}"?',
-              style: const TextStyle(color: Colors.white70),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Location: ${_userBranch?.branchName}',
-              style: const TextStyle(
-                color: Color(0xFFF8BB0C),
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            Text(
-              'Instructor: ${classData.instructor}',
-              style: const TextStyle(
-                color: Color(0xFFF8BB0C),
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text(
-              'Cancel',
-              style: TextStyle(color: Colors.white70),
-            ),
+    // Check if class has expired
+    if (classData.hasExpired) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            classData.expiresAt != null
+                ? 'This class expired on ${DateFormat('MMM dd, yyyy').format(classData.expiresAt!)}'
+                : 'This class has expired and is no longer available for booking',
           ),
-          ElevatedButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFF8BB0C),
-              foregroundColor: Colors.black,
-            ),
-            child: const Text('Book Class'),
-          ),
-        ],
-      ),
-    );
+          backgroundColor: Colors.orange,
+          duration: const Duration(seconds: 4),
+        ),
+      );
+      return;
+    }
 
-    if (shouldBook != true) return;
+    // Validate required data
+    if (_userBranch == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Branch information is missing'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
 
-    // Show loading indicator
+    // Show loading indicator while fetching schedules
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -455,67 +739,252 @@ class _UserDashboardState extends State<UserDashboard> {
     );
 
     try {
-      // Validate required data
-      if (_userBranch == null) {
-        Navigator.of(context).pop(); // Close loading dialog
+      // Fetch available schedules for this class
+      final schedulesResult = await ApiService.getClassSchedules(
+        classData.id,
+        'branch',
+        _userBranch!.id,
+        _accessToken!,
+      );
+
+      Navigator.of(context).pop(); // Close loading dialog
+
+      if (!schedulesResult['success']) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Branch information is missing'),
+          SnackBar(
+            content: Text(schedulesResult['message'] ?? 'Failed to load available schedules'),
             backgroundColor: Colors.red,
           ),
         );
         return;
       }
 
-      // Get the next available schedule for this class
-      if (classData.schedule.isEmpty) {
-        Navigator.of(context).pop(); // Close loading dialog
+      // Parse schedules response
+      final schedulesData = ClassSchedulesResponse.fromJson(schedulesResult['data']);
+      
+      // Filter to only available schedules
+      final availableSchedules = schedulesData.schedules
+          .where((schedule) => schedule.isAvailable && !schedule.isPast)
+          .toList();
+
+      if (availableSchedules.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('No schedule available for this class'),
-            backgroundColor: Colors.red,
+            content: Text('No available schedules for this class at the moment'),
+            backgroundColor: Colors.orange,
+            duration: Duration(seconds: 4),
           ),
         );
         return;
       }
 
-      // For simplicity, we'll use the first available schedule
-      final schedule = classData.schedule.first;
-      
-      // Calculate the next occurrence of this schedule
-      final nextOccurrence = _getNextOccurrence(schedule.dayOfWeek, schedule.startTime);
-      
-      // Create booking request
-      final bookingRequest = CreateBookingRequest(
-        classId: classData.id,
-        classType: 'branch',
-        branchId: _userBranch!.id, // Required for branch class bookings
-        scheduleId: classData.id, // Using class ID as schedule ID for simplicity
-        classDate: nextOccurrence,
-        startTime: DateTime(
-          nextOccurrence.year,
-          nextOccurrence.month,
-          nextOccurrence.day,
-          schedule.startTime.hour,
-          schedule.startTime.minute,
-        ),
-        endTime: DateTime(
-          nextOccurrence.year,
-          nextOccurrence.month,
-          nextOccurrence.day,
-          schedule.endTime.hour,
-          schedule.endTime.minute,
+      // Show schedule selection dialog
+      final selectedSchedule = await showDialog<ClassScheduleAvailability>(
+        context: context,
+        builder: (context) => AlertDialog(
+          backgroundColor: const Color(0xFF1A1A1A),
+          title: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Select Schedule',
+                style: const TextStyle(color: Colors.white, fontSize: 20),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                classData.name,
+                style: const TextStyle(
+                  color: Color(0xFFF8BB0C),
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              Text(
+                'Instructor: ${schedulesData.instructor}',
+                style: const TextStyle(
+                  color: Colors.white70,
+                  fontSize: 14,
+                ),
+              ),
+            ],
+          ),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: availableSchedules.map((schedule) {
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.05),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: const Color(0xFFF8BB0C).withOpacity(0.3),
+                        width: 1,
+                      ),
+                    ),
+                    child: ListTile(
+                      title: Text(
+                        DateFormat('EEEE, MMM dd, yyyy').format(schedule.date),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const SizedBox(height: 4),
+                          Text(
+                            '${DateFormat('HH:mm').format(schedule.startTime)} - ${DateFormat('HH:mm').format(schedule.endTime)}',
+                            style: const TextStyle(
+                              color: Color(0xFFF8BB0C),
+                              fontSize: 14,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '${schedule.availableSlots} of ${schedulesData.capacity} slots available',
+                            style: TextStyle(
+                              color: schedule.availableSlots > 0
+                                  ? Colors.green
+                                  : Colors.orange,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                      trailing: schedule.isAvailable
+                          ? const Icon(
+                              Icons.check_circle,
+                              color: Color(0xFFF8BB0C),
+                            )
+                          : const Icon(
+                              Icons.cancel,
+                              color: Colors.red,
+                            ),
+                      onTap: schedule.isAvailable
+                          ? () => Navigator.of(context).pop(schedule)
+                          : null,
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text(
+                'Cancel',
+                style: TextStyle(color: Colors.white70),
+              ),
+            ),
+          ],
         ),
       );
 
-      // Debug log to verify the request
-      print('Booking request: ${bookingRequest.toJson()}');
+      if (selectedSchedule == null) return;
+
+      // Show confirmation dialog
+      final shouldBook = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          backgroundColor: const Color(0xFF1A1A1A),
+          title: const Text(
+            'Confirm Booking',
+            style: TextStyle(color: Colors.white),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Class: ${classData.name}',
+                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Date: ${DateFormat('EEEE, MMM dd, yyyy').format(selectedSchedule.date)}',
+                style: const TextStyle(color: Colors.white70),
+              ),
+              Text(
+                'Time: ${DateFormat('HH:mm').format(selectedSchedule.startTime)} - ${DateFormat('HH:mm').format(selectedSchedule.endTime)}',
+                style: const TextStyle(color: Colors.white70),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Location: ${_userBranch?.branchName}',
+                style: const TextStyle(
+                  color: Color(0xFFF8BB0C),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              Text(
+                'Instructor: ${schedulesData.instructor}',
+                style: const TextStyle(
+                  color: Color(0xFFF8BB0C),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text(
+                'Cancel',
+                style: TextStyle(color: Colors.white70),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFF8BB0C),
+                foregroundColor: Colors.black,
+              ),
+              child: const Text('Confirm Booking'),
+            ),
+          ],
+        ),
+      );
+
+      if (shouldBook != true) return;
+
+      // Show loading indicator
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFF8BB0C)),
+          ),
+        ),
+      );
+
+      // Create booking request with selected schedule
+      final bookingRequest = CreateBookingRequest(
+        classId: classData.id,
+        classType: 'branch',
+        branchId: _userBranch!.id,
+        scheduleId: selectedSchedule.scheduleId,
+        classDate: selectedSchedule.date,
+        startTime: selectedSchedule.startTime,
+        endTime: selectedSchedule.endTime,
+      );
 
       final result = await ApiService.createBooking(bookingRequest, _accessToken!);
 
       Navigator.of(context).pop(); // Close loading dialog
 
       if (result['success']) {
+        // Reload bookings to get the booking ID
+        await _loadUserBookings();
+        
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
@@ -557,51 +1026,20 @@ class _UserDashboardState extends State<UserDashboard> {
     }
   }
 
-  DateTime _getNextOccurrence(int dayOfWeek, DateTime time) {
-    final now = DateTime.now();
-    final today = now.weekday;
-    
-    // Calculate days until next occurrence
-    int daysUntilNext = dayOfWeek - today;
-    if (daysUntilNext <= 0) {
-      daysUntilNext += 7; // Next week
-    }
-    
-    return DateTime(
-      now.year,
-      now.month,
-      now.day + daysUntilNext,
-      time.hour,
-      time.minute,
-    );
-  }
 
   String _formatTime(DateTime time) {
-    // Convert UTC time to local time for display
-    final localTime = time.toLocal();
-    return DateFormat('HH:mm').format(localTime);
-  }
-
-  String _getDayName(int dayOfWeek) {
-    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-    return days[dayOfWeek];
+    // Display UTC time directly without timezone conversion
+    return DateFormat('HH:mm').format(time);
   }
 
   String _formatSchedule(List<ClassSchedule> schedule) {
     if (schedule.isEmpty) return 'No schedule available';
     
-    final groupedSchedule = <int, List<ClassSchedule>>{};
-    for (final s in schedule) {
-      groupedSchedule.putIfAbsent(s.dayOfWeek, () => []).add(s);
-    }
-    
-    final sortedDays = groupedSchedule.keys.toList()..sort();
-    final scheduleStrings = sortedDays.map((day) {
-      final daySchedules = groupedSchedule[day]!;
-      final timeRanges = daySchedules.map((s) => 
-        '${_formatTime(s.startTime)}-${_formatTime(s.endTime)}'
-      ).join(', ');
-      return '${_getDayName(day)}: $timeRanges';
+    // Group schedules by date to show complete date information
+    final scheduleStrings = schedule.map((s) {
+      final dateStr = DateFormat('EEEE, d MMMM yyyy').format(s.date);
+      final timeRange = '${_formatTime(s.startTime)}-${_formatTime(s.endTime)}';
+      return '$dateStr: $timeRange';
     }).toList();
     
     return scheduleStrings.join('\n');
@@ -1384,6 +1822,7 @@ Widget build(BuildContext context) {
 
   Widget _buildClassesList() {
     final filteredClasses = _getFilteredClasses();
+    final expiredCount = _getExpiredClassesCount();
     
     if (filteredClasses.isEmpty) {
       return Center(
@@ -1399,10 +1838,48 @@ Widget build(BuildContext context) {
             Text(
               _classSearchQuery.isNotEmpty 
                 ? 'No classes found matching "$_classSearchQuery"'
-                : 'No classes available at ${_userBranch?.branchName ?? "your branch"}',
+                : expiredCount > 0 && _classes.isNotEmpty
+                  ? 'All classes at ${_userBranch?.branchName ?? "your branch"} have expired'
+                  : 'No classes available at ${_userBranch?.branchName ?? "your branch"}',
               style: const TextStyle(color: Colors.white70, fontSize: 18),
               textAlign: TextAlign.center,
             ),
+            if (expiredCount > 0 && _classes.isNotEmpty && _classSearchQuery.isEmpty) ...[
+              const SizedBox(height: 8),
+              Container(
+                margin: const EdgeInsets.symmetric(horizontal: 32),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: Colors.orange.withOpacity(0.3),
+                    width: 1,
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(
+                      Icons.info_outline,
+                      color: Colors.orange,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        '$expiredCount ${expiredCount == 1 ? 'class has' : 'classes have'} expired and ${expiredCount == 1 ? 'has' : 'have'} been removed from the list.',
+                        style: TextStyle(
+                          color: Colors.orange.withOpacity(0.9),
+                          fontSize: 12,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
             if (_classSearchQuery.isNotEmpty) ...[
               const SizedBox(height: 16),
               ElevatedButton(
@@ -1423,7 +1900,10 @@ Widget build(BuildContext context) {
     }
 
     return RefreshIndicator(
-      onRefresh: () => _loadUserBranchClasses(refresh: true),
+      onRefresh: () async {
+        await _loadUserBranchClasses(refresh: true);
+        await _loadUserBookings();
+      },
       color: const Color(0xFFF8BB0C),
       child: ListView.builder(
         padding: const EdgeInsets.all(16),
@@ -1437,20 +1917,53 @@ Widget build(BuildContext context) {
 
 
   Widget _buildClassCard(BranchClassResponse classData) {
+    final isBooked = _isClassBooked(classData.id);
+    
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.1),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: const Color(0xFFF8BB0C),
-          width: 1,
+          color: isBooked ? Colors.green : const Color(0xFFF8BB0C),
+          width: isBooked ? 2 : 1,
         ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
+          // Booked Badge
+          if (isBooked)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+              decoration: BoxDecoration(
+                color: Colors.green.withOpacity(0.2),
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(12),
+                  topRight: Radius.circular(12),
+                ),
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.check_circle,
+                    color: Colors.green,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'You have booked this class',
+                    style: TextStyle(
+                      color: Colors.green,
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           // Class Images
           if (classData.images.isNotEmpty) ...[
             Container(
@@ -1462,43 +1975,65 @@ Widget build(BuildContext context) {
                   topRight: Radius.circular(12),
                 ),
               ),
-              child: ClipRRect(
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(12),
-                  topRight: Radius.circular(12),
-                ),
-                child: PageView.builder(
-                  itemCount: classData.images.length,
-                  itemBuilder: (context, index) {
-                    return Image.network(
-                      classData.images[index],
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Container(
-                          color: const Color(0xFFF8BB0C).withOpacity(0.3),
-                          child: const Center(
-                            child: Icon(
-                              Icons.fitness_center,
-                              color: Colors.white,
-                              size: 50,
-                            ),
-                          ),
+              child: Stack(
+                children: [
+                  ClipRRect(
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(12),
+                      topRight: Radius.circular(12),
+                    ),
+                    child: PageView.builder(
+                      itemCount: classData.images.length,
+                      itemBuilder: (context, index) {
+                        return Image.network(
+                          classData.images[index],
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Container(
+                              color: const Color(0xFFF8BB0C).withOpacity(0.3),
+                              child: const Center(
+                                child: Icon(
+                                  Icons.fitness_center,
+                                  color: Colors.white,
+                                  size: 50,
+                                ),
+                              ),
+                            );
+                          },
+                          loadingBuilder: (context, child, loadingProgress) {
+                            if (loadingProgress == null) return child;
+                            return Container(
+                              color: Colors.white.withOpacity(0.1),
+                              child: const Center(
+                                child: CircularProgressIndicator(
+                                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFF8BB0C)),
+                                ),
+                              ),
+                            );
+                          },
                         );
                       },
-                      loadingBuilder: (context, child, loadingProgress) {
-                        if (loadingProgress == null) return child;
-                        return Container(
-                          color: Colors.white.withOpacity(0.1),
-                          child: const Center(
-                            child: CircularProgressIndicator(
-                              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFF8BB0C)),
-                            ),
-                          ),
-                        );
-                      },
-                    );
-                  },
-                ),
+                    ),
+                  ),
+                  // Booked indicator overlay on image
+                  if (isBooked)
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.green.withOpacity(0.9),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.check,
+                          color: Colors.white,
+                          size: 20,
+                        ),
+                      ),
+                    ),
+                ],
               ),
             ),
             // Image indicators
@@ -1594,28 +2129,61 @@ Widget build(BuildContext context) {
                 
                 const SizedBox(height: 16),
                 
-                // Book button
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () => _handleBookClass(classData),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFF8BB0C),
-                      foregroundColor: Colors.black,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
+                // Book/Cancel button
+                if (isBooked)
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () => _handleCancelBooking(classData),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.red.withOpacity(0.8),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          child: const Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.cancel, size: 20),
+                              SizedBox(width: 8),
+                              Text(
+                                'Cancel Booking',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
-                    ),
-                    child: const Text(
-                      'Book Class',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
+                    ],
+                  )
+                else
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () => _handleBookClass(classData),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFF8BB0C),
+                        foregroundColor: Colors.black,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      child: const Text(
+                        'Book Class',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
                       ),
                     ),
                   ),
-                ),
               ],
             ),
           ),

@@ -209,6 +209,13 @@ class _SuperAdminUsersPageState extends State<SuperAdminUsersPage> {
         backgroundColor: const Color(0xFFF8BB0C),
         foregroundColor: Colors.black,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _isLoading ? null : () {
+              _loadBranches(refresh: true);
+            },
+            tooltip: 'Reload branches',
+          ),
           if (_isLoading)
             const Padding(
               padding: EdgeInsets.all(16.0),

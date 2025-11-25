@@ -37,7 +37,7 @@
 }
 
 # Keep HTTP classes
--keep class com.julianode.E8Gym.** { *; }
+-keep class com.e8gym.e8gym.** { *; }
 
 # Keep all model classes
 -keep class * extends java.lang.Object {

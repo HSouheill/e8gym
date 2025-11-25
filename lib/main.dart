@@ -238,24 +238,24 @@ class _LoginPageState extends State<LoginPage> {
     
     // Responsive sizing calculations
     final horizontalPadding = screenWidth * 0.05; // 5% of screen width
-    final topPadding = screenHeight * 0.03; // 3% of screen height
-    final spacingSmall = screenHeight * 0.015; // 1.5% of screen height
-    final spacingMedium = screenHeight * 0.025; // 2.5% of screen height
-    final spacingLarge = screenHeight * 0.035; // 3.5% of screen height
+    final topPadding = screenHeight * 0.02; // 2% of screen height (reduced)
+    final spacingSmall = screenHeight * 0.01; // 1% of screen height (reduced)
+    final spacingMedium = screenHeight * 0.015; // 1.5% of screen height (reduced)
+    final spacingLarge = screenHeight * 0.02; // 2% of screen height (reduced)
     
-    // Responsive font sizes
-    final fontSizeSmall = screenWidth * 0.035; // 3.5% of screen width
-    final fontSizeMedium = screenWidth * 0.045; // 4.5% of screen width
-    final fontSizeLarge = screenWidth * 0.055; // 5.5% of screen width
+    // Responsive font sizes - increased for better readability
+    final fontSizeSmall = screenWidth * 0.03; // 3% of screen width
+    final fontSizeMedium = screenWidth * 0.04; // 5% of screen width
+    final fontSizeLarge = screenWidth * 0.065; // 6.5% of screen width
     
     // Responsive icon sizes
-    final iconSizeSmall = screenWidth * 0.04; // 4% of screen width
-    final iconSizeMedium = screenWidth * 0.05; // 5% of screen width
+    final iconSizeSmall = screenWidth * 0.03; // 4% of screen width
+    final iconSizeMedium = screenWidth * 0.04; // 5% of screen width
     
-    // Responsive container sizes
-    final profileIconSize = screenWidth * 0.1; // 10% of screen width
-    final buttonHeight = screenHeight * 0.08; // 8% of screen height
-    final buttonWidth = screenWidth * 0.5; // 50% of screen width
+    // Responsive container sizes - optimized for better fit
+    final profileIconSize = screenWidth * 0.08; // 8% of screen width (reduced)
+    final buttonHeight = screenHeight * 0.08; // 8% of screen height (increased)
+    final buttonWidth = screenWidth * 0.6; // 60% of screen width (increased)
 
     return Scaffold(
       body: Stack(
@@ -306,10 +306,11 @@ class _LoginPageState extends State<LoginPage> {
             ),
           ),
           SafeArea(
-            child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
-              child: Column(
-                children: [
+            child: SingleChildScrollView(
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+                child: Column(
+                  children: [
                   // Top right profile icon
                   Align(
                     alignment: Alignment.topRight,
@@ -505,10 +506,10 @@ class _LoginPageState extends State<LoginPage> {
                         Expanded(
                           child: TextField(
                             controller: _emailController,
-                            style: TextStyle(color: Colors.white, fontSize: fontSizeSmall),
+                            style: TextStyle(color: Colors.white, fontSize: fontSizeMedium),
                             decoration: InputDecoration(
                               hintText: 'Email',
-                              hintStyle: TextStyle(color: Colors.white70, fontSize: fontSizeSmall),
+                              hintStyle: TextStyle(color: Colors.white70, fontSize: fontSizeMedium),
                               border: InputBorder.none,
                             ),
                           ),
@@ -552,10 +553,10 @@ class _LoginPageState extends State<LoginPage> {
                           child: TextField(
                             controller: _passwordController,
                             obscureText: _obscurePassword,
-                            style: TextStyle(color: Colors.white, fontSize: fontSizeSmall),
+                            style: TextStyle(color: Colors.white, fontSize: fontSizeMedium),
                             decoration: InputDecoration(
                               hintText: 'Password',
-                              hintStyle: TextStyle(color: Colors.white70, fontSize: fontSizeSmall),
+                              hintStyle: TextStyle(color: Colors.white70, fontSize: fontSizeMedium),
                               border: InputBorder.none,
                             ),
                           ),
@@ -580,7 +581,7 @@ class _LoginPageState extends State<LoginPage> {
                             child: Icon(
                               _obscurePassword ? Icons.visibility : Icons.visibility_off,
                               color: Colors.white,
-                              size: iconSizeMedium,
+                              size: iconSizeSmall,
                             ),
                           ),
                         ),
@@ -588,7 +589,7 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                   ),
                   
-                  SizedBox(height: spacingLarge),
+                  SizedBox(height: 100),
                   
                   // Login button
                   SizedBox(
@@ -605,50 +606,70 @@ class _LoginPageState extends State<LoginPage> {
                             )
                           : SvgPicture.asset(
                               'assets/img/Button.svg',
-                              width: buttonWidth * 0.8,
-                              height: buttonHeight * 0.6,
-                              fit: BoxFit.cover,
+                              width: buttonWidth * 0.9,
+                              height: buttonHeight * 0.8,
+                              fit: BoxFit.contain,
                             ),
                     ),
                   ),
                   
                   SizedBox(height: spacingMedium),
                   
-                  // Create account link
-                  GestureDetector(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => const SignupPage()),
-                      );
-                    },
-                    child: RichText(
-                      text: TextSpan(
-                        text: "Don't have an account? ",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: fontSizeSmall,
+                  // Create account link - Improved accessibility for iPad
+                  Container(
+                    padding: EdgeInsets.symmetric(
+                      vertical: screenHeight * 0.01, // 1% vertical padding for larger touch target
+                      horizontal: screenWidth * 0.02, // 2% horizontal padding
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          "Don't have an account? ",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: fontSizeSmall,
+                          ),
                         ),
-                        children: [
-                          TextSpan(
-                            text: 'Create new account',
-                            style: TextStyle(
-                              foreground: Paint()
-                                ..shader = const LinearGradient(
-                                  begin: Alignment.centerLeft,
-                                  end: Alignment.centerRight,
-                                  colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
-                                ).createShader(Rect.fromLTWH(0, 0, screenWidth * 0.5, 0)),
-                              fontWeight: FontWeight.w600,
+                        GestureDetector(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (context) => const SignupPage()),
+                            );
+                          },
+                          child: Container(
+                            padding: EdgeInsets.symmetric(
+                              vertical: screenHeight * 0.005, // 0.5% vertical padding
+                              horizontal: screenWidth * 0.015, // 1.5% horizontal padding
+                            ),
+                            decoration: BoxDecoration(
+                              border: Border(
+                                bottom: BorderSide(
+                                  color: const Color(0xFFF8BB0C),
+                                  width: 1.5,
+                                ),
+                              ),
+                            ),
+                            child: Text(
+                              'Create new account',
+                              style: TextStyle(
+                                color: const Color(0xFFF8BB0C),
+                                fontSize: fontSizeSmall,
+                                fontWeight: FontWeight.w600,
+                                decoration: TextDecoration.underline,
+                                decorationColor: const Color(0xFFF8BB0C),
+                              ),
                             ),
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                   ),
                   
                   SizedBox(height: spacingMedium),
                 ],
+                ),
               ),
             ),
           ),

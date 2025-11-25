@@ -321,6 +321,8 @@ class _BranchLoginPageState extends State<BranchLoginPage> {
     });
 
     try {
+      // Call Branch Admin login API (supports both branch admin and team member login)
+      print('Attempting Branch Admin/Team Member login for ${_emailController.text}');
       final result = await ApiService.branchLogin(
         _emailController.text,
         _passwordController.text,
@@ -339,17 +341,55 @@ class _BranchLoginPageState extends State<BranchLoginPage> {
           return;
         }
         
-        print('Branch Admin login successful for: ${userData['branch']['email'] ?? 'Unknown'}');
-        print('Branch Name: ${userData['branch']['branch_name'] ?? 'Unknown'}');
+        final branchData = userData['branch'];
+        final branchEmail = branchData['email'];
+        final loginEmail = _emailController.text.toLowerCase();
+        
+        // Determine if this is a team member login or branch admin login
+        final isTeamMemberLogin = loginEmail != branchEmail.toLowerCase();
+        
+        // Determine user role and permissions
+        bool canEdit = true; // Branch admin can always edit
+        String? userRole;
+        
+        if (isTeamMemberLogin) {
+          print('Team member login successful for: $loginEmail');
+          // Find the team member in the branch data
+          final teamMembers = branchData['team_members'] as List? ?? [];
+          try {
+            final teamMember = teamMembers.firstWhere(
+              (member) => (member['email'] as String?)?.toLowerCase() == loginEmail,
+            ) as Map<String, dynamic>?;
+            if (teamMember != null) {
+              print('Team Member Name: ${teamMember['full_name']}');
+              userRole = teamMember['role'] as String?;
+              print('Team Member Role: $userRole');
+              // Viewers cannot edit, only admins can
+              canEdit = userRole?.toLowerCase() != 'viewer';
+              print('Can Edit: $canEdit');
+            }
+          } catch (e) {
+            print('Team member not found in branch data: $e');
+            // If team member not found, default to no edit permissions
+            canEdit = false;
+          }
+        } else {
+          print('Branch admin login successful for: $branchEmail');
+          // Branch admin can always edit
+          canEdit = true;
+        }
+        
+        print('Branch Name: ${branchData['branch_name'] ?? 'Unknown'}');
         print('Access Token: ${userData['access_token'] ?? 'No token'}');
         
-        // Navigate to branch dashboard
+        // Navigate to branch dashboard (works for both branch admin and team members)
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
             builder: (context) => BranchDashboardPage(
               branchData: userData,
               accessToken: userData['access_token'],
+              canEdit: canEdit,
             ),
           ),
         );
@@ -358,9 +398,10 @@ class _BranchLoginPageState extends State<BranchLoginPage> {
         _emailController.clear();
         _passwordController.clear();
       } else {
-        // Login failed
+        // Login failed - error message already formatted by API service
         _showSnackBar(result['message'] ?? 'Login failed');
         print('Login error: ${result['error']}');
+        print('Status code: ${result['statusCode']}');
       }
     } catch (e) {
       _showSnackBar('An error occurred: $e');

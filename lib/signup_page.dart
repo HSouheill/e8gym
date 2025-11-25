@@ -684,7 +684,7 @@ class _SignupPageState extends State<SignupPage> {
                         isLargeDevice: isLargeDevice,
                       ),
                       
-                      SizedBox(height: spacingLarge),
+                      const SizedBox(height: 32),
                       
                       // Sign Up button
                       SizedBox(
@@ -710,28 +710,52 @@ class _SignupPageState extends State<SignupPage> {
                       
                       SizedBox(height: spacingSmall),
                       
-                      // Back to login link
-                      GestureDetector(
-                        onTap: () {
-                          Navigator.pop(context);
-                        },
-                        child: RichText(
-                          text: TextSpan(
-                            text: "Already have an account? ",
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: fontSizeSmall * (isSmallDevice ? 0.9 : isLargeDevice ? 0.8 : 0.85),
+                      // Back to login link - Improved accessibility for iPad
+                      Container(
+                        padding: EdgeInsets.symmetric(
+                          vertical: screenHeight * 0.01, // 1% vertical padding for larger touch target
+                          horizontal: screenWidth * 0.02, // 2% horizontal padding
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              "Already have an account? ",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: fontSizeSmall * (isSmallDevice ? 0.9 : isLargeDevice ? 0.8 : 0.85),
+                              ),
                             ),
-                            children: [
-                              TextSpan(
-                                text: 'Log in',
-                                style: TextStyle(
-                                  color: const Color(0xFFF8BB0C),
-                                  fontWeight: FontWeight.w600,
+                            GestureDetector(
+                              onTap: () {
+                                Navigator.pop(context);
+                              },
+                              child: Container(
+                                padding: EdgeInsets.symmetric(
+                                  vertical: screenHeight * 0.005, // 0.5% vertical padding
+                                  horizontal: screenWidth * 0.015, // 1.5% horizontal padding
+                                ),
+                                decoration: BoxDecoration(
+                                  border: Border(
+                                    bottom: BorderSide(
+                                      color: const Color(0xFFF8BB0C),
+                                      width: 1.5,
+                                    ),
+                                  ),
+                                ),
+                                child: Text(
+                                  'Log in',
+                                  style: TextStyle(
+                                    color: const Color(0xFFF8BB0C),
+                                    fontSize: fontSizeSmall * (isSmallDevice ? 0.9 : isLargeDevice ? 0.8 : 0.85),
+                                    fontWeight: FontWeight.w600,
+                                    decoration: TextDecoration.underline,
+                                    decorationColor: const Color(0xFFF8BB0C),
+                                  ),
                                 ),
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
                       ),
                       
@@ -915,7 +939,7 @@ class _SignupPageState extends State<SignupPage> {
               controller: _countryCodeController,
               style: TextStyle(color: Colors.white, fontSize: fontSizeSmall),
               decoration: InputDecoration(
-                hintText: '+961 (Optional)',
+                hintText: '+961',
                 hintStyle: TextStyle(color: Colors.white70, fontSize: fontSizeSmall),
                 border: InputBorder.none,
                 errorStyle: TextStyle(

@@ -92,6 +92,10 @@ class UserResponse {
   final String? phoneNumber;
   final String? countryCode;
   final DateTime? dateOfBirth;
+  final double? height;
+  final double? weight;
+  final String? branchID;
+  final String? imageURL;
   final bool isActive;
   final bool isVerified;
   final String role;
@@ -105,6 +109,10 @@ class UserResponse {
     this.phoneNumber,
     this.countryCode,
     this.dateOfBirth,
+    this.height,
+    this.weight,
+    this.branchID,
+    this.imageURL,
     required this.isActive,
     required this.isVerified,
     required this.role,
@@ -136,22 +144,84 @@ class UserResponse {
       data['date_of_birth'] = dateOfBirth!.toUtc().toIso8601String();
     }
     
+    if (height != null) {
+      data['height'] = height;
+    }
+    
+    if (weight != null) {
+      data['weight'] = weight;
+    }
+    
+    if (branchID != null) {
+      data['branch_id'] = branchID;
+    }
+    
+    if (imageURL != null) {
+      data['image_url'] = imageURL;
+    }
+    
     return data;
   }
 
   factory UserResponse.fromJson(Map<String, dynamic> json) {
     return UserResponse(
-      id: json['id'],
-      fullName: json['full_name'],
-      email: json['email'],
-      phoneNumber: json['phone_number'],
-      countryCode: json['country_code'],
-      dateOfBirth: json['date_of_birth'] != null ? DateTime.parse(json['date_of_birth']) : null,
-      isActive: json['is_active'],
-      isVerified: json['is_verified'],
-      role: json['role'],
-      createdAt: DateTime.parse(json['created_at']),
-      updatedAt: DateTime.parse(json['updated_at']),
+      id: json['id']?.toString() ?? json['_id']?.toString() ?? '',
+      fullName: json['full_name'] ?? json['FullName'] ?? '',
+      email: json['email'] ?? json['Email'] ?? '',
+      phoneNumber: json['phone_number'] ?? json['PhoneNumber'],
+      countryCode: json['country_code'] ?? json['CountryCode'],
+      dateOfBirth: json['date_of_birth'] != null || json['DateOfBirth'] != null
+          ? DateTime.parse(json['date_of_birth'] ?? json['DateOfBirth'])
+          : null,
+      height: json['height'] != null ? (json['height'] is double ? json['height'] : (json['height'] as num).toDouble()) : null,
+      weight: json['weight'] != null ? (json['weight'] is double ? json['weight'] : (json['weight'] as num).toDouble()) : null,
+      branchID: json['branch_id']?.toString() ?? json['BranchID']?.toString(),
+      imageURL: json['image_url'] ?? json['ImageURL'],
+      isActive: json['is_active'] ?? json['IsActive'] ?? false,
+      isVerified: json['is_verified'] ?? json['IsVerified'] ?? false,
+      role: json['role'] ?? json['Role'] ?? 'user',
+      createdAt: json['created_at'] != null || json['CreatedAt'] != null
+          ? DateTime.parse(json['created_at'] ?? json['CreatedAt'])
+          : DateTime.now(),
+      updatedAt: json['updated_at'] != null || json['UpdatedAt'] != null
+          ? DateTime.parse(json['updated_at'] ?? json['UpdatedAt'])
+          : DateTime.now(),
+    );
+  }
+  
+  UserResponse copyWith({
+    String? id,
+    String? fullName,
+    String? email,
+    String? phoneNumber,
+    String? countryCode,
+    DateTime? dateOfBirth,
+    double? height,
+    double? weight,
+    String? branchID,
+    String? imageURL,
+    bool? isActive,
+    bool? isVerified,
+    String? role,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) {
+    return UserResponse(
+      id: id ?? this.id,
+      fullName: fullName ?? this.fullName,
+      email: email ?? this.email,
+      phoneNumber: phoneNumber ?? this.phoneNumber,
+      countryCode: countryCode ?? this.countryCode,
+      dateOfBirth: dateOfBirth ?? this.dateOfBirth,
+      height: height ?? this.height,
+      weight: weight ?? this.weight,
+      branchID: branchID ?? this.branchID,
+      imageURL: imageURL ?? this.imageURL,
+      isActive: isActive ?? this.isActive,
+      isVerified: isVerified ?? this.isVerified,
+      role: role ?? this.role,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
     );
   }
 }
@@ -284,6 +354,32 @@ class BranchResponse {
       print('Constructed image URL from image field: $imageUrl');
     }
     
+    // Safely parse classes list
+    List<ClassModel> classesList = [];
+    if (json['classes'] != null && json['classes'] is List) {
+      try {
+        classesList = (json['classes'] as List<dynamic>)
+            .map((c) => ClassModel.fromJson(c))
+            .toList();
+      } catch (e) {
+        print('Error parsing classes: $e');
+        classesList = [];
+      }
+    }
+    
+    // Safely parse team members list
+    List<TeamMemberModel> teamMembersList = [];
+    if (json['team_members'] != null && json['team_members'] is List) {
+      try {
+        teamMembersList = (json['team_members'] as List<dynamic>)
+            .map((t) => TeamMemberModel.fromJson(t))
+            .toList();
+      } catch (e) {
+        print('Error parsing team_members: $e');
+        teamMembersList = [];
+      }
+    }
+    
     return BranchResponse(
       id: json['id'] ?? '',
       branchId: json['branch_id'] ?? '',
@@ -293,12 +389,8 @@ class BranchResponse {
       phoneNumber: json['phone_number'] ?? '',
       location: json['location'] ?? '',
       image: imageUrl,
-      classes: (json['classes'] as List<dynamic>?)
-          ?.map((c) => ClassModel.fromJson(c))
-          .toList() ?? [],
-      teamMembers: (json['team_members'] as List<dynamic>?)
-          ?.map((t) => TeamMemberModel.fromJson(t))
-          .toList() ?? [],
+      classes: classesList,
+      teamMembers: teamMembersList,
       createdAt: DateTime.parse(json['created_at']),
       updatedAt: DateTime.parse(json['updated_at']),
       createdBy: json['created_by'] ?? '',
@@ -382,24 +474,28 @@ class BranchPasswordResetConfirm {
 
 /// Class Model for Branch Creation
 class ClassModel {
+  final String? id;
   final String name;
   final String description;
   final int duration;
   final int capacity;
   final String instructor;
   final List<ClassSchedule> schedule;
+  final bool? isVisible;
 
   ClassModel({
+    this.id,
     required this.name,
     required this.description,
     required this.duration,
     required this.capacity,
     required this.instructor,
     this.schedule = const [],
+    this.isVisible,
   });
 
   Map<String, dynamic> toJson() {
-    return {
+    final Map<String, dynamic> data = {
       'name': name,
       'description': description,
       'duration': duration,
@@ -407,10 +503,14 @@ class ClassModel {
       'instructor': instructor,
       'schedule': schedule.map((s) => s.toJson()).toList(),
     };
+    if (id != null) data['id'] = id;
+    if (isVisible != null) data['is_visible'] = isVisible;
+    return data;
   }
 
   factory ClassModel.fromJson(Map<String, dynamic> json) {
     return ClassModel(
+      id: json['id']?.toString(),
       name: json['name'] ?? '',
       description: json['description'] ?? '',
       duration: json['duration'] ?? 0,
@@ -419,6 +519,29 @@ class ClassModel {
       schedule: (json['schedule'] as List<dynamic>?)
           ?.map((s) => ClassSchedule.fromJson(s))
           .toList() ?? [],
+      isVisible: json['is_visible'] ?? json['IsVisible'],
+    );
+  }
+  
+  ClassModel copyWith({
+    String? id,
+    String? name,
+    String? description,
+    int? duration,
+    int? capacity,
+    String? instructor,
+    List<ClassSchedule>? schedule,
+    bool? isVisible,
+  }) {
+    return ClassModel(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      description: description ?? this.description,
+      duration: duration ?? this.duration,
+      capacity: capacity ?? this.capacity,
+      instructor: instructor ?? this.instructor,
+      schedule: schedule ?? this.schedule,
+      isVisible: isVisible ?? this.isVisible,
     );
   }
 }
@@ -432,6 +555,7 @@ class TeamMemberModel {
   final String phoneNumber;
   final String countryCode;
   final String role;
+  final String password; // Required for team member creation
 
   TeamMemberModel({
     required this.fullName,
@@ -439,15 +563,25 @@ class TeamMemberModel {
     required this.phoneNumber,
     required this.countryCode,
     required this.role,
+    required this.password,
   });
 
   Map<String, dynamic> toJson() {
+    // Ensure password is always included and not empty
+    if (password.isEmpty) {
+      throw ArgumentError('Password cannot be empty for team member');
+    }
+    
+    // Include both lowercase and capitalized versions to ensure backend compatibility
+    // Some Go structs might expect "Password" (capital P) instead of "password"
     return {
       'full_name': fullName,
       'email': email,
       'phone_number': phoneNumber,
       'country_code': countryCode,
       'role': role,
+      'password': password, // Standard lowercase (most common)
+      'Password': password, // Capitalized version (in case backend expects this)
     };
   }
 
@@ -458,6 +592,7 @@ class TeamMemberModel {
       phoneNumber: json['phone_number'] ?? '',
       countryCode: json['country_code'] ?? '',
       role: json['role'] ?? '',
+      password: json['password'] ?? '', // Note: password is not returned in responses for security
     );
   }
 }
@@ -618,9 +753,9 @@ class BranchListResponse {
 
   factory BranchListResponse.fromJson(Map<String, dynamic> json) {
     return BranchListResponse(
-      branches: (json['branches'] as List)
-          .map((branch) => BranchResponse.fromJson(branch))
-          .toList(),
+      branches: (json['branches'] as List?)
+          ?.map((branch) => BranchResponse.fromJson(branch))
+          .toList() ?? [],
       total: json['total'] ?? 0,
       page: json['page'] ?? 1,
       limit: json['limit'] ?? 20,

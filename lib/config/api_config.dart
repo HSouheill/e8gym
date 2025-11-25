@@ -7,7 +7,7 @@ class ApiConfig {
   //    - 10.0.2.2 is a special IP that maps to your host machine's localhost
   //    - This works when running Flutter app on Android emulator
   // 
-  // 2. iOS Simulator: Use 'http://localhost:8080'
+  // 2. iOS Simulator: Use 'https://e8gym.online'
   //    - localhost works directly on iOS simulator
   // 
   // 3. Physical Device: Use your computer's local IP address
@@ -19,7 +19,7 @@ class ApiConfig {
   //    - Example: 'https://api.yourapp.com'
   
   // static const String devBaseUrl = 'http://10.0.2.2:8080'; // For Android emulator
-  // static const String localBaseUrl = 'http://localhost:8080'; // For iOS simulator
+  // static const String localBaseUrl = 'https://e8gym.online'; // For iOS simulator
   // static const String networkBaseUrl = 'http://192.168.0.239:8080'; // For physical device on same network
   static const String productionBaseUrl = 'https://e8gym.online'; // Production URL with HTTPS
   
@@ -41,6 +41,7 @@ class ApiConfig {
   // API Endpoints
   static const String superAdminLogin = '/superadmin/login';
   static const String superAdminLogout = '/api/auth/logout'; // This might need to be different
+  static const String superAdminChangePassword = '/superadmin/change-password';
   static const String adminLogin = '/admin/login';
   static const String createAdmin = '/superadmin/create-admin';
   
@@ -75,11 +76,15 @@ class ApiConfig {
   static const String getBranchClasses = '/api/branch/classes';
   static const String getBranchClass = '/api/branch/classes'; // Will be appended with /:id
   static const String updateBranchClassSchedule = '/api/branch/classes'; // Will be appended with /:id/schedule
+  static const String updateBranchClassInstructor = '/api/branch/classes'; // Will be appended with /:id/instructor
+  static const String updateBranchClass = '/api/branches'; // Will be appended with /:branchId/classes/:classId
+  static const String bulkUpdateClassTime = '/api/branch/classes/bulk-update-time';
   
   // User Booking Endpoints
   static const String createBooking = '/api/bookings';
   static const String getBooking = '/api/bookings'; // Will be appended with /:id
   static const String cancelBooking = '/api/bookings'; // Will be appended with /:id
+  static const String getClassSchedules = '/api/classes'; // Will be appended with /:classId/schedules
   
   // Timeout settings
   static const int connectionTimeout = 30000; // 30 seconds

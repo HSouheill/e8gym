@@ -24,16 +24,18 @@ class _CreateStandaloneClassPageState extends State<CreateStandaloneClassPage> {
   final _instructorController = TextEditingController();
   final _capacityController = TextEditingController();
   final _durationController = TextEditingController();
-  final _startTimeController = TextEditingController();
-  final _endTimeController = TextEditingController();
   
   bool _isLoading = false;
   List<ClassSchedule> _schedules = [];
   
-  // Multi-date selection
-  Set<DateTime> _selectedDates = {};
+  // Multi-date selection with weekday-based time slots
+  // Weekday: 1=Monday, 2=Tuesday, ..., 7=Sunday
+  Map<int, Set<DateTime>> _weekdayDates = {}; // Map of weekday to set of dates
+  Map<int, List<Map<String, TimeOfDay>>> _weekdayTimeSlots = {}; // Time slots for each weekday
+  Map<DateTime, List<Map<String, TimeOfDay>>> _dateOverrides = {}; // Custom time slots for specific dates
   TimeOfDay _defaultStartTime = const TimeOfDay(hour: 9, minute: 0);
   TimeOfDay _defaultEndTime = const TimeOfDay(hour: 10, minute: 0);
+  DateTime _displayMonth = DateTime.now();
   
   // Image handling
   final ImagePicker _imagePicker = ImagePicker();
@@ -44,7 +46,8 @@ class _CreateStandaloneClassPageState extends State<CreateStandaloneClassPage> {
   @override
   void initState() {
     super.initState();
-    _updateTimeControllers();
+    final now = DateTime.now();
+    _displayMonth = DateTime(now.year, now.month);
   }
 
   @override
@@ -54,48 +57,300 @@ class _CreateStandaloneClassPageState extends State<CreateStandaloneClassPage> {
     _instructorController.dispose();
     _capacityController.dispose();
     _durationController.dispose();
-    _startTimeController.dispose();
-    _endTimeController.dispose();
     super.dispose();
+  }
+
+  Set<DateTime> get _selectedDates {
+    Set<DateTime> allDates = {};
+    for (final dates in _weekdayDates.values) {
+      allDates.addAll(dates);
+    }
+    allDates.addAll(_dateOverrides.keys);
+    return allDates;
+  }
+  
+  bool _isDateInWeekdayGroup(DateTime date) {
+    final weekday = date.weekday;
+    if (!_weekdayDates.containsKey(weekday)) {
+      return false;
+    }
+    final normalizedDate = DateTime(date.year, date.month, date.day);
+    return _weekdayDates[weekday]!.contains(normalizedDate);
+  }
+
+  List<DateTime> _getAllDaysOfWeekdayInMonth(DateTime date) {
+    final weekday = date.weekday; // 1 = Monday, 7 = Sunday
+    final lastDay = DateTime(date.year, date.month + 1, 0).day;
+    
+    List<DateTime> dates = [];
+    for (int day = 1; day <= lastDay; day++) {
+      final currentDate = DateTime(date.year, date.month, day);
+      if (currentDate.weekday == weekday) {
+        // Only include future dates or today
+        final today = DateTime.now();
+        final todayDate = DateTime(today.year, today.month, today.day);
+        final currentDateOnly = DateTime(currentDate.year, currentDate.month, currentDate.day);
+        if (!currentDateOnly.isBefore(todayDate)) {
+          dates.add(currentDateOnly);
+        }
+      }
+    }
+    return dates;
   }
 
   void _toggleDateSelection(DateTime date) {
     setState(() {
-      if (_selectedDates.contains(date)) {
-        _selectedDates.remove(date);
+      final normalizedDate = DateTime(date.year, date.month, date.day);
+      final weekday = date.weekday;
+      final isCurrentlySelected = _isDateInWeekdayGroup(date) || _dateOverrides.containsKey(normalizedDate);
+      
+      if (isCurrentlySelected) {
+        // Remove this single date from the weekday group
+        if (_weekdayDates.containsKey(weekday)) {
+          _weekdayDates[weekday]!.remove(normalizedDate);
+          if (_weekdayDates[weekday]!.isEmpty) {
+            _weekdayDates.remove(weekday);
+            _weekdayTimeSlots.remove(weekday);
+          }
+        }
+        
+        // Remove override if exists
+        _dateOverrides.remove(normalizedDate);
       } else {
-        _selectedDates.add(date);
+        // Initialize weekday group if it doesn't exist
+        if (!_weekdayDates.containsKey(weekday)) {
+          _weekdayDates[weekday] = {};
+          _weekdayTimeSlots[weekday] = [
+            {'start': _defaultStartTime, 'end': _defaultEndTime}
+          ];
+        }
+        
+        // Add only this specific date to the weekday group
+        _weekdayDates[weekday]!.add(normalizedDate);
       }
       _generateSchedulesFromSelectedDates();
     });
   }
 
-  void _generateSchedulesFromSelectedDates() {
-    _schedules.clear();
-    for (final date in _selectedDates) {
-      final dartWeekday = date.weekday;
-      final backendDayOfWeek = dartWeekday == 7 ? 0 : dartWeekday;
-      
-      _schedules.add(ClassSchedule(
-        dayOfWeek: backendDayOfWeek,
-        date: date,
-        startTime: DateTime.utc(date.year, date.month, date.day, _defaultStartTime.hour, _defaultStartTime.minute),
-        endTime: DateTime.utc(date.year, date.month, date.day, _defaultEndTime.hour, _defaultEndTime.minute),
-      ));
-    }
-  }
-
-  void _updateTimeControllers() {
-    _startTimeController.text = '${_defaultStartTime.hour.toString().padLeft(2, '0')}:${_defaultStartTime.minute.toString().padLeft(2, '0')}';
-    _endTimeController.text = '${_defaultEndTime.hour.toString().padLeft(2, '0')}:${_defaultEndTime.minute.toString().padLeft(2, '0')}';
-  }
-
-  void _updateDefaultTimes() {
+  void _toggleWeekdaySelection(int weekday) {
     setState(() {
-      _updateTimeControllers();
+      // Find the first occurrence of this weekday in the current month
+      int firstWeekdayDate = 1;
+      while (firstWeekdayDate <= 7) {
+        final testDate = DateTime(_displayMonth.year, _displayMonth.month, firstWeekdayDate);
+        if (testDate.weekday == weekday) {
+          break;
+        }
+        firstWeekdayDate++;
+      }
+      
+      // Get all occurrences of this weekday in the current month
+      final weekdayDates = _getAllDaysOfWeekdayInMonth(
+        DateTime(_displayMonth.year, _displayMonth.month, firstWeekdayDate)
+      );
+      
+      if (weekdayDates.isEmpty) return;
+      
+      // Check if all dates of this weekday are already selected
+      final allSelected = weekdayDates.every((d) => 
+        _isDateInWeekdayGroup(d) || _dateOverrides.containsKey(d));
+      
+      if (allSelected) {
+        // Remove all occurrences of this weekday in the month
+        if (_weekdayDates.containsKey(weekday)) {
+          _weekdayDates[weekday]!.removeWhere((d) => 
+            d.year == _displayMonth.year && d.month == _displayMonth.month);
+          if (_weekdayDates[weekday]!.isEmpty) {
+            _weekdayDates.remove(weekday);
+            _weekdayTimeSlots.remove(weekday);
+          }
+        }
+        // Also remove any overrides for these dates
+        for (final weekdayDate in weekdayDates) {
+          _dateOverrides.remove(weekdayDate);
+        }
+      } else {
+        // Initialize weekday group if it doesn't exist
+        if (!_weekdayDates.containsKey(weekday)) {
+          _weekdayDates[weekday] = {};
+          _weekdayTimeSlots[weekday] = [
+            {'start': _defaultStartTime, 'end': _defaultEndTime}
+          ];
+        }
+        
+        // Add all occurrences to the weekday group
+        for (final weekdayDate in weekdayDates) {
+          _weekdayDates[weekday]!.add(weekdayDate);
+          // Remove any override for this date since it's now in the weekday group
+          _dateOverrides.remove(weekdayDate);
+        }
+      }
       _generateSchedulesFromSelectedDates();
     });
   }
+
+  void _addTimeSlot(DateTime date) {
+    setState(() {
+      final normalizedDate = DateTime(date.year, date.month, date.day);
+      
+      // If date has override, add to override
+      if (_dateOverrides.containsKey(normalizedDate)) {
+        _dateOverrides[normalizedDate]!.add({
+          'start': _defaultStartTime,
+          'end': _defaultEndTime
+        });
+      } else {
+        // Create override for this specific date
+        final weekday = date.weekday;
+        final weekdaySlots = _weekdayTimeSlots[weekday] ?? [
+          {'start': _defaultStartTime, 'end': _defaultEndTime}
+        ];
+        _dateOverrides[normalizedDate] = [
+          for (final slot in weekdaySlots)
+            {'start': (slot['start'] as TimeOfDay), 'end': (slot['end'] as TimeOfDay)},
+          {'start': _defaultStartTime, 'end': _defaultEndTime}
+        ];
+      }
+      _generateSchedulesFromSelectedDates();
+    });
+  }
+
+  void _removeTimeSlot(DateTime date, int index) {
+    setState(() {
+      final normalizedDate = DateTime(date.year, date.month, date.day);
+      
+      if (_dateOverrides.containsKey(normalizedDate)) {
+        _dateOverrides[normalizedDate]!.removeAt(index);
+        if (_dateOverrides[normalizedDate]!.isEmpty) {
+          _dateOverrides.remove(normalizedDate);
+        }
+      } else {
+        // Remove from weekday slots
+        final weekday = date.weekday;
+        if (_weekdayTimeSlots.containsKey(weekday)) {
+          _weekdayTimeSlots[weekday]!.removeAt(index);
+          if (_weekdayTimeSlots[weekday]!.isEmpty) {
+            _weekdayTimeSlots[weekday] = [
+              {'start': _defaultStartTime, 'end': _defaultEndTime}
+            ];
+          }
+        }
+      }
+      _generateSchedulesFromSelectedDates();
+    });
+  }
+
+  void _updateTimeSlot(DateTime date, int index, TimeOfDay? startTime, TimeOfDay? endTime) {
+    setState(() {
+      final normalizedDate = DateTime(date.year, date.month, date.day);
+      
+      if (_dateOverrides.containsKey(normalizedDate)) {
+        // Update override
+        if (index < _dateOverrides[normalizedDate]!.length) {
+          if (startTime != null) {
+            _dateOverrides[normalizedDate]![index]['start'] = startTime;
+          }
+          if (endTime != null) {
+            _dateOverrides[normalizedDate]![index]['end'] = endTime;
+          }
+        }
+      } else {
+        // Update weekday slot (affects all dates in that weekday group)
+        final weekday = date.weekday;
+        if (_weekdayTimeSlots.containsKey(weekday) && 
+            index < _weekdayTimeSlots[weekday]!.length) {
+          if (startTime != null) {
+            _weekdayTimeSlots[weekday]![index]['start'] = startTime;
+          }
+          if (endTime != null) {
+            _weekdayTimeSlots[weekday]![index]['end'] = endTime;
+          }
+        }
+      }
+      _generateSchedulesFromSelectedDates();
+    });
+  }
+  
+  void _createDateOverride(DateTime date) {
+    setState(() {
+      final normalizedDate = DateTime(date.year, date.month, date.day);
+      final weekday = date.weekday;
+      
+      // Copy weekday slots to override
+      final weekdaySlots = _weekdayTimeSlots[weekday] ?? [
+        {'start': _defaultStartTime, 'end': _defaultEndTime}
+      ];
+      _dateOverrides[normalizedDate] = [
+        for (final slot in weekdaySlots)
+          {'start': (slot['start'] as TimeOfDay), 'end': (slot['end'] as TimeOfDay)}
+      ];
+      _generateSchedulesFromSelectedDates();
+    });
+  }
+  
+  void _removeDateOverride(DateTime date) {
+    setState(() {
+      final normalizedDate = DateTime(date.year, date.month, date.day);
+      _dateOverrides.remove(normalizedDate);
+      _generateSchedulesFromSelectedDates();
+    });
+  }
+
+  String _getWeekdayName(int weekday) {
+    const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    return days[weekday - 1];
+  }
+
+  void _generateSchedulesFromSelectedDates() {
+    _schedules.clear();
+    
+    // Generate schedules from weekday groups
+    for (final entry in _weekdayDates.entries) {
+      final weekday = entry.key;
+      final dates = entry.value;
+      final timeSlots = _weekdayTimeSlots[weekday] ?? [];
+      final backendDayOfWeek = weekday == 7 ? 0 : weekday;
+      
+      for (final date in dates) {
+        // Skip if this date has an override (will be handled separately)
+        if (_dateOverrides.containsKey(date)) continue;
+        
+        for (final slot in timeSlots) {
+          final startTime = slot['start'] as TimeOfDay;
+          final endTime = slot['end'] as TimeOfDay;
+          
+          _schedules.add(ClassSchedule(
+            dayOfWeek: backendDayOfWeek,
+            date: date,
+            startTime: DateTime.utc(date.year, date.month, date.day, startTime.hour, startTime.minute),
+            endTime: DateTime.utc(date.year, date.month, date.day, endTime.hour, endTime.minute),
+          ));
+        }
+      }
+    }
+    
+    // Generate schedules from date overrides
+    for (final entry in _dateOverrides.entries) {
+      final date = entry.key;
+      final timeSlots = entry.value;
+      final dartWeekday = date.weekday;
+      final backendDayOfWeek = dartWeekday == 7 ? 0 : dartWeekday;
+      
+      for (final slot in timeSlots) {
+        final startTime = slot['start'] as TimeOfDay;
+        final endTime = slot['end'] as TimeOfDay;
+        
+        _schedules.add(ClassSchedule(
+          dayOfWeek: backendDayOfWeek,
+          date: date,
+          startTime: DateTime.utc(date.year, date.month, date.day, startTime.hour, startTime.minute),
+          endTime: DateTime.utc(date.year, date.month, date.day, endTime.hour, endTime.minute),
+        ));
+      }
+    }
+  }
+
+
 
   Future<void> _pickImages() async {
     try {
@@ -157,8 +412,8 @@ class _CreateStandaloneClassPageState extends State<CreateStandaloneClassPage> {
   Future<void> _submitForm() async {
     if (!_formKey.currentState!.validate()) return;
 
-    // Validate that at least one date is selected
-    if (_selectedDates.isEmpty) {
+    // Validate that at least one date is selected with at least one time slot
+    if (_weekdayDates.isEmpty && _dateOverrides.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Please select at least one date for the class schedule'),
@@ -167,6 +422,34 @@ class _CreateStandaloneClassPageState extends State<CreateStandaloneClassPage> {
         ),
       );
       return;
+    }
+
+    // Validate that each weekday group has at least one time slot
+    for (final entry in _weekdayTimeSlots.entries) {
+      if (entry.value.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${_getWeekdayName(entry.key)} must have at least one time slot'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        return;
+      }
+    }
+
+    // Validate that each date override has at least one time slot
+    for (final entry in _dateOverrides.entries) {
+      if (entry.value.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Date ${_formatDateWithDay(entry.key)} must have at least one time slot'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        return;
+      }
     }
 
     // Validate that all schedules have valid times and dates
@@ -265,11 +548,12 @@ class _CreateStandaloneClassPageState extends State<CreateStandaloneClassPage> {
       final request = CreateStandaloneClassRequest(
         name: _nameController.text.trim(),
         description: _descriptionController.text.trim(),
-        instructor: _instructorController.text.trim(),
+        instructor: _instructorController.text.trim().isEmpty ? 'TBD' : _instructorController.text.trim(),
         capacity: int.parse(_capacityController.text),
         schedule: _schedules,
         duration: duration,
         images: imageUrls.isNotEmpty ? imageUrls : null,
+        isVisible: true,
       );
 
       print('=== Form Submission Debug ===');
@@ -470,14 +754,13 @@ class _CreateStandaloneClassPageState extends State<CreateStandaloneClassPage> {
                             TextFormField(
                               controller: _instructorController,
                               decoration: const InputDecoration(
-                                labelText: 'Instructor *',
+                                labelText: 'Instructor (Optional)',
                                 border: OutlineInputBorder(),
                                 prefixIcon: Icon(Icons.person),
+                                helperText: 'Leave empty if no specific instructor',
                               ),
                               validator: (value) {
-                                if (value == null || value.trim().isEmpty) {
-                                  return 'Please enter an instructor name';
-                                }
+                                // No validation needed since it's optional
                                 return null;
                               },
                             ),
@@ -681,89 +964,6 @@ class _CreateStandaloneClassPageState extends State<CreateStandaloneClassPage> {
                             ),
                             const SizedBox(height: 16),
 
-                            // Default Time Settings
-                            Container(
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                color: Colors.grey[50],
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: Colors.grey[300]!),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text(
-                                    'Default Times (applied to all selected dates)',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 12),
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            const Text(
-                                              'Start Time',
-                                              style: TextStyle(
-                                                fontSize: 12,
-                                                color: Colors.grey,
-                                                fontWeight: FontWeight.w500,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 4),
-                                            _buildTimePickerField(
-                                              label: 'Start Time',
-                                              time: _defaultStartTime,
-                                              onTimeChanged: (time) {
-                                                setState(() {
-                                                  _defaultStartTime = time;
-                                                  _updateDefaultTimes();
-                                                });
-                                              },
-                                              controller: _startTimeController,
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      const SizedBox(width: 16),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            const Text(
-                                              'End Time',
-                                              style: TextStyle(
-                                                fontSize: 12,
-                                                color: Colors.grey,
-                                                fontWeight: FontWeight.w500,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 4),
-                                            _buildTimePickerField(
-                                              label: 'End Time',
-                                              time: _defaultEndTime,
-                                              onTimeChanged: (time) {
-                                                setState(() {
-                                                  _defaultEndTime = time;
-                                                  _updateDefaultTimes();
-                                                });
-                                              },
-                                              controller: _endTimeController,
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-
                             // Multi-Date Calendar
                             Container(
                               padding: const EdgeInsets.all(16),
@@ -793,9 +993,22 @@ class _CreateStandaloneClassPageState extends State<CreateStandaloneClassPage> {
                             ),
                             const SizedBox(height: 16),
 
-                            // Selected Dates Summary
-                            if (_selectedDates.isNotEmpty) ...[
-                              Container(
+                            // Weekday Groups with Time Slots
+                            ..._weekdayDates.entries.map((entry) {
+                              final weekday = entry.key;
+                              final dates = entry.value;
+                              final timeSlots = _weekdayTimeSlots[weekday] ?? [];
+                              final weekdayName = _getWeekdayName(weekday);
+                              
+                              // Get dates in current display month for this weekday
+                              final datesInMonth = dates.where((d) => 
+                                d.year == _displayMonth.year && d.month == _displayMonth.month
+                              ).toList()..sort();
+                              
+                              if (datesInMonth.isEmpty) return const SizedBox.shrink();
+                              
+                              return Container(
+                                margin: const EdgeInsets.only(bottom: 16),
                                 padding: const EdgeInsets.all(16),
                                 decoration: BoxDecoration(
                                   color: const Color(0xFFF8BB0C).withOpacity(0.1),
@@ -809,34 +1022,282 @@ class _CreateStandaloneClassPageState extends State<CreateStandaloneClassPage> {
                                       children: [
                                         const Icon(Icons.calendar_today, color: Color(0xFFF8BB0C)),
                                         const SizedBox(width: 8),
-                                        Text(
-                                          'Selected Dates (${_selectedDates.length})',
-                                          style: const TextStyle(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.w600,
-                                            color: Color(0xFFF8BB0C),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                'All $weekdayName\'s',
+                                                style: const TextStyle(
+                                                  fontSize: 16,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: Color(0xFFF8BB0C),
+                                                ),
+                                              ),
+                                              Text(
+                                                '${datesInMonth.length} date${datesInMonth.length > 1 ? 's' : ''} in ${_getMonthName(_displayMonth.month)}',
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  color: Colors.grey[600],
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        IconButton(
+                                          icon: const Icon(Icons.close, color: Colors.red),
+                                          onPressed: () {
+                                            // Remove all dates of this weekday
+                                            final firstDate = datesInMonth.first;
+                                            _toggleDateSelection(firstDate);
+                                          },
+                                          tooltip: 'Remove all $weekdayName\'s',
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 12),
+                                    ...timeSlots.asMap().entries.map((slotEntry) {
+                                      final slotIndex = slotEntry.key;
+                                      final slot = slotEntry.value;
+                                      final startTime = slot['start'] as TimeOfDay;
+                                      final endTime = slot['end'] as TimeOfDay;
+                                      
+                                      return Container(
+                                        margin: const EdgeInsets.only(bottom: 8),
+                                        padding: const EdgeInsets.all(12),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white,
+                                          borderRadius: BorderRadius.circular(8),
+                                          border: Border.all(color: Colors.grey[300]!),
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            Expanded(
+                                              child: _buildSimpleTimePicker(
+                                                time: startTime,
+                                                onTimeChanged: (time) {
+                                                  _updateTimeSlot(datesInMonth.first, slotIndex, time, null);
+                                                },
+                                              ),
+                                            ),
+                                            const SizedBox(width: 8),
+                                            const Text('-', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                                            const SizedBox(width: 8),
+                                            Expanded(
+                                              child: _buildSimpleTimePicker(
+                                                time: endTime,
+                                                onTimeChanged: (time) {
+                                                  _updateTimeSlot(datesInMonth.first, slotIndex, null, time);
+                                                },
+                                              ),
+                                            ),
+                                            const SizedBox(width: 8),
+                                            if (timeSlots.length > 1)
+                                              IconButton(
+                                                icon: const Icon(Icons.delete, color: Colors.red),
+                                                onPressed: () => _removeTimeSlot(datesInMonth.first, slotIndex),
+                                                tooltip: 'Remove time slot',
+                                              ),
+                                          ],
+                                        ),
+                                      );
+                                    }),
+                                    const SizedBox(height: 8),
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: ElevatedButton.icon(
+                                            onPressed: () => _addTimeSlot(datesInMonth.first),
+                                            icon: const Icon(Icons.add, size: 18),
+                                            label: const Text('Add Time Slot'),
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: const Color(0xFFF8BB0C),
+                                              foregroundColor: Colors.black,
+                                              padding: const EdgeInsets.symmetric(vertical: 8),
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        OutlinedButton.icon(
+                                          onPressed: () {
+                                            // Show dates list and allow customizing individual dates
+                                            showDialog(
+                                              context: context,
+                                              builder: (context) => AlertDialog(
+                                                title: Text('$weekdayName Dates'),
+                                                content: SizedBox(
+                                                  width: double.maxFinite,
+                                                  child: ListView.builder(
+                                                    shrinkWrap: true,
+                                                    itemCount: datesInMonth.length,
+                                                    itemBuilder: (context, index) {
+                                                      final date = datesInMonth[index];
+                                                      final hasOverride = _dateOverrides.containsKey(date);
+                                                      return ListTile(
+                                                        title: Text(_formatDateWithDay(date)),
+                                                        trailing: hasOverride
+                                                            ? const Icon(Icons.edit, color: Colors.orange)
+                                                            : const Icon(Icons.arrow_forward_ios, size: 16),
+                                                        onTap: () {
+                                                          Navigator.pop(context);
+                                                          if (!hasOverride) {
+                                                            _createDateOverride(date);
+                                                          }
+                                                        },
+                                                      );
+                                                    },
+                                                  ),
+                                                ),
+                                              ),
+                                            );
+                                          },
+                                          icon: const Icon(Icons.tune, size: 18),
+                                          label: const Text('Customize Dates'),
+                                          style: OutlinedButton.styleFrom(
+                                            foregroundColor: const Color(0xFFF8BB0C),
+                                            side: const BorderSide(color: Color(0xFFF8BB0C)),
+                                            padding: const EdgeInsets.symmetric(vertical: 8),
                                           ),
                                         ),
                                       ],
                                     ),
-                                    const SizedBox(height: 8),
-                                    Wrap(
-                                      spacing: 8,
-                                      runSpacing: 4,
-                                      children: _selectedDates.map((date) {
-                                        return Chip(
-                                          label: Text(_formatDateWithDay(date)),
-                                          backgroundColor: const Color(0xFFF8BB0C),
-                                          labelStyle: const TextStyle(color: Colors.black),
-                                          deleteIcon: const Icon(Icons.close, color: Colors.black, size: 18),
-                                          onDeleted: () => _toggleDateSelection(date),
-                                        );
-                                      }).toList(),
-                                    ),
                                   ],
                                 ),
+                              );
+                            }).toList(),
+                            
+                            // Date Overrides (Custom Dates)
+                            if (_dateOverrides.isNotEmpty) ...[
+                              const SizedBox(height: 8),
+                              const Divider(),
+                              const SizedBox(height: 8),
+                              const Text(
+                                'Custom Date Times',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
-                              const SizedBox(height: 16),
+                              const SizedBox(height: 12),
+                              ..._dateOverrides.entries.map((entry) {
+                                final date = entry.key;
+                                final timeSlots = entry.value;
+                                return Container(
+                                  margin: const EdgeInsets.only(bottom: 16),
+                                  padding: const EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF8BB0C).withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(color: const Color(0xFFF8BB0C)),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          const Icon(Icons.calendar_today, color: Color(0xFFF8BB0C)),
+                                          const SizedBox(width: 8),
+                                          Expanded(
+                                            child: Text(
+                                              _formatDateWithDay(date),
+                                              style: const TextStyle(
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.w600,
+                                                color: Color(0xFFF8BB0C),
+                                              ),
+                                            ),
+                                          ),
+                                          IconButton(
+                                            icon: const Icon(Icons.close, color: Colors.red),
+                                            onPressed: () => _removeDateOverride(date),
+                                            tooltip: 'Remove custom time (use weekday default)',
+                                          ),
+                                        ],
+                                      ),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                        margin: const EdgeInsets.only(bottom: 8),
+                                        decoration: BoxDecoration(
+                                          color: Colors.orange[100],
+                                          borderRadius: BorderRadius.circular(4),
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            const Icon(Icons.info_outline, size: 14, color: Colors.orange),
+                                            const SizedBox(width: 4),
+                                            const Text(
+                                              'Custom time for this date',
+                                              style: TextStyle(
+                                                fontSize: 11,
+                                                color: Colors.orange,
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      ...timeSlots.asMap().entries.map((slotEntry) {
+                                        final slotIndex = slotEntry.key;
+                                        final slot = slotEntry.value;
+                                        final startTime = slot['start'] as TimeOfDay;
+                                        final endTime = slot['end'] as TimeOfDay;
+                                        
+                                        return Container(
+                                          margin: const EdgeInsets.only(bottom: 8),
+                                          padding: const EdgeInsets.all(12),
+                                          decoration: BoxDecoration(
+                                            color: Colors.white,
+                                            borderRadius: BorderRadius.circular(8),
+                                            border: Border.all(color: Colors.grey[300]!),
+                                          ),
+                                          child: Row(
+                                            children: [
+                                              Expanded(
+                                                child: _buildSimpleTimePicker(
+                                                  time: startTime,
+                                                  onTimeChanged: (time) {
+                                                    _updateTimeSlot(date, slotIndex, time, null);
+                                                  },
+                                                ),
+                                              ),
+                                              const SizedBox(width: 8),
+                                              const Text('-', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                                              const SizedBox(width: 8),
+                                              Expanded(
+                                                child: _buildSimpleTimePicker(
+                                                  time: endTime,
+                                                  onTimeChanged: (time) {
+                                                    _updateTimeSlot(date, slotIndex, null, time);
+                                                  },
+                                                ),
+                                              ),
+                                              const SizedBox(width: 8),
+                                              if (timeSlots.length > 1)
+                                                IconButton(
+                                                  icon: const Icon(Icons.delete, color: Colors.red),
+                                                  onPressed: () => _removeTimeSlot(date, slotIndex),
+                                                  tooltip: 'Remove time slot',
+                                                ),
+                                            ],
+                                          ),
+                                        );
+                                      }),
+                                      const SizedBox(height: 8),
+                                      ElevatedButton.icon(
+                                        onPressed: () => _addTimeSlot(date),
+                                        icon: const Icon(Icons.add, size: 18),
+                                        label: const Text('Add Time Slot'),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: const Color(0xFFF8BB0C),
+                                          foregroundColor: Colors.black,
+                                          padding: const EdgeInsets.symmetric(vertical: 8),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              }).toList(),
                             ],
 
                             const SizedBox(height: 32),
@@ -885,6 +1346,7 @@ class _CreateStandaloneClassPageState extends State<CreateStandaloneClassPage> {
                                       ),
                               ),
                             ),
+                            const SizedBox(height: 40),
                           ],
                         ),
                       ),
@@ -901,53 +1363,44 @@ class _CreateStandaloneClassPageState extends State<CreateStandaloneClassPage> {
   }
 
   Widget _buildMultiDateCalendar() {
-    final now = DateTime.now();
-    final currentMonth = DateTime(now.year, now.month);
-    
-    return StatefulBuilder(
-      builder: (context, setState) {
-        DateTime displayMonth = currentMonth;
-        
-        return Column(
+    return Column(
+      children: [
+        // Month navigation
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            // Month navigation
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                IconButton(
-                  onPressed: () {
-                    setState(() {
-                      displayMonth = DateTime(displayMonth.year, displayMonth.month - 1);
-                    });
-                  },
-                  icon: const Icon(Icons.chevron_left),
-                ),
-                Text(
-                  '${_getMonthName(displayMonth.month)} ${displayMonth.year}',
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                IconButton(
-                  onPressed: () {
-                    setState(() {
-                      displayMonth = DateTime(displayMonth.year, displayMonth.month + 1);
-                    });
-                  },
-                  icon: const Icon(Icons.chevron_right),
-                ),
-              ],
+            IconButton(
+              onPressed: () {
+                setState(() {
+                  _displayMonth = DateTime(_displayMonth.year, _displayMonth.month - 1);
+                });
+              },
+              icon: const Icon(Icons.chevron_left),
             ),
-            const SizedBox(height: 8),
-            
-            // Calendar grid
-            Expanded(
-              child: _buildMultiDateCalendarGrid(displayMonth),
+            Text(
+              '${_getMonthName(_displayMonth.month)} ${_displayMonth.year}',
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            IconButton(
+              onPressed: () {
+                setState(() {
+                  _displayMonth = DateTime(_displayMonth.year, _displayMonth.month + 1);
+                });
+              },
+              icon: const Icon(Icons.chevron_right),
             ),
           ],
-        );
-      },
+        ),
+        const SizedBox(height: 8),
+        
+        // Calendar grid
+        Expanded(
+          child: _buildMultiDateCalendarGrid(_displayMonth),
+        ),
+      ],
     );
   }
 
@@ -963,20 +1416,55 @@ class _CreateStandaloneClassPageState extends State<CreateStandaloneClassPage> {
       children: [
         // Days of week header
         Row(
-          children: days.map((day) => Expanded(
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              child: Text(
-                day,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 12,
-                  color: Colors.grey,
+          children: days.asMap().entries.map((entry) {
+            final index = entry.key;
+            final day = entry.value;
+            // Map header index to weekday: 0=Sunday(7), 1=Monday(1), 2=Tuesday(2), etc.
+            final weekday = index == 0 ? 7 : index;
+            
+            // Find the first occurrence of this weekday in the current month
+            int firstWeekdayDate = 1;
+            while (firstWeekdayDate <= 7) {
+              final testDate = DateTime(month.year, month.month, firstWeekdayDate);
+              if (testDate.weekday == weekday) {
+                break;
+              }
+              firstWeekdayDate++;
+            }
+            
+            // Check if all days of this weekday in the month are selected
+            final weekdayDates = _getAllDaysOfWeekdayInMonth(
+              DateTime(month.year, month.month, firstWeekdayDate)
+            );
+            final allSelected = weekdayDates.isNotEmpty && 
+              weekdayDates.every((d) => _isDateInWeekdayGroup(d) || _dateOverrides.containsKey(d));
+            
+            return Expanded(
+              child: GestureDetector(
+                onTap: () => _toggleWeekdaySelection(weekday),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  decoration: BoxDecoration(
+                    color: allSelected 
+                        ? const Color(0xFFF8BB0C).withOpacity(0.3)
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    day,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                      color: allSelected 
+                          ? const Color(0xFF926E07)
+                          : Colors.grey,
+                    ),
+                  ),
                 ),
               ),
-            ),
-          )).toList(),
+            );
+          }).toList(),
         ),
         
         // Calendar days
@@ -994,8 +1482,9 @@ class _CreateStandaloneClassPageState extends State<CreateStandaloneClassPage> {
                 DateTime(month.year, month.month, dayNumber).day == DateTime.now().day &&
                 DateTime(month.year, month.month, dayNumber).month == DateTime.now().month &&
                 DateTime(month.year, month.month, dayNumber).year == DateTime.now().year;
+              final normalizedDate = DateTime(month.year, month.month, dayNumber);
               final isSelected = isCurrentMonth && 
-                _selectedDates.contains(DateTime(month.year, month.month, dayNumber));
+                (_isDateInWeekdayGroup(normalizedDate) || _dateOverrides.containsKey(normalizedDate));
               final isPast = isCurrentMonth && 
                 DateTime(month.year, month.month, dayNumber).isBefore(DateTime.now().subtract(const Duration(days: 1)));
               
@@ -1058,12 +1547,11 @@ class _CreateStandaloneClassPageState extends State<CreateStandaloneClassPage> {
     return months[month - 1];
   }
 
-  Widget _buildTimePickerField({
-    required String label,
+  Widget _buildSimpleTimePicker({
     required TimeOfDay time,
     required Function(TimeOfDay) onTimeChanged,
-    required TextEditingController controller,
   }) {
+    final timeString = '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
     return GestureDetector(
       onTap: () async {
         final selectedTime = await showTimePicker(
@@ -1075,7 +1563,7 @@ class _CreateStandaloneClassPageState extends State<CreateStandaloneClassPage> {
         }
       },
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
         decoration: BoxDecoration(
           border: Border.all(color: Colors.grey[400]!),
           borderRadius: BorderRadius.circular(4),
@@ -1084,11 +1572,11 @@ class _CreateStandaloneClassPageState extends State<CreateStandaloneClassPage> {
           children: [
             Expanded(
               child: Text(
-                controller.text,
-                style: const TextStyle(fontSize: 16),
+                timeString,
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
               ),
             ),
-            const Icon(Icons.access_time, color: Colors.grey),
+            const Icon(Icons.access_time, color: Colors.grey, size: 20),
           ],
         ),
       ),

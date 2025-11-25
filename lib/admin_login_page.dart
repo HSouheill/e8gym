@@ -17,9 +17,9 @@ class AdminLoginPage extends StatefulWidget {
 class _AdminLoginPageState extends State<AdminLoginPage> {
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  String _selectedAdminType = 'Branch';
+  String _selectedAdminType = 'Super Admin';
   bool _isLoading = false;
-  bool _obscurePassword = true; // Add this line for password visibility toggle
+  bool _obscurePassword = true;
   String? _backgroundImageUrl;
 
   @override
@@ -102,6 +102,119 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
 
   @override
   Widget build(BuildContext context) {
+    final screenSize = MediaQuery.of(context).size;
+    final screenHeight = screenSize.height;
+    final screenWidth = screenSize.width;
+    
+    // Determine device size category
+    final isSmallDevice = screenWidth < 400 || screenHeight < 700;
+    final isLargeDevice = screenWidth > 600 || screenHeight > 1000;
+    
+    // Specific iPad 13-inch detection (iPad Pro 12.9" has resolution around 1024x1366)
+    final isIPad13Inch = screenWidth >= 1000 && screenHeight >= 1300;
+    
+    final isBranchRelatedLogin = _selectedAdminType == 'Branch Admin';
+
+    // Responsive sizing calculations
+    final horizontalPadding = isIPad13Inch
+        ? screenWidth * 0.05  // 5% for iPad 13-inch (minimal padding for full screen)
+        : isSmallDevice 
+            ? screenWidth * 0.06  // 6% for small devices
+            : isLargeDevice 
+                ? screenWidth * 0.03  // 3% for large devices
+                : screenWidth * 0.04; // 4% for medium devices
+    
+    final topPadding = isIPad13Inch
+        ? screenHeight * 0.01  // 1% for iPad 13-inch (reduced)
+        : isSmallDevice 
+            ? screenHeight * 0.02  // 2% for small devices
+            : isLargeDevice 
+                ? screenHeight * 0.03  // 3% for large devices
+                : screenHeight * 0.025; // 2.5% for medium devices
+    
+    final spacingSmall = isIPad13Inch
+        ? screenHeight * 0.005  // 0.5% for iPad 13-inch (extremely reduced)
+        : isSmallDevice 
+            ? screenHeight * 0.012  // 1.2% for small devices
+            : isLargeDevice 
+                ? screenHeight * 0.018  // 1.8% for large devices
+                : screenHeight * 0.015; // 1.5% for medium devices
+    
+    final spacingMedium = isIPad13Inch
+        ? screenHeight * 0.008  // 0.8% for iPad 13-inch (extremely reduced)
+        : isSmallDevice 
+            ? screenHeight * 0.018  // 1.8% for small devices
+            : isLargeDevice 
+                ? screenHeight * 0.025  // 2.5% for large devices
+                : screenHeight * 0.02; // 2% for medium devices
+    
+    final spacingLarge = isIPad13Inch
+        ? screenHeight * 0.012  // 1.2% for iPad 13-inch (extremely reduced)
+        : isSmallDevice 
+            ? screenHeight * 0.025  // 2.5% for small devices
+            : isLargeDevice 
+                ? screenHeight * 0.035  // 3.5% for large devices
+                : screenHeight * 0.03; // 3% for medium devices
+    
+    // Responsive font sizes
+    final fontSizeSmall = isIPad13Inch
+        ? screenWidth * 0.028  // 1.8% for iPad 13-inch (much reduced)
+        : isSmallDevice 
+            ? screenWidth * 0.040  // 3.5% for small devices
+            : isLargeDevice 
+                ? screenWidth * 0.030  // 2.5% for large devices
+                : screenWidth * 0.04; // 3% for medium devices
+    
+    final fontSizeMedium = isIPad13Inch
+        ? screenWidth * 0.030  // 3% for iPad 13-inch (increased for better screen utilization)
+        : isSmallDevice 
+            ? screenWidth * 0.050  // 4.5% for small devices
+            : isLargeDevice 
+                ? screenWidth * 0.040  // 3.5% for large devices
+                : screenWidth * 0.05; // 4% for medium devices
+    
+    final fontSizeLarge = isIPad13Inch
+        ? screenWidth * 0.045  // 4.5% for iPad 13-inch (increased for better screen utilization)
+        : isSmallDevice 
+            ? screenWidth * 0.060  // 5.5% for small devices
+            : isLargeDevice 
+                ? screenWidth * 0.050  // 4.5% for large devices
+                : screenWidth * 0.06; // 5% for medium devices
+    
+    // Responsive icon sizes
+    final iconSizeMedium = isIPad13Inch
+        ? screenWidth * 0.025  // 2.5% for iPad 13-inch (much reduced)
+        : isSmallDevice 
+            ? screenWidth * 0.050  // 4.5% for small devices
+            : isLargeDevice 
+                ? screenWidth * 0.040  // 3.5% for large devices
+                : screenWidth * 0.05; // 4% for medium devices
+    
+    // Responsive button sizes - reduced for smaller button
+    final buttonHeight = isIPad13Inch
+        ? screenHeight * 0.06  // 5% for iPad 13-inch
+        : isSmallDevice 
+            ? screenHeight * 0.07  // 6% for small devices
+            : isLargeDevice 
+                ? screenHeight * 0.06   // 5% for large devices
+                : screenHeight * 0.07; // 6% for medium devices
+    
+    final buttonWidth = isIPad13Inch
+        ? screenWidth * 0.6  // 50% for iPad 13-inch
+        : isSmallDevice 
+            ? screenWidth * 0.6   // 50% for small devices
+            : isLargeDevice 
+                ? screenWidth * 0.6   // 40% for large devices
+                : screenWidth * 0.60; // 45% for medium devices
+    
+    final backButtonSize = isIPad13Inch
+        ? screenWidth * 0.07  // 5% for iPad 13-inch (much reduced)
+        : isSmallDevice 
+            ? screenWidth * 0.12  // 12% for small devices
+            : isLargeDevice 
+                ? screenWidth * 0.08  // 8% for large devices
+                : screenWidth * 0.1; // 10% for medium devices
+
     return Scaffold(
       resizeToAvoidBottomInset: true,
       body: Container(
@@ -158,9 +271,9 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
               child: SingleChildScrollView(
                 physics: const BouncingScrollPhysics(),
                 padding: EdgeInsets.only(
-                  left: 18.0,
-                  right: 18.0,
-                  top: 20,
+                  left: horizontalPadding,
+                  right: horizontalPadding,
+                  top: topPadding,
                   bottom: MediaQuery.of(context).viewInsets.bottom + 50,
                 ),
                 child: ConstrainedBox(
@@ -170,7 +283,7 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.start,
                     children: [
-                    // Back button
+                    // Back button - Responsive sizing for better accessibility
                     Align(
                       alignment: Alignment.topLeft,
                       child: GestureDetector(
@@ -182,8 +295,8 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
                         },
                         child: Container(
                           margin: const EdgeInsets.only(top: 0),
-                          width: 50,
-                          height: 50,
+                          width: backButtonSize,
+                          height: backButtonSize,
                           decoration: BoxDecoration(
                             gradient: const LinearGradient(
                               begin: Alignment.topCenter,
@@ -192,43 +305,43 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
                             ),
                             shape: BoxShape.circle,
                           ),
-                          child: const Icon(
+                          child: Icon(
                             Icons.arrow_back,
                             color: Colors.black,
-                            size: 30,
+                            size: backButtonSize * 0.6, // 60% of button size for icon
                           ),
                         ),
                       ),
                     ),
                     
-                    const SizedBox(height: 40),
+                    SizedBox(height: spacingLarge),
                     
                     // Admin Login title
-                    const Text(
+                    Text(
                       'ADMIN LOGIN',
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: 32,
+                        fontSize: fontSizeLarge,
                         fontWeight: FontWeight.bold,
                         letterSpacing: 2,
                       ),
                     ),
                     
-                    const SizedBox(height: 16),
+                    SizedBox(height: spacingSmall),
                     
                     // Subtitle
-                    const Text(
+                    Text(
                       'Access administrative controls',
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: 18,
+                        fontSize: fontSizeMedium,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
                     
-                    const SizedBox(height: 50),
-                    
-                    // Admin type selection
+                    SizedBox(height: isIPad13Inch ? spacingMedium : spacingLarge),
+                    SizedBox(height: 100),
+                    // Admin type selection - Responsive sizing
                     Container(
                       decoration: BoxDecoration(
                         border: Border(
@@ -249,23 +362,23 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
                               ),
                               borderRadius: BorderRadius.circular(8),
                             ),
-                            padding: const EdgeInsets.all(8),
-                            child: const Icon(
+                            padding: EdgeInsets.all(screenWidth * (isIPad13Inch ? 0.01 : isSmallDevice ? 0.02 : isLargeDevice ? 0.015 : 0.018)),
+                            child: Icon(
                               Icons.shield,
                               color: Colors.white,
-                              size: 20,
+                              size: iconSizeMedium,
                             ),
                           ),
-                          const SizedBox(width: 16),
+                          SizedBox(width: screenWidth * (isIPad13Inch ? 0.02 : 0.04)),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text(
-                                  'Branch',
+                                Text(
+                                  'User Type',
                                   style: TextStyle(
                                     color: Colors.white,
-                                    fontSize: 16,
+                                    fontSize: fontSizeSmall,
                                     fontWeight: FontWeight.w500,
                                   ),
                                 ),
@@ -273,12 +386,12 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
                                   child: DropdownButton<String>(
                                     value: _selectedAdminType,
                                     dropdownColor: Colors.black87,
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       color: Colors.white,
-                                      fontSize: 18,
+                                      fontSize: fontSizeMedium,
                                       fontWeight: FontWeight.w500,
                                     ),
-                                    items: ['Branch', 'Super Admin'].map((String value) {
+                                    items: ['Super Admin', 'Branch Admin'].map((String value) {
                                       return DropdownMenuItem<String>(
                                         value: value,
                                         child: Text(value),
@@ -296,18 +409,13 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
                               ],
                             ),
                           ),
-                          const Icon(
-                            Icons.keyboard_arrow_down,
-                            color: Colors.white,
-                            size: 20,
-                          ),
                         ],
                       ),
                     ),
                     
-                    const SizedBox(height: 32),
-                    
-                    // Email field
+                    SizedBox(height: isIPad13Inch ? spacingSmall : spacingMedium),
+                    SizedBox(height: 20),
+                    // Email field - Responsive sizing
                     Container(
                       decoration: BoxDecoration(
                         border: Border(
@@ -328,33 +436,44 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
                               ),
                               borderRadius: BorderRadius.circular(8),
                             ),
-                            padding: const EdgeInsets.all(8),
-                            child: const Icon(
+                            padding: EdgeInsets.all(screenWidth * (isIPad13Inch ? 0.01 : isSmallDevice ? 0.02 : isLargeDevice ? 0.015 : 0.018)),
+                            child: Icon(
                               Icons.person,
                               color: Colors.white,
-                              size: 20,
+                              size: iconSizeMedium,
                             ),
                           ),
-                          const SizedBox(width: 16),
+                          SizedBox(width: screenWidth * (isIPad13Inch ? 0.02 : 0.04)),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
                               children: [
-                                const Text(
+                                Text(
                                   'Email',
                                   style: TextStyle(
                                     color: Colors.white,
-                                    fontSize: 16,
+                                    fontSize: fontSizeSmall,
                                     fontWeight: FontWeight.w500,
                                   ),
                                 ),
-                                TextField(
-                                  controller: _usernameController,
-                                  style: const TextStyle(color: Colors.white),
-                                  decoration: const InputDecoration(
-                                    hintText: 'Enter your email',
-                                    hintStyle: TextStyle(color: Colors.white70),
-                                    border: InputBorder.none,
+                                SizedBox(height: 4),
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: TextField(
+                                    controller: _usernameController,
+                                    enabled: !_isLoading,
+                                    keyboardType: TextInputType.emailAddress,
+                                    textInputAction: TextInputAction.next,
+                                    autofocus: false,
+                                    style: TextStyle(color: Colors.white, fontSize: fontSizeSmall),
+                                    decoration: InputDecoration(
+                                      hintText: 'Enter your email',
+                                      hintStyle: TextStyle(color: Colors.white70, fontSize: fontSizeSmall),
+                                      border: InputBorder.none,
+                                      isDense: true,
+                                      contentPadding: EdgeInsets.symmetric(vertical: 8),
+                                    ),
                                   ),
                                 ),
                               ],
@@ -364,9 +483,10 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
                       ),
                     ),
                     
-                    const SizedBox(height: 24),
-                    
-                    // Password field
+                    SizedBox(height: isIPad13Inch ? spacingSmall : spacingMedium),
+                                        SizedBox(height: 20),
+
+                    // Password field - Responsive sizing
                     Container(
                       decoration: BoxDecoration(
                         border: Border(
@@ -387,40 +507,56 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
                               ),
                               borderRadius: BorderRadius.circular(8),
                             ),
-                            padding: const EdgeInsets.all(8),
-                            child: const Icon(
+                            padding: EdgeInsets.all(screenWidth * (isIPad13Inch ? 0.01 : isSmallDevice ? 0.02 : isLargeDevice ? 0.015 : 0.018)),
+                            child: Icon(
                               Icons.lock,
                               color: Colors.white,
-                              size: 20,
+                              size: iconSizeMedium,
                             ),
                           ),
-                          const SizedBox(width: 16),
+                          SizedBox(width: screenWidth * (isIPad13Inch ? 0.02 : 0.04)),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
                               children: [
-                                const Text(
+                                Text(
                                   'Password',
                                   style: TextStyle(
                                     color: Colors.white,
-                                    fontSize: 16,
+                                    fontSize: fontSizeSmall,
                                     fontWeight: FontWeight.w500,
                                   ),
                                 ),
-                                TextField(
-                                  controller: _passwordController,
-                                  obscureText: _obscurePassword,
-                                  style: const TextStyle(color: Colors.white),
-                                  decoration: const InputDecoration(
-                                    hintText: 'Enter your password',
-                                    hintStyle: TextStyle(color: Colors.white70),
-                                    border: InputBorder.none,
+                                SizedBox(height: 4),
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: TextField(
+                                    controller: _passwordController,
+                                    enabled: !_isLoading,
+                                    obscureText: _obscurePassword,
+                                    keyboardType: TextInputType.visiblePassword,
+                                    textInputAction: TextInputAction.done,
+                                    autofocus: false,
+                                    onSubmitted: (_) {
+                                      if (!_isLoading) {
+                                        _handleLogin();
+                                      }
+                                    },
+                                    style: TextStyle(color: Colors.white, fontSize: fontSizeSmall),
+                                    decoration: InputDecoration(
+                                      hintText: 'Enter your password',
+                                      hintStyle: TextStyle(color: Colors.white70, fontSize: fontSizeSmall),
+                                      border: InputBorder.none,
+                                      isDense: true,
+                                      contentPadding: EdgeInsets.symmetric(vertical: 8),
+                                    ),
                                   ),
                                 ),
                               ],
                             ),
                           ),
-                          // Add show/hide password toggle button
+                          // Add show/hide password toggle button - Responsive sizing
                           GestureDetector(
                             onTap: () {
                               setState(() {
@@ -428,87 +564,109 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
                               });
                             },
                             child: Container(
-                              padding: const EdgeInsets.all(8),
+                              padding: EdgeInsets.all(screenWidth * (isIPad13Inch ? 0.01 : isSmallDevice ? 0.02 : isLargeDevice ? 0.015 : 0.018)),
                               child: Icon(
                                 _obscurePassword ? Icons.visibility : Icons.visibility_off,
                                 color: Colors.white,
-                                size: 20,
+                                size: iconSizeMedium,
                               ),
                             ),
                           ),
                         ],
                       ),
                     ),
+                    SizedBox(height: 40),
+
+                    // Login button - Responsive sizing for better accessibility
+                    Center(
+                      child: SizedBox(
+                        width: buttonWidth,
+                        height: buttonHeight,
+                        child: GestureDetector(
+                          onTap: _isLoading ? null : () async {
+                            await _handleLogin();
+                          },
+                          child: _isLoading
+                              ? Container(
+                                  width: buttonWidth * 0.9,
+                                  height: buttonHeight * 0.9,
+                                  decoration: BoxDecoration(
+                                    gradient: const LinearGradient(
+                                      begin: Alignment.topCenter,
+                                      end: Alignment.bottomCenter,
+                                      colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
+                                    ),
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: Center(
+                                    child: CircularProgressIndicator(
+                                      valueColor: const AlwaysStoppedAnimation<Color>(Colors.black),
+                                      strokeWidth: screenWidth * (isSmallDevice ? 0.03 : isLargeDevice ? 0.008 : 0.0010),
+                                    ),
+                                  ),
+                                )
+                              : SvgPicture.asset(
+                                  'assets/img/Button.svg',
+                                  width: buttonWidth,
+                                  height: buttonHeight,
+                                  fit: BoxFit.contain,
+                                ),
+                        ),
+                      ),
+                    ),
                     
-                    // Forgot Password link (only for Branch Admin)
-                    if (_selectedAdminType == 'Branch') ...[
-                      const SizedBox(height: 16),
+                    SizedBox(height: spacingMedium),
+
+                    // Forgot Password link (only for Branch Admin) - Improved accessibility for iPad
+                    if (isBranchRelatedLogin) ...[
+                      SizedBox(height: spacingSmall),
                       Align(
                         alignment: Alignment.centerRight,
-                        child: GestureDetector(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const BranchForgotPasswordPage(),
+                        child: Container(
+                          padding: EdgeInsets.symmetric(
+                            vertical: screenHeight * 0.008, // 0.8% vertical padding for larger touch target
+                            horizontal: screenWidth * 0.02, // 2% horizontal padding
+                          ),
+                          child: GestureDetector(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const BranchForgotPasswordPage(),
+                                ),
+                              );
+                            },
+                            child: Container(
+                              padding: EdgeInsets.symmetric(
+                                vertical: screenHeight * 0.005, // 0.5% vertical padding
+                                horizontal: screenWidth * 0.015, // 1.5% horizontal padding
                               ),
-                            );
-                          },
-                          child: const Text(
-                            'Forgot Password?',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                              decoration: TextDecoration.underline,
+                              decoration: BoxDecoration(
+                                border: Border(
+                                  bottom: BorderSide(
+                                    color: Colors.white,
+                                    width: 1.5,
+                                  ),
+                                ),
+                              ),
+                              child: Text(
+                                'Forgot Password?',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: fontSizeSmall * (isSmallDevice ? 0.85 : isLargeDevice ? 0.75 : 0.8),
+                                  fontWeight: FontWeight.w500,
+                                  decoration: TextDecoration.underline,
+                                  decorationColor: Colors.white,
+                                ),
+                              ),
                             ),
                           ),
                         ),
                       ),
                     ],
                     
-                    
-                   
-                    
-                    const SizedBox(height: 40),
-                    
-                    SizedBox(
-                      width: MediaQuery.of(context).size.width *0.6,
-                      height: 80,
-                      child: GestureDetector(
-                        onTap: _isLoading ? null : () async {
-                          await _handleLogin();
-                        },
-                        child: _isLoading
-                            ? Container(
-                                width: MediaQuery.of(context).size.width * 0.5,
-                                height: 40,
-                                decoration: BoxDecoration(
-                                  gradient: const LinearGradient(
-                                    begin: Alignment.topCenter,
-                                    end: Alignment.bottomCenter,
-                                    colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
-                                  ),
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                                child: const Center(
-                                  child: CircularProgressIndicator(
-                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.black),
-                                    strokeWidth: 3,
-                                  ),
-                                ),
-                              )
-                            : SvgPicture.asset(
-                                'assets/img/Button.svg',
-                                width: MediaQuery.of(context).size.width * 0.5,
-                                height: 40,
-                                fit: BoxFit.cover,
-                              ),
-                      ),
-                    ),
-                    
-                    // Extra spacing for better scrolling
-                    const SizedBox(height: 100),
+                    // Extra spacing for better scrolling - Responsive sizing
+                    SizedBox(height: spacingLarge * 2),
                     
                     ],
                   ),
@@ -535,6 +693,7 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
 
     try {
       Map<String, dynamic> result;
+      final isBranchRelatedLogin = _selectedAdminType == 'Branch Admin';
       
       if (_selectedAdminType == 'Super Admin') {
         // Add debug logging for SuperAdmin login
@@ -550,12 +709,36 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
         );
         
         print('SuperAdmin login result: $result');
-      } else if (_selectedAdminType == 'Branch') {
-        // Call Branch Admin login API
+      } else if (isBranchRelatedLogin) {
+        // Call Branch Admin login API (supports both branch admin and team member login)
+        print('Attempting Branch Admin/Team Member login for ${_usernameController.text}');
         result = await ApiService.branchLogin(
           _usernameController.text,
           _passwordController.text,
         );
+        
+        // Log additional details for debugging
+        if (result['success']) {
+          print('Branch login successful');
+          final branchData = result['data'];
+          if (branchData != null && branchData['branch'] != null) {
+            final branch = branchData['branch'];
+            print('Branch Name: ${branch['branch_name']}');
+            print('Branch Email: ${branch['email']}');
+            // Check if this is a team member login by comparing login email with branch email
+            final loginEmail = _usernameController.text.toLowerCase();
+            final branchEmail = (branch['email'] as String?)?.toLowerCase() ?? '';
+            if (loginEmail != branchEmail) {
+              print('Login as team member: $loginEmail');
+            } else {
+              print('Login as branch admin: $loginEmail');
+            }
+          }
+        } else {
+          print('Branch login failed: ${result['message']}');
+          print('Error details: ${result['error']}');
+          print('Status code: ${result['statusCode']}');
+        }
       } else {
         // Call regular admin login API
         result = await ApiService.adminLogin(
@@ -571,18 +754,56 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
         // Store user data and token
         final userData = result['data'];
         
-        if (_selectedAdminType == 'Branch') {
-          print('Admin login successful for: ${userData['branch']['email']}');
-          print('Branch Name: ${userData['branch']['branch_name']}');
+        if (isBranchRelatedLogin) {
+          final branchData = userData['branch'];
+          final branchEmail = branchData['email'];
+          final loginEmail = _usernameController.text.toLowerCase();
+          
+          // Determine if this is a team member login or branch admin login
+          final isTeamMemberLogin = loginEmail != branchEmail.toLowerCase();
+          
+          // Determine user role and permissions
+          bool canEdit = true; // Branch admin can always edit
+          String? userRole;
+          
+          if (isTeamMemberLogin) {
+            print('Team member login successful for: $loginEmail');
+            // Find the team member in the branch data
+            final teamMembers = branchData['team_members'] as List? ?? [];
+            try {
+              final teamMember = teamMembers.firstWhere(
+                (member) => (member['email'] as String?)?.toLowerCase() == loginEmail,
+              ) as Map<String, dynamic>?;
+              if (teamMember != null) {
+                print('Team Member Name: ${teamMember['full_name']}');
+                userRole = teamMember['role'] as String?;
+                print('Team Member Role: $userRole');
+                // Viewers cannot edit, only admins can
+                canEdit = userRole?.toLowerCase() != 'viewer';
+                print('Can Edit: $canEdit');
+              }
+            } catch (e) {
+              print('Team member not found in branch data: $e');
+              // If team member not found, default to no edit permissions
+              canEdit = false;
+            }
+          } else {
+            print('Branch admin login successful for: $branchEmail');
+            // Branch admin can always edit
+            canEdit = true;
+          }
+          
+          print('Branch Name: ${branchData['branch_name']}');
           print('Access Token: ${userData['access_token']}');
           
-          // Navigate to branch dashboard
+          // Navigate to branch dashboard (works for both branch admin and team members)
           Navigator.push(
             context,
             MaterialPageRoute(
               builder: (context) => BranchDashboardPage(
                 branchData: userData,
                 accessToken: userData['access_token'],
+                canEdit: canEdit,
               ),
             ),
           );

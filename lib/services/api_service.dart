@@ -336,10 +336,27 @@ class ApiService {
         };
       } else {
         final errorData = jsonDecode(response.body);
+        // Handle different error types based on status code
+        String errorMessage = errorData['message'] ?? 'Login failed';
+        
+        // Map backend error messages to user-friendly messages
+        if (response.statusCode == 403) {
+          // Forbidden - account inactive or access denied
+          if (errorData['message']?.toString().toLowerCase().contains('inactive') ?? false) {
+            errorMessage = 'This account is not active. Please contact your administrator.';
+          } else if (errorData['message']?.toString().toLowerCase().contains('access denied') ?? false) {
+            errorMessage = 'Access denied. Only team members with admin or viewer role can login.';
+          }
+        } else if (response.statusCode == 401) {
+          // Unauthorized - invalid credentials
+          errorMessage = 'Invalid email or password. Please try again.';
+        }
+        
         return {
           'success': false,
-          'message': errorData['message'] ?? 'Login failed',
+          'message': errorMessage,
           'error': errorData['error'],
+          'statusCode': response.statusCode,
         };
       }
     } catch (e) {
@@ -1058,6 +1075,7 @@ class ApiService {
   }
 
   // Get Standalone Classes (SuperAdmin only)
+  // For user-facing calls, set onlyVisible=true to filter out hidden classes
   static Future<Map<String, dynamic>> getStandaloneClasses(
     String accessToken, {
     int page = 1,
@@ -1066,6 +1084,7 @@ class ApiService {
     String? dateFilter,
     String? startDate,
     String? endDate,
+    bool onlyVisible = false, // Filter to only show visible classes (for user-facing calls)
   }) async {
     try {
       // Validate input
@@ -1115,6 +1134,10 @@ class ApiService {
       if (endDate != null && endDate.isNotEmpty) {
         queryParams['end_date'] = SecurityService.sanitizeInput(endDate);
       }
+      // Add visibility filter for user-facing calls
+      if (onlyVisible) {
+        queryParams['is_visible'] = 'true';
+      }
 
       final uri = Uri.parse('${ApiConfig.baseUrl}${ApiConfig.getStandaloneClasses}')
           .replace(queryParameters: queryParams);
@@ -1130,6 +1153,41 @@ class ApiService {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
+        
+        // Client-side filtering as fallback if backend doesn't support is_visible parameter
+        if (onlyVisible && data['data'] != null && data['data'] is Map) {
+          try {
+            final responseData = data['data'] as Map<String, dynamic>;
+            if (responseData['classes'] != null && responseData['classes'] is List) {
+              final classesList = responseData['classes'] as List<dynamic>;
+              // Filter out hidden classes (isVisible == false)
+              final visibleClasses = classesList.where((classJson) {
+                if (classJson is Map) {
+                  final isVisible = classJson['is_visible'] ?? classJson['IsVisible'] ?? true;
+                  return isVisible == true;
+                }
+                return true; // Keep if we can't determine visibility
+              }).toList();
+              
+              // Update the data with filtered classes
+              final filteredData = {
+                ...responseData,
+                'classes': visibleClasses,
+                'total': visibleClasses.length,
+              };
+              
+              return {
+                'success': true,
+                'data': filteredData,
+                'message': data['message'],
+              };
+            }
+          } catch (e) {
+            // If filtering fails, return original data
+            print('Error filtering classes by visibility: $e');
+          }
+        }
+        
         return {
           'success': true,
           'data': data['data'],
@@ -2180,6 +2238,533 @@ class ApiService {
     }
   }
 
+  // Update Branch Class Instructor (Branch Admin only)
+  static Future<Map<String, dynamic>> updateBranchClassInstructor(
+    String classId,
+    UpdateClassInstructorRequest instructorData,
+    String accessToken,
+  ) async {
+    try {
+      // Validate input
+      if (!SecurityService.validateInput(classId) || !SecurityService.validateInput(accessToken)) {
+        SecurityService.logSecurityEvent('invalid_instructor_update_input', details: {'class_id_length': classId.length, 'token_length': accessToken.length});
+        return {
+          'success': false,
+          'message': 'Invalid input data',
+          'error': 'Input validation failed',
+        };
+      }
+      
+      // Validate SSL certificate
+      if (!SecurityService.validateSSLCertificate('${ApiConfig.baseUrl}${ApiConfig.updateBranchClassInstructor}/$classId/instructor')) {
+        SecurityService.logSecurityEvent('invalid_ssl_certificate', details: {'url': '${ApiConfig.baseUrl}${ApiConfig.updateBranchClassInstructor}/$classId/instructor'});
+        return {
+          'success': false,
+          'message': 'Security validation failed',
+          'error': 'Invalid SSL certificate',
+        };
+      }
+      
+      print('=== Update Branch Class Instructor Debug ===');
+      print('URL: ${ApiConfig.baseUrl}${ApiConfig.updateBranchClassInstructor}/$classId/instructor');
+      print('Request body: ${jsonEncode(instructorData.toJson())}');
+      print('Instructor: ${instructorData.instructor}');
+      
+      final deviceId = await SecurityService.getDeviceId();
+      final headers = SecurityService.getSecurityHeaders(accessToken);
+      headers['X-Device-ID'] = deviceId;
+      
+      final response = await http.put(
+        Uri.parse('${ApiConfig.baseUrl}${ApiConfig.updateBranchClassInstructor}/$classId/instructor'),
+        headers: headers,
+        body: jsonEncode(instructorData.toJson()),
+      );
+      
+      print('Response status: ${response.statusCode}');
+      print('Response body: ${response.body}');
+      
+      if (response.statusCode != 200) {
+        print('=== Error Details ===');
+        try {
+          final errorData = jsonDecode(response.body);
+          print('Error message: ${errorData['message']}');
+          print('Error details: ${errorData['error']}');
+        } catch (e) {
+          print('Failed to parse error response: $e');
+        }
+      }
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return {
+          'success': true,
+          'data': data['data'],
+          'message': data['message'],
+        };
+      } else {
+        final errorData = jsonDecode(response.body);
+        return {
+          'success': false,
+          'message': errorData['message'] ?? 'Failed to update class instructor',
+          'error': errorData['error'],
+        };
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Network error: $e',
+        'error': e.toString(),
+      };
+    }
+  }
+
+  // Update Branch Class with Recurring Schedule (Branch Admin only)
+  static Future<Map<String, dynamic>> updateBranchClassRecurring(
+    String branchId,
+    String classId,
+    UpdateClassRecurringRequest recurringData,
+    String accessToken,
+  ) async {
+    try {
+      // Validate input
+      if (!SecurityService.validateInput(branchId) || 
+          !SecurityService.validateInput(classId) || 
+          !SecurityService.validateInput(accessToken)) {
+        SecurityService.logSecurityEvent('invalid_recurring_update_input', 
+          details: {
+            'branch_id_length': branchId.length, 
+            'class_id_length': classId.length, 
+            'token_length': accessToken.length
+          });
+        return {
+          'success': false,
+          'message': 'Invalid input data',
+          'error': 'Input validation failed',
+        };
+      }
+      
+      // Validate SSL certificate
+      // Backend route: /api/branches/:branchId/classes/:classId
+      final url = '${ApiConfig.baseUrl}${ApiConfig.updateBranchClass}/$branchId/classes/$classId';
+      if (!SecurityService.validateSSLCertificate(url)) {
+        SecurityService.logSecurityEvent('invalid_ssl_certificate', details: {'url': url});
+        return {
+          'success': false,
+          'message': 'Security validation failed',
+          'error': 'Invalid SSL certificate',
+        };
+      }
+      
+      print('=== Update Branch Class Recurring Schedule Debug ===');
+      print('URL: $url');
+      print('Request body: ${jsonEncode(recurringData.toJson())}');
+      print('Day of Week: ${recurringData.dayOfWeek}');
+      print('New Start Time: ${recurringData.newStartTime}');
+      print('New End Time: ${recurringData.newEndTime}');
+      
+      final deviceId = await SecurityService.getDeviceId();
+      final headers = SecurityService.getSecurityHeaders(accessToken);
+      headers['X-Device-ID'] = deviceId;
+      
+      final response = await http.put(
+        Uri.parse(url),
+        headers: headers,
+        body: jsonEncode(recurringData.toJson()),
+      );
+      
+      print('Response status: ${response.statusCode}');
+      print('Response body: ${response.body}');
+      
+      if (response.statusCode != 200) {
+        print('=== Error Details ===');
+        try {
+          final errorData = jsonDecode(response.body);
+          print('Error message: ${errorData['message']}');
+          print('Error details: ${errorData['error']}');
+        } catch (e) {
+          print('Failed to parse error response: $e');
+        }
+      }
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return {
+          'success': true,
+          'data': data['data'],
+          'message': data['message'],
+        };
+      } else {
+        final errorData = jsonDecode(response.body);
+        return {
+          'success': false,
+          'message': errorData['message'] ?? 'Failed to update recurring schedule',
+          'error': errorData['error'],
+        };
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Network error: $e',
+        'error': e.toString(),
+      };
+    }
+  }
+
+  // Bulk Update Class Time by Day of Week (Branch Admin only)
+  static Future<Map<String, dynamic>> bulkUpdateClassTime(
+    BulkUpdateClassTimeRequest bulkUpdateData,
+    String accessToken,
+  ) async {
+    try {
+      // Validate input
+      if (!SecurityService.validateInput(accessToken) ||
+          bulkUpdateData.dayOfWeek < 0 ||
+          bulkUpdateData.dayOfWeek > 6) {
+        SecurityService.logSecurityEvent('invalid_bulk_update_input',
+          details: {
+            'day_of_week': bulkUpdateData.dayOfWeek,
+            'token_length': accessToken.length,
+          });
+        return {
+          'success': false,
+          'message': 'Invalid input data',
+          'error': 'Input validation failed',
+        };
+      }
+
+      // Validate SSL certificate
+      final url = '${ApiConfig.baseUrl}${ApiConfig.bulkUpdateClassTime}';
+      if (!SecurityService.validateSSLCertificate(url)) {
+        SecurityService.logSecurityEvent('invalid_ssl_certificate', details: {'url': url});
+        return {
+          'success': false,
+          'message': 'Security validation failed',
+          'error': 'Invalid SSL certificate',
+        };
+      }
+
+      print('=== Bulk Update Class Time Debug ===');
+      print('URL: $url');
+      print('Request body: ${jsonEncode(bulkUpdateData.toJson())}');
+      print('Day of Week: ${bulkUpdateData.dayOfWeek}');
+      print('New Start Time: ${bulkUpdateData.newStartTime}');
+      print('New End Time: ${bulkUpdateData.newEndTime}');
+
+      final deviceId = await SecurityService.getDeviceId();
+      final headers = SecurityService.getSecurityHeaders(accessToken);
+      headers['X-Device-ID'] = deviceId;
+      headers['Content-Type'] = 'application/json';
+
+      final response = await http.post(
+        Uri.parse(url),
+        headers: headers,
+        body: jsonEncode(bulkUpdateData.toJson()),
+      );
+
+      print('Response status: ${response.statusCode}');
+      print('Response body: ${response.body}');
+
+      if (response.statusCode != 200) {
+        print('=== Error Details ===');
+        try {
+          final errorData = jsonDecode(response.body);
+          print('Error message: ${errorData['message']}');
+          print('Error details: ${errorData['error']}');
+        } catch (e) {
+          print('Failed to parse error response: $e');
+        }
+      }
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return {
+          'success': true,
+          'data': data['data'],
+          'message': data['message'],
+        };
+      } else {
+        final errorData = jsonDecode(response.body);
+        return {
+          'success': false,
+          'message': errorData['message'] ?? 'Failed to bulk update class times',
+          'error': errorData['error'],
+        };
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Network error: $e',
+        'error': e.toString(),
+      };
+    }
+  }
+
+  // Toggle Standalone Class Visibility
+  static Future<Map<String, dynamic>> toggleStandaloneClassVisibility(
+    String classId,
+    String accessToken,
+  ) async {
+    try {
+      // Validate input
+      if (!SecurityService.validateInput(classId) || !SecurityService.validateInput(accessToken)) {
+        SecurityService.logSecurityEvent('invalid_toggle_visibility_input', details: {'class_id_length': classId.length, 'token_length': accessToken.length});
+        return {
+          'success': false,
+          'message': 'Invalid input data',
+          'error': 'Input validation failed',
+        };
+      }
+      
+      // Validate SSL certificate
+      final url = '${ApiConfig.baseUrl}/api/standalone-classes/$classId/toggle-visibility';
+      if (!SecurityService.validateSSLCertificate(url)) {
+        SecurityService.logSecurityEvent('invalid_ssl_certificate', details: {'url': url});
+        return {
+          'success': false,
+          'message': 'Security validation failed',
+          'error': 'Invalid SSL certificate',
+        };
+      }
+      
+      final deviceId = await SecurityService.getDeviceId();
+      final headers = SecurityService.getSecurityHeaders(accessToken);
+      headers['X-Device-ID'] = deviceId;
+      
+      final response = await http.patch(
+        Uri.parse(url),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return {
+          'success': true,
+          'data': data['data'],
+          'message': data['message'],
+        };
+      } else {
+        final errorData = jsonDecode(response.body);
+        return {
+          'success': false,
+          'message': errorData['message'] ?? 'Failed to toggle class visibility',
+          'error': errorData['error'],
+        };
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Network error: $e',
+        'error': e.toString(),
+      };
+    }
+  }
+
+  // Toggle Branch Class Visibility (for branch admin)
+  static Future<Map<String, dynamic>> toggleBranchClassVisibility(
+    String classId,
+    String accessToken,
+  ) async {
+    try {
+      // Validate input
+      if (!SecurityService.validateInput(classId) || !SecurityService.validateInput(accessToken)) {
+        SecurityService.logSecurityEvent('invalid_toggle_visibility_input', details: {'class_id_length': classId.length, 'token_length': accessToken.length});
+        return {
+          'success': false,
+          'message': 'Invalid input data',
+          'error': 'Input validation failed',
+        };
+      }
+      
+      // Validate SSL certificate
+      final url = '${ApiConfig.baseUrl}/api/branch/classes/$classId/toggle-visibility';
+      if (!SecurityService.validateSSLCertificate(url)) {
+        SecurityService.logSecurityEvent('invalid_ssl_certificate', details: {'url': url});
+        return {
+          'success': false,
+          'message': 'Security validation failed',
+          'error': 'Invalid SSL certificate',
+        };
+      }
+      
+      final deviceId = await SecurityService.getDeviceId();
+      final headers = SecurityService.getSecurityHeaders(accessToken);
+      headers['X-Device-ID'] = deviceId;
+      
+      final response = await http.patch(
+        Uri.parse(url),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return {
+          'success': true,
+          'data': data['data'],
+          'message': data['message'],
+        };
+      } else {
+        final errorData = jsonDecode(response.body);
+        return {
+          'success': false,
+          'message': errorData['message'] ?? 'Failed to toggle class visibility',
+          'error': errorData['error'],
+        };
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Network error: $e',
+        'error': e.toString(),
+      };
+    }
+  }
+
+  // Toggle Branch Class Visibility (for super admin - branch ID in URL path)
+  static Future<Map<String, dynamic>> toggleBranchClassVisibilityForSuperAdmin(
+    String branchId,
+    String classId,
+    String accessToken,
+  ) async {
+    try {
+      // Validate input
+      if (!SecurityService.validateInput(branchId) || !SecurityService.validateInput(classId) || !SecurityService.validateInput(accessToken)) {
+        SecurityService.logSecurityEvent('invalid_toggle_visibility_input', details: {'branch_id_length': branchId.length, 'class_id_length': classId.length, 'token_length': accessToken.length});
+        return {
+          'success': false,
+          'message': 'Invalid input data',
+          'error': 'Input validation failed',
+        };
+      }
+      
+      // Super admin endpoint: /api/branches/:branchId/classes/:classId/toggle-visibility
+      final url = '${ApiConfig.baseUrl}/api/branches/$branchId/classes/$classId/toggle-visibility';
+      
+      print('=== Toggle Branch Class Visibility (Super Admin) ===');
+      print('URL: $url');
+      print('Branch ID: $branchId');
+      print('Class ID: $classId');
+      
+      if (!SecurityService.validateSSLCertificate(url)) {
+        SecurityService.logSecurityEvent('invalid_ssl_certificate', details: {'url': url});
+        return {
+          'success': false,
+          'message': 'Security validation failed',
+          'error': 'Invalid SSL certificate',
+        };
+      }
+      
+      final deviceId = await SecurityService.getDeviceId();
+      final headers = SecurityService.getSecurityHeaders(accessToken);
+      headers['X-Device-ID'] = deviceId;
+      
+      print('Headers: ${headers.keys}');
+      print('Request method: PATCH');
+      
+      final response = await http.patch(
+        Uri.parse(url),
+        headers: headers,
+      );
+      
+      print('Response status: ${response.statusCode}');
+      print('Response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return {
+          'success': true,
+          'data': data['data'],
+          'message': data['message'],
+        };
+      } else {
+        final errorData = jsonDecode(response.body);
+        return {
+          'success': false,
+          'message': errorData['message'] ?? 'Failed to toggle class visibility',
+          'error': errorData['error'],
+        };
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Network error: $e',
+        'error': e.toString(),
+      };
+    }
+  }
+
+  // Get Class Schedules (User)
+  static Future<Map<String, dynamic>> getClassSchedules(
+    String classId,
+    String classType,
+    String? branchId,
+    String accessToken,
+  ) async {
+    try {
+      // Validate input
+      if (!SecurityService.validateInput(classId) || !SecurityService.validateInput(accessToken)) {
+        SecurityService.logSecurityEvent('invalid_class_schedules_input', details: {'class_id_length': classId.length, 'token_length': accessToken.length});
+        return {
+          'success': false,
+          'message': 'Invalid input data',
+          'error': 'Input validation failed',
+        };
+      }
+      
+      // Build query parameters
+      final queryParams = <String, String>{
+        'class_type': classType,
+      };
+      
+      if (classType == 'branch' && branchId != null) {
+        queryParams['branch_id'] = branchId;
+      }
+      
+      final uri = Uri.parse('${ApiConfig.baseUrl}${ApiConfig.getClassSchedules}/$classId/schedules')
+          .replace(queryParameters: queryParams);
+      
+      // Validate SSL certificate
+      if (!SecurityService.validateSSLCertificate(uri.toString())) {
+        SecurityService.logSecurityEvent('invalid_ssl_certificate', details: {'url': uri.toString()});
+        return {
+          'success': false,
+          'message': 'Security validation failed',
+          'error': 'Invalid SSL certificate',
+        };
+      }
+      
+      final deviceId = await SecurityService.getDeviceId();
+      final headers = SecurityService.getSecurityHeaders(accessToken);
+      headers['X-Device-ID'] = deviceId;
+      
+      final response = await http.get(
+        uri,
+        headers: headers,
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return {
+          'success': true,
+          'data': data['data'],
+          'message': data['message'] ?? 'Class schedules retrieved successfully',
+        };
+      } else {
+        final errorData = jsonDecode(response.body);
+        return {
+          'success': false,
+          'message': errorData['message'] ?? 'Failed to get class schedules',
+          'error': errorData['error'],
+        };
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Network error: $e',
+        'error': e.toString(),
+      };
+    }
+  }
+
   // Create Booking (User)
   static Future<Map<String, dynamic>> createBooking(
     CreateBookingRequest request,
@@ -2287,6 +2872,87 @@ class ApiService {
         return {
           'success': false,
           'message': errorData['message'] ?? 'Failed to fetch booking',
+          'error': errorData['error'],
+        };
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Network error: $e',
+        'error': e.toString(),
+      };
+    }
+  }
+
+  // Get User Bookings
+  static Future<Map<String, dynamic>> getUserBookings(
+    String accessToken, {
+    int page = 1,
+    int limit = 100,
+    String? status,
+    String? dateFrom,
+    String? dateTo,
+  }) async {
+    try {
+      // Validate input
+      if (!SecurityService.validateInput(accessToken)) {
+        SecurityService.logSecurityEvent('invalid_token_input', details: {'token_length': accessToken.length});
+        return {
+          'success': false,
+          'message': 'Invalid token data',
+          'error': 'Input validation failed',
+        };
+      }
+      
+      // Validate SSL certificate
+      if (!SecurityService.validateSSLCertificate('${ApiConfig.baseUrl}/api/bookings')) {
+        SecurityService.logSecurityEvent('invalid_ssl_certificate', details: {'url': '${ApiConfig.baseUrl}/api/bookings'});
+        return {
+          'success': false,
+          'message': 'Security validation failed',
+          'error': 'Invalid SSL certificate',
+        };
+      }
+      
+      final queryParams = <String, String>{
+        'page': page.toString(),
+        'limit': limit.toString(),
+      };
+      
+      // Add optional query parameters
+      if (status != null && status.isNotEmpty) {
+        queryParams['status'] = SecurityService.sanitizeInput(status);
+      }
+      if (dateFrom != null && dateFrom.isNotEmpty) {
+        queryParams['date_from'] = SecurityService.sanitizeInput(dateFrom);
+      }
+      if (dateTo != null && dateTo.isNotEmpty) {
+        queryParams['date_to'] = SecurityService.sanitizeInput(dateTo);
+      }
+      
+      final uri = Uri.parse('${ApiConfig.baseUrl}/api/bookings').replace(queryParameters: queryParams);
+      
+      final deviceId = await SecurityService.getDeviceId();
+      final headers = SecurityService.getSecurityHeaders(accessToken);
+      headers['X-Device-ID'] = deviceId;
+      
+      final response = await http.get(
+        uri,
+        headers: headers,
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return {
+          'success': true,
+          'data': data['data'] ?? data,
+          'message': data['message'],
+        };
+      } else {
+        final errorData = jsonDecode(response.body);
+        return {
+          'success': false,
+          'message': errorData['message'] ?? 'Failed to fetch user bookings',
           'error': errorData['error'],
         };
       }
@@ -3309,6 +3975,66 @@ class ApiService {
     }
   }
 
+  // Get user profile
+  static Future<Map<String, dynamic>> getUserProfile(String accessToken) async {
+    try {
+      // Validate input
+      if (!SecurityService.validateInput(accessToken)) {
+        SecurityService.logSecurityEvent('invalid_token_input', details: {'token_length': accessToken.length});
+        return {
+          'success': false,
+          'message': 'Invalid token data',
+          'error': 'Input validation failed',
+        };
+      }
+
+      // Validate SSL certificate
+      if (!SecurityService.validateSSLCertificate('${ApiConfig.baseUrl}/api/auth/profile')) {
+        SecurityService.logSecurityEvent('invalid_ssl_certificate', details: {'url': '${ApiConfig.baseUrl}/api/auth/profile'});
+        return {
+          'success': false,
+          'message': 'Security validation failed',
+          'error': 'Invalid SSL certificate',
+        };
+      }
+
+      final deviceId = await SecurityService.getDeviceId();
+      final headers = SecurityService.getSecurityHeaders(accessToken);
+      headers['X-Device-ID'] = deviceId;
+
+      final response = await http.get(
+        Uri.parse('${ApiConfig.baseUrl}/api/auth/profile'),
+        headers: headers,
+      );
+
+      SecureLogger.apiResponse(response.statusCode, '${ApiConfig.baseUrl}/api/auth/profile', body: response.body);
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return {
+          'success': true,
+          'data': data['data'],
+          'message': data['message'] ?? 'User profile retrieved successfully',
+        };
+      } else {
+        final errorData = jsonDecode(response.body);
+        return {
+          'success': false,
+          'message': errorData['message'] ?? 'Failed to fetch user profile',
+          'error': errorData['error'] ?? 'Unknown error',
+        };
+      }
+    } catch (e) {
+      SecureLogger.error('Error fetching user profile', error: e);
+      SecurityService.logSecurityEvent('api_error', details: {'error': e.toString(), 'endpoint': 'get_user_profile'});
+      return {
+        'success': false,
+        'message': 'Network error: $e',
+        'error': e.toString(),
+      };
+    }
+  }
+
   // Update user profile data
   static Future<Map<String, dynamic>> updateUserData(
     UpdateUserDataRequest request,
@@ -3415,6 +4141,82 @@ class ApiService {
     } catch (e) {
       print('Error changing password: $e');
       SecurityService.logSecurityEvent('api_error', details: {'error': e.toString(), 'endpoint': 'change_password'});
+      return {
+        'success': false,
+        'message': 'Network error: $e',
+        'error': e.toString(),
+      };
+    }
+  }
+
+  // Change SuperAdmin password
+  static Future<Map<String, dynamic>> changeSuperAdminPassword(
+    ChangePasswordRequest request,
+    String accessToken,
+  ) async {
+    try {
+      // Validate input
+      if (!SecurityService.validateInput(accessToken)) {
+        SecurityService.logSecurityEvent('invalid_token_input', details: {'token_length': accessToken.length});
+        return {
+          'success': false,
+          'message': 'Invalid token data',
+          'error': 'Input validation failed',
+        };
+      }
+
+      // Validate SSL certificate
+      if (!SecurityService.validateSSLCertificate('${ApiConfig.baseUrl}${ApiConfig.superAdminChangePassword}')) {
+        SecurityService.logSecurityEvent('invalid_ssl_certificate', details: {'url': '${ApiConfig.baseUrl}${ApiConfig.superAdminChangePassword}'});
+        return {
+          'success': false,
+          'message': 'Security validation failed',
+          'error': 'Invalid SSL certificate',
+        };
+      }
+
+      // Ensure token doesn't already have Bearer prefix
+      final cleanToken = accessToken.startsWith('Bearer ') 
+          ? accessToken.substring(7) 
+          : accessToken;
+      
+      print('=== Change SuperAdmin Password Debug ===');
+      print('Clean token: ${cleanToken.substring(0, cleanToken.length > 20 ? 20 : cleanToken.length)}...');
+      
+      final deviceId = await SecurityService.getDeviceId();
+      final headers = SecurityService.getSecurityHeaders(cleanToken);
+      headers['X-Device-ID'] = deviceId;
+      print('Headers: ${headers.keys.toList()}');
+
+      // Make API call
+      final response = await http.post(
+        Uri.parse('${ApiConfig.baseUrl}${ApiConfig.superAdminChangePassword}'),
+        headers: headers,
+        body: jsonEncode(request.toJson()),
+      );
+
+      // Log response for debugging
+      SecureLogger.apiResponse(response.statusCode, '${ApiConfig.baseUrl}${ApiConfig.superAdminChangePassword}', body: response.body);
+
+      // Parse response
+      final responseData = jsonDecode(response.body);
+
+      if (response.statusCode == 200) {
+        return {
+          'success': true,
+          'message': responseData['message'] ?? 'Password changed successfully',
+          'data': responseData['data'],
+        };
+      } else {
+        return {
+          'success': false,
+          'message': responseData['message'] ?? 'Failed to change password',
+          'error': responseData['error'] ?? 'Unknown error',
+        };
+      }
+    } catch (e) {
+      SecureLogger.error('Error changing SuperAdmin password', error: e);
+      SecurityService.logSecurityEvent('api_error', details: {'error': e.toString(), 'endpoint': 'change_superadmin_password'});
       return {
         'success': false,
         'message': 'Network error: $e',

@@ -35,6 +35,7 @@ class _EditStandaloneClassPageState extends State<EditStandaloneClassPage> {
   Set<DateTime> _selectedDates = {};
   TimeOfDay _defaultStartTime = const TimeOfDay(hour: 9, minute: 0);
   TimeOfDay _defaultEndTime = const TimeOfDay(hour: 10, minute: 0);
+  DateTime _displayMonth = DateTime.now();
   
   // Image handling
   final ImagePicker _imagePicker = ImagePicker();
@@ -46,6 +47,8 @@ class _EditStandaloneClassPageState extends State<EditStandaloneClassPage> {
   @override
   void initState() {
     super.initState();
+    final now = DateTime.now();
+    _displayMonth = DateTime(now.year, now.month);
     _initializeForm();
   }
 
@@ -95,16 +98,34 @@ class _EditStandaloneClassPageState extends State<EditStandaloneClassPage> {
   }
 
   void _generateSchedulesFromSelectedDates() {
+    // Store existing custom times before regenerating
+    final Map<DateTime, ClassSchedule> existingSchedules = {};
+    for (final schedule in _schedules) {
+      final dateKey = DateTime(schedule.date.year, schedule.date.month, schedule.date.day);
+      existingSchedules[dateKey] = schedule;
+    }
+    
     _schedules.clear();
     for (final date in _selectedDates) {
       final dartWeekday = date.weekday;
       final backendDayOfWeek = dartWeekday == 7 ? 0 : dartWeekday;
       
+      final dateKey = DateTime(date.year, date.month, date.day);
+      final existingSchedule = existingSchedules[dateKey];
+      
+      // Use existing schedule times if available, otherwise use default times
+      final startTime = existingSchedule != null
+          ? existingSchedule.startTime
+          : DateTime.utc(date.year, date.month, date.day, _defaultStartTime.hour, _defaultStartTime.minute);
+      final endTime = existingSchedule != null
+          ? existingSchedule.endTime
+          : DateTime.utc(date.year, date.month, date.day, _defaultEndTime.hour, _defaultEndTime.minute);
+      
       _schedules.add(ClassSchedule(
         dayOfWeek: backendDayOfWeek,
         date: date,
-        startTime: DateTime.utc(date.year, date.month, date.day, _defaultStartTime.hour, _defaultStartTime.minute),
-        endTime: DateTime.utc(date.year, date.month, date.day, _defaultEndTime.hour, _defaultEndTime.minute),
+        startTime: startTime,
+        endTime: endTime,
       ));
     }
   }
@@ -113,6 +134,145 @@ class _EditStandaloneClassPageState extends State<EditStandaloneClassPage> {
     setState(() {
       _generateSchedulesFromSelectedDates();
     });
+  }
+
+  void _updateScheduleTime(DateTime date, TimeOfDay? startTime, TimeOfDay? endTime) {
+    setState(() {
+      final scheduleIndex = _schedules.indexWhere((s) => 
+        s.date.year == date.year && 
+        s.date.month == date.month && 
+        s.date.day == date.day
+      );
+      
+      if (scheduleIndex != -1) {
+        final schedule = _schedules[scheduleIndex];
+        final updatedStartTime = startTime != null
+            ? DateTime.utc(date.year, date.month, date.day, startTime.hour, startTime.minute)
+            : schedule.startTime;
+        final updatedEndTime = endTime != null
+            ? DateTime.utc(date.year, date.month, date.day, endTime.hour, endTime.minute)
+            : schedule.endTime;
+        
+        _schedules[scheduleIndex] = ClassSchedule(
+          dayOfWeek: schedule.dayOfWeek,
+          date: schedule.date,
+          startTime: updatedStartTime,
+          endTime: updatedEndTime,
+        );
+      }
+    });
+  }
+
+  void _changeDate(DateTime oldDate, DateTime newDate) {
+    setState(() {
+      // Normalize dates
+      final normalizedOldDate = DateTime(oldDate.year, oldDate.month, oldDate.day);
+      final normalizedNewDate = DateTime(newDate.year, newDate.month, newDate.day);
+      
+      // Check if new date is already selected
+      final isNewDateAlreadySelected = _selectedDates.any((d) => 
+        d.year == normalizedNewDate.year && 
+        d.month == normalizedNewDate.month && 
+        d.day == normalizedNewDate.day
+      );
+      
+      if (isNewDateAlreadySelected) {
+        _showSnackBar('This date is already selected');
+        return;
+      }
+      
+      // Check if new date is in the past
+      final today = DateTime.now();
+      final todayDate = DateTime(today.year, today.month, today.day);
+      if (normalizedNewDate.isBefore(todayDate)) {
+        _showSnackBar('Cannot select a date in the past');
+        return;
+      }
+      
+      // Get the schedule for the old date to preserve times
+      final scheduleIndex = _schedules.indexWhere((s) => 
+        s.date.year == normalizedOldDate.year && 
+        s.date.month == normalizedOldDate.month && 
+        s.date.day == normalizedOldDate.day
+      );
+      
+      TimeOfDay? preservedStartTime;
+      TimeOfDay? preservedEndTime;
+      
+      if (scheduleIndex != -1) {
+        final schedule = _schedules[scheduleIndex];
+        preservedStartTime = TimeOfDay.fromDateTime(schedule.startTime);
+        preservedEndTime = TimeOfDay.fromDateTime(schedule.endTime);
+      }
+      
+      // Find and remove the exact old date from the set
+      _selectedDates.removeWhere((d) => 
+        d.year == normalizedOldDate.year && 
+        d.month == normalizedOldDate.month && 
+        d.day == normalizedOldDate.day
+      );
+      
+      // Remove old schedule
+      if (scheduleIndex != -1) {
+        _schedules.removeAt(scheduleIndex);
+      }
+      
+      // Add new date
+      _selectedDates.add(normalizedNewDate);
+      
+      // Create new schedule with preserved times or default times
+      final dartWeekday = normalizedNewDate.weekday;
+      final backendDayOfWeek = dartWeekday == 7 ? 0 : dartWeekday;
+      
+      final newStartTime = preservedStartTime != null
+          ? DateTime.utc(normalizedNewDate.year, normalizedNewDate.month, normalizedNewDate.day, 
+                        preservedStartTime.hour, preservedStartTime.minute)
+          : DateTime.utc(normalizedNewDate.year, normalizedNewDate.month, normalizedNewDate.day, 
+                        _defaultStartTime.hour, _defaultStartTime.minute);
+      
+      final newEndTime = preservedEndTime != null
+          ? DateTime.utc(normalizedNewDate.year, normalizedNewDate.month, normalizedNewDate.day, 
+                        preservedEndTime.hour, preservedEndTime.minute)
+          : DateTime.utc(normalizedNewDate.year, normalizedNewDate.month, normalizedNewDate.day, 
+                        _defaultEndTime.hour, _defaultEndTime.minute);
+      
+      _schedules.add(ClassSchedule(
+        dayOfWeek: backendDayOfWeek,
+        date: normalizedNewDate,
+        startTime: newStartTime,
+        endTime: newEndTime,
+      ));
+    });
+  }
+
+  TimeOfDay _getStartTimeForDate(DateTime date) {
+    final schedule = _schedules.firstWhere(
+      (s) => s.date.year == date.year && 
+             s.date.month == date.month && 
+             s.date.day == date.day,
+      orElse: () => ClassSchedule(
+        dayOfWeek: date.weekday % 7,
+        date: date,
+        startTime: DateTime.utc(date.year, date.month, date.day, _defaultStartTime.hour, _defaultStartTime.minute),
+        endTime: DateTime.utc(date.year, date.month, date.day, _defaultEndTime.hour, _defaultEndTime.minute),
+      ),
+    );
+    return TimeOfDay.fromDateTime(schedule.startTime);
+  }
+
+  TimeOfDay _getEndTimeForDate(DateTime date) {
+    final schedule = _schedules.firstWhere(
+      (s) => s.date.year == date.year && 
+             s.date.month == date.month && 
+             s.date.day == date.day,
+      orElse: () => ClassSchedule(
+        dayOfWeek: date.weekday % 7,
+        date: date,
+        startTime: DateTime.utc(date.year, date.month, date.day, _defaultStartTime.hour, _defaultStartTime.minute),
+        endTime: DateTime.utc(date.year, date.month, date.day, _defaultEndTime.hour, _defaultEndTime.minute),
+      ),
+    );
+    return TimeOfDay.fromDateTime(schedule.endTime);
   }
 
   Future<void> _pickImages() async {
@@ -955,7 +1115,7 @@ class _EditStandaloneClassPageState extends State<EditStandaloneClassPage> {
                             ),
                             const SizedBox(height: 16),
 
-                            // Selected Dates Summary
+                            // Selected Dates Summary with Editable Times
                             if (_selectedDates.isNotEmpty) ...[
                               Container(
                                 padding: const EdgeInsets.all(16),
@@ -972,7 +1132,7 @@ class _EditStandaloneClassPageState extends State<EditStandaloneClassPage> {
                                         const Icon(Icons.calendar_today, color: Color(0xFFF8BB0C)),
                                         const SizedBox(width: 8),
                                         Text(
-                                          'Selected Dates (${_selectedDates.length})',
+                                          'Selected Dates & Times (${_selectedDates.length})',
                                           style: const TextStyle(
                                             fontSize: 16,
                                             fontWeight: FontWeight.w600,
@@ -981,20 +1141,178 @@ class _EditStandaloneClassPageState extends State<EditStandaloneClassPage> {
                                         ),
                                       ],
                                     ),
-                                    const SizedBox(height: 8),
-                                    Wrap(
-                                      spacing: 8,
-                                      runSpacing: 4,
-                                      children: _selectedDates.map((date) {
-                                        return Chip(
-                                          label: Text(_formatDateWithDay(date)),
-                                          backgroundColor: const Color(0xFFF8BB0C),
-                                          labelStyle: const TextStyle(color: Colors.black),
-                                          deleteIcon: const Icon(Icons.close, color: Colors.black, size: 18),
-                                          onDeleted: () => _toggleDateSelection(date),
-                                        );
-                              }).toList(),
-                                    ),
+                                    const SizedBox(height: 16),
+                                    ...(() {
+                                      final sortedDates = _selectedDates.toList();
+                                      sortedDates.sort();
+                                      return sortedDates;
+                                    })().map((date) {
+                                      final startTime = _getStartTimeForDate(date);
+                                      final endTime = _getEndTimeForDate(date);
+                                      
+                                      return Container(
+                                        margin: const EdgeInsets.only(bottom: 12),
+                                        padding: const EdgeInsets.all(12),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white,
+                                          borderRadius: BorderRadius.circular(8),
+                                          border: Border.all(color: Colors.grey[300]!),
+                                        ),
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Row(
+                                              children: [
+                                                Expanded(
+                                                  child: InkWell(
+                                                    onTap: () async {
+                                                      final selectedDate = await showDatePicker(
+                                                        context: context,
+                                                        initialDate: date,
+                                                        firstDate: DateTime.now(),
+                                                        lastDate: DateTime.now().add(const Duration(days: 365 * 2)),
+                                                      );
+                                                      if (selectedDate != null) {
+                                                        _changeDate(date, selectedDate);
+                                                      }
+                                                    },
+                                                    child: Row(
+                                                      children: [
+                                                        const Icon(
+                                                          Icons.calendar_today,
+                                                          size: 16,
+                                                          color: Color(0xFFF8BB0C),
+                                                        ),
+                                                        const SizedBox(width: 8),
+                                                        Expanded(
+                                                          child: Text(
+                                                            _formatDateWithDay(date),
+                                                            style: const TextStyle(
+                                                              fontSize: 14,
+                                                              fontWeight: FontWeight.w600,
+                                                              color: Color(0xFFF8BB0C),
+                                                            ),
+                                                          ),
+                                                        ),
+                                                        const Icon(
+                                                          Icons.edit,
+                                                          size: 14,
+                                                          color: Colors.grey,
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 8),
+                                                IconButton(
+                                                  icon: const Icon(Icons.close, size: 18),
+                                                  color: Colors.red,
+                                                  onPressed: () => _toggleDateSelection(date),
+                                                  padding: EdgeInsets.zero,
+                                                  constraints: const BoxConstraints(),
+                                                ),
+                                              ],
+                                            ),
+                                            const SizedBox(height: 8),
+                                            const Text(
+                                              'Tap to edit time',
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color: Colors.grey,
+                                                fontStyle: FontStyle.italic,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 8),
+                                            Row(
+                                              children: [
+                                                Expanded(
+                                                  child: InkWell(
+                                                    onTap: () async {
+                                                      final time = await showTimePicker(
+                                                        context: context,
+                                                        initialTime: startTime,
+                                                      );
+                                                      if (time != null) {
+                                                        _updateScheduleTime(date, time, null);
+                                                      }
+                                                    },
+                                                    child: Container(
+                                                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+                                                      decoration: BoxDecoration(
+                                                        border: Border.all(color: const Color(0xFFF8BB0C), width: 1.5),
+                                                        borderRadius: BorderRadius.circular(8),
+                                                        color: Colors.white,
+                                                      ),
+                                                      child: Row(
+                                                        mainAxisAlignment: MainAxisAlignment.center,
+                                                        children: [
+                                                          const Icon(Icons.access_time, size: 18, color: Color(0xFFF8BB0C)),
+                                                          const SizedBox(width: 8),
+                                                          Text(
+                                                            '${startTime.hour.toString().padLeft(2, '0')}:${startTime.minute.toString().padLeft(2, '0')}',
+                                                            style: const TextStyle(
+                                                              fontSize: 14,
+                                                              fontWeight: FontWeight.w600,
+                                                              color: Colors.black87,
+                                                            ),
+                                                          ),
+                                                          const SizedBox(width: 4),
+                                                          const Icon(Icons.edit, size: 14, color: Colors.grey),
+                                                        ],
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 12),
+                                                const Text(
+                                                  'to',
+                                                  style: TextStyle(fontSize: 14, color: Colors.grey, fontWeight: FontWeight.w500),
+                                                ),
+                                                const SizedBox(width: 12),
+                                                Expanded(
+                                                  child: InkWell(
+                                                    onTap: () async {
+                                                      final time = await showTimePicker(
+                                                        context: context,
+                                                        initialTime: endTime,
+                                                      );
+                                                      if (time != null) {
+                                                        _updateScheduleTime(date, null, time);
+                                                      }
+                                                    },
+                                                    child: Container(
+                                                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+                                                      decoration: BoxDecoration(
+                                                        border: Border.all(color: const Color(0xFFF8BB0C), width: 1.5),
+                                                        borderRadius: BorderRadius.circular(8),
+                                                        color: Colors.white,
+                                                      ),
+                                                      child: Row(
+                                                        mainAxisAlignment: MainAxisAlignment.center,
+                                                        children: [
+                                                          const Icon(Icons.access_time, size: 18, color: Color(0xFFF8BB0C)),
+                                                          const SizedBox(width: 8),
+                                                          Text(
+                                                            '${endTime.hour.toString().padLeft(2, '0')}:${endTime.minute.toString().padLeft(2, '0')}',
+                                                            style: const TextStyle(
+                                                              fontSize: 14,
+                                                              fontWeight: FontWeight.w600,
+                                                              color: Colors.black87,
+                                                            ),
+                                                          ),
+                                                          const SizedBox(width: 4),
+                                                          const Icon(Icons.edit, size: 14, color: Colors.grey),
+                                                        ],
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                    }).toList(),
                                   ],
                                 ),
                               ),
@@ -1047,6 +1365,7 @@ class _EditStandaloneClassPageState extends State<EditStandaloneClassPage> {
                                       ),
                               ),
                             ),
+                            const SizedBox(height: 40),
                           ],
                         ),
                       ),
@@ -1062,53 +1381,44 @@ class _EditStandaloneClassPageState extends State<EditStandaloneClassPage> {
   }
 
   Widget _buildMultiDateCalendar() {
-    final now = DateTime.now();
-    final currentMonth = DateTime(now.year, now.month);
-    
-    return StatefulBuilder(
-      builder: (context, setState) {
-        DateTime displayMonth = currentMonth;
-        
-        return Column(
+    return Column(
+      children: [
+        // Month navigation
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            // Month navigation
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                IconButton(
-                  onPressed: () {
-                    setState(() {
-                      displayMonth = DateTime(displayMonth.year, displayMonth.month - 1);
-                    });
-                  },
-                  icon: const Icon(Icons.chevron_left),
-                ),
-                Text(
-                  '${_getMonthName(displayMonth.month)} ${displayMonth.year}',
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                IconButton(
-                  onPressed: () {
-                    setState(() {
-                      displayMonth = DateTime(displayMonth.year, displayMonth.month + 1);
-                    });
-                  },
-                  icon: const Icon(Icons.chevron_right),
-                ),
-              ],
+            IconButton(
+              onPressed: () {
+                setState(() {
+                  _displayMonth = DateTime(_displayMonth.year, _displayMonth.month - 1);
+                });
+              },
+              icon: const Icon(Icons.chevron_left),
             ),
-            const SizedBox(height: 8),
-            
-            // Calendar grid
-            Expanded(
-              child: _buildMultiDateCalendarGrid(displayMonth),
+            Text(
+              '${_getMonthName(_displayMonth.month)} ${_displayMonth.year}',
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            IconButton(
+              onPressed: () {
+                setState(() {
+                  _displayMonth = DateTime(_displayMonth.year, _displayMonth.month + 1);
+                });
+              },
+              icon: const Icon(Icons.chevron_right),
             ),
           ],
-        );
-      },
+        ),
+        const SizedBox(height: 8),
+        
+        // Calendar grid
+        Expanded(
+          child: _buildMultiDateCalendarGrid(_displayMonth),
+        ),
+      ],
     );
   }
 

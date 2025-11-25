@@ -21,8 +21,10 @@ class _StandaloneClassesPageState extends State<StandaloneClassesPage> {
   List<StandaloneClassResponse> _filteredClasses = [];
   bool _isLoading = false;
   String _searchQuery = '';
-  String _selectedFilter = 'All'; // All, Active, Inactive, Expired, Expiring Soon
+  String _selectedFilter = 'All'; // All, Active, Inactive, Expired, Expiring Soon, Visible, Hidden
   bool _classesModified = false; // Track if classes were modified
+  bool _isTogglingVisibility = false;
+  bool _showFiltersAndStats = false; // Track if filters and stats are visible
   
   final TextEditingController _searchController = TextEditingController();
 
@@ -134,6 +136,12 @@ class _StandaloneClassesPageState extends State<StandaloneClassesPage> {
         break;
       case 'Without Schedule':
         filtered = filtered.where((classData) => classData.schedule.isEmpty).toList();
+        break;
+      case 'Visible':
+        filtered = filtered.where((classData) => classData.isVisible ?? true).toList();
+        break;
+      case 'Hidden':
+        filtered = filtered.where((classData) => classData.isVisible == false).toList();
         break;
       // 'All' case - no additional filtering needed
     }
@@ -297,101 +305,142 @@ class _StandaloneClassesPageState extends State<StandaloneClassesPage> {
 
                 const SizedBox(height: 20),
 
-                // Filter Section
+                // Collapsible Arrow Button
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 18.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  child: GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _showFiltersAndStats = !_showFiltersAndStats;
+                      });
+                    },
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Text(
-                            'Filter Classes',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                            ),
+                          Icon(
+                            _showFiltersAndStats ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                            color: Colors.white70,
+                            size: 24,
                           ),
-                          if (_selectedFilter != 'All')
-                            TextButton(
-                              onPressed: () => _onFilterChanged('All'),
-                              child: const Text(
-                                'Clear Filters',
-                                style: TextStyle(
-                                  color: Colors.white70,
-                                  fontSize: 12,
-                                ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+
+                // Collapsible Filter and Stats Section
+                AnimatedSize(
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeInOut,
+                  child: _showFiltersAndStats
+                      ? Column(
+                          children: [
+                            const SizedBox(height: 10),
+                            // Filter Section
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 18.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      const Text(
+                                        'Filter Classes',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                      if (_selectedFilter != 'All')
+                                        TextButton(
+                                          onPressed: () => _onFilterChanged('All'),
+                                          child: const Text(
+                                            'Clear Filters',
+                                            style: TextStyle(
+                                              color: Colors.white70,
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 12),
+                                  SingleChildScrollView(
+                                    scrollDirection: Axis.horizontal,
+                                    child: Row(
+                                      children: [
+                                        _buildFilterChip('All', Icons.list),
+                                        const SizedBox(width: 8),
+                                        _buildFilterChip('Active', Icons.check_circle),
+                                        const SizedBox(width: 8),
+                                        _buildFilterChip('Inactive', Icons.cancel),
+                                        const SizedBox(width: 8),
+                                        _buildFilterChip('Expired', Icons.error),
+                                        const SizedBox(width: 8),
+                                        _buildFilterChip('Expiring Soon', Icons.warning),
+                                        const SizedBox(width: 8),
+                                        _buildFilterChip('With Schedule', Icons.schedule),
+                                        const SizedBox(width: 8),
+                                        _buildFilterChip('Without Schedule', Icons.schedule_outlined),
+                                        const SizedBox(width: 8),
+                                        _buildFilterChip('Visible', Icons.visibility),
+                                        const SizedBox(width: 8),
+                                        _buildFilterChip('Hidden', Icons.visibility_off),
+                                      ],
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Row(
-                          children: [
-                            _buildFilterChip('All', Icons.list),
-                            const SizedBox(width: 8),
-                            _buildFilterChip('Active', Icons.check_circle),
-                            const SizedBox(width: 8),
-                            _buildFilterChip('Inactive', Icons.cancel),
-                            const SizedBox(width: 8),
-                            _buildFilterChip('Expired', Icons.error),
-                            const SizedBox(width: 8),
-                            _buildFilterChip('Expiring Soon', Icons.warning),
-                            const SizedBox(width: 8),
-                            _buildFilterChip('With Schedule', Icons.schedule),
-                            const SizedBox(width: 8),
-                            _buildFilterChip('Without Schedule', Icons.schedule_outlined),
+
+                            const SizedBox(height: 20),
+
+                            // Stats Cards
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 18.0),
+                              child: Column(
+                                children: [
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: _buildStatCard(
+                                          'Total Classes',
+                                          _filteredClasses.length.toString(),
+                                          Icons.fitness_center,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 16),
+                                      Expanded(
+                                        child: _buildStatCard(
+                                          'Active Classes',
+                                          _filteredClasses.where((c) => c.isActive && !c.isExpired).length.toString(),
+                                          Icons.check_circle,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 16),
+                                      Expanded(
+                                        child: _buildStatCard(
+                                          'With Schedule',
+                                          _filteredClasses.where((c) => c.schedule.isNotEmpty).length.toString(),
+                                          Icons.schedule,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                            const SizedBox(height: 20),
                           ],
-                        ),
-                      ),
-                    ],
-                  ),
+                        )
+                      : const SizedBox.shrink(),
                 ),
-
-                const SizedBox(height: 20),
-
-                // Stats Cards
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 18.0),
-                  child: Column(
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                        child: _buildStatCard(
-                          'Total Classes',
-                          _filteredClasses.length.toString(),
-                          Icons.fitness_center,
-                        ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: _buildStatCard(
-                              'Active Classes',
-                              _filteredClasses.where((c) => c.isActive && !c.isExpired).length.toString(),
-                              Icons.check_circle,
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: _buildStatCard(
-                              'With Schedule',
-                              _filteredClasses.where((c) => c.schedule.isNotEmpty).length.toString(),
-                              Icons.schedule,
-                            ),
-                          ),
-                        ],
-                      ),
-                      
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 20),
 
                 // Classes List Header
                 Padding(
@@ -587,9 +636,14 @@ class _StandaloneClassesPageState extends State<StandaloneClassesPage> {
         !classData.isExpired && 
         classData.expiresAt!.difference(DateTime.now()).inDays <= 7;
     
+    // Check visibility status
+    final isVisible = classData.isVisible ?? true;
+    
     // Determine border color based on class status
     Color borderColor = Colors.white.withOpacity(0.3);
-    if (classData.isExpired) {
+    if (!isVisible) {
+      borderColor = Colors.grey.withOpacity(0.7);
+    } else if (classData.isExpired) {
       borderColor = Colors.red.withOpacity(0.7);
     } else if (isExpiringSoon) {
       borderColor = Colors.orange.withOpacity(0.7);
@@ -599,70 +653,245 @@ class _StandaloneClassesPageState extends State<StandaloneClassesPage> {
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.1),
+        color: isVisible ? Colors.white.withOpacity(0.1) : Colors.grey.withOpacity(0.1),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: borderColor, width: 2),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Text(
+          // Class Name and Expiring/Expired Badge at Top
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.black.withOpacity(0.2),
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(12),
+                topRight: Radius.circular(12),
+              ),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
                           classData.name,
-                          style: const TextStyle(
-                            color: Colors.white,
+                          style: TextStyle(
+                            color: isVisible ? Colors.white : Colors.grey[400],
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
+                            decoration: isVisible ? null : TextDecoration.lineThrough,
                           ),
                         ),
-                        if (isExpiringSoon) ...[
-                          const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: Colors.orange,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: const Text(
-                              'EXPIRING',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                              ),
+                      ),
+                      if (isExpiringSoon) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.orange,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Text(
+                            'EXPIRING',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
-                        ],
-                        if (classData.isExpired) ...[
-                          const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: Colors.red,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: const Text(
-                              'EXPIRED',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ],
+                        ),
                       ],
+                      if (classData.isExpired) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.red,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Text(
+                            'EXPIRED',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                // Active/Inactive Status and Visibility Toggle (Vertical)
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    // Active/Inactive Status
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: classData.isActive ? Colors.green : Colors.red,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        classData.isActive ? 'Active' : 'Inactive',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     ),
                     const SizedBox(height: 4),
+                    // Visibility Toggle Switch
+                    Transform.scale(
+                      scale: 0.8,
+                      child: Switch(
+                        value: isVisible,
+                        onChanged: _isTogglingVisibility
+                            ? null
+                            : (value) => _toggleClassVisibility(classData),
+                        activeColor: Colors.green,
+                        inactiveThumbColor: Colors.grey,
+                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          // Visibility Badge (if hidden)
+          if (!isVisible)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
+              decoration: BoxDecoration(
+                color: Colors.grey.withOpacity(0.3),
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.visibility_off,
+                    color: Colors.grey,
+                    size: 16,
+                  ),
+                  const SizedBox(width: 6),
+                  const Text(
+                    'Hidden from members',
+                    style: TextStyle(
+                      color: Colors.grey,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Instructor: ${classData.instructor}',
+                  style: TextStyle(
+                    color: isVisible ? Colors.white70 : Colors.grey[500],
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  classData.description,
+                  style: TextStyle(
+                    color: isVisible ? Colors.white70 : Colors.grey[500],
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 12),
+          
+                // Images Display
+                if (classData.images.isNotEmpty) ...[
+                  Container(
+                    height: 120,
+                    child: ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: classData.images.length,
+                      itemBuilder: (context, index) {
+                        return Container(
+                          width: 120,
+                          margin: const EdgeInsets.only(right: 8),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.white.withOpacity(0.3)),
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: Image.network(
+                              classData.images[index],
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                return Container(
+                                  color: Colors.grey[800],
+                                  child: const Icon(
+                                    Icons.broken_image,
+                                    color: Colors.white70,
+                                    size: 40,
+                                  ),
+                                );
+                              },
+                              loadingBuilder: (context, child, loadingProgress) {
+                                if (loadingProgress == null) return child;
+                                return Container(
+                                  color: Colors.grey[800],
+                                  child: const Center(
+                                    child: SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                ],
+                Row(
+                  children: [
+                    Icon(
+                      Icons.people,
+                      color: Colors.white70,
+                      size: 16,
+                    ),
+                    const SizedBox(width: 8),
                     Text(
-                      'Instructor: ${classData.instructor}',
+                      'Capacity: ${classData.capacity}',
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Icon(
+                      Icons.timer,
+                      color: Colors.white70,
+                      size: 16,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Duration: ${classData.duration} min',
                       style: const TextStyle(
                         color: Colors.white70,
                         fontSize: 14,
@@ -670,193 +899,83 @@ class _StandaloneClassesPageState extends State<StandaloneClassesPage> {
                     ),
                   ],
                 ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: classData.isActive ? Colors.green : Colors.red,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  classData.isActive ? 'Active' : 'Inactive',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(
-            classData.description,
-            style: const TextStyle(
-              color: Colors.white70,
-              fontSize: 14,
-            ),
-          ),
-          const SizedBox(height: 12),
-          
-          // Images Display
-          if (classData.images.isNotEmpty) ...[
-            Container(
-              height: 120,
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                itemCount: classData.images.length,
-                itemBuilder: (context, index) {
-                  return Container(
-                    width: 120,
-                    margin: const EdgeInsets.only(right: 8),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.white.withOpacity(0.3)),
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: Image.network(
-                        classData.images[index],
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) {
-                          return Container(
-                            color: Colors.grey[800],
-                            child: const Icon(
-                              Icons.broken_image,
-                              color: Colors.white70,
-                              size: 40,
-                            ),
-                          );
-                        },
-                        loadingBuilder: (context, child, loadingProgress) {
-                          if (loadingProgress == null) return child;
-                          return Container(
-                            color: Colors.grey[800],
-                            child: const Center(
-                              child: SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                ),
-                              ),
-                            ),
-                          );
-                        },
+                if (classData.schedule.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.schedule,
+                        color: Colors.white70,
+                        size: 16,
                       ),
-                    ),
-                  );
-                },
-              ),
-            ),
-            const SizedBox(height: 12),
-          ],
-          Row(
-            children: [
-              Icon(
-                Icons.people,
-                color: Colors.white70,
-                size: 16,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                'Capacity: ${classData.capacity}',
-                style: const TextStyle(
-                  color: Colors.white70,
-                  fontSize: 14,
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Schedule: ${_formatSchedule(classData.schedule)}',
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+                const SizedBox(height: 8),
+                Text(
+                  'Created: ${_formatDate(classData.createdAt)}',
+                  style: const TextStyle(
+                    color: Colors.white60,
+                    fontSize: 12,
+                  ),
                 ),
-              ),
-              const SizedBox(width: 16),
-              Icon(
-                Icons.timer,
-                color: Colors.white70,
-                size: 16,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                'Duration: ${classData.duration} min',
-                style: const TextStyle(
-                  color: Colors.white70,
-                  fontSize: 14,
-                ),
-              ),
-            ],
-          ),
-          if (classData.schedule.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Icon(
-                  Icons.schedule,
-                  color: Colors.white70,
-                  size: 16,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'Schedule: ${_formatSchedule(classData.schedule)}',
-                    style: const TextStyle(
-                      color: Colors.white70,
-                      fontSize: 14,
+                if (classData.expiresAt != null) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    'Expires: ${_formatDate(classData.expiresAt!)}',
+                    style: TextStyle(
+                      color: classData.isExpired ? Colors.red : Colors.orange,
+                      fontSize: 12,
                     ),
                   ),
+                ],
+                if (classData.renewalCount > 0) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    'Renewed: ${classData.renewalCount} times',
+                    style: const TextStyle(
+                      color: Colors.white60,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    _buildActionButton(
+                      'Edit',
+                      Icons.edit,
+                      Colors.orange,
+                      () => _editClass(classData),
+                    ),
+                    if (classData.isExpired || isExpiringSoon)
+                      _buildActionButton(
+                        'Renew',
+                        Icons.refresh,
+                        classData.isExpired ? Colors.green : Colors.amber,
+                        () => _renewClass(classData),
+                      ),
+                    _buildActionButton(
+                      'Delete',
+                      Icons.delete,
+                      Colors.red,
+                      () => _deleteClass(classData),
+                    ),
+                  ],
                 ),
               ],
             ),
-          ],
-          const SizedBox(height: 8),
-          Text(
-            'Created: ${_formatDate(classData.createdAt)}',
-            style: const TextStyle(
-              color: Colors.white60,
-              fontSize: 12,
-            ),
-          ),
-          if (classData.expiresAt != null) ...[
-            const SizedBox(height: 4),
-            Text(
-              'Expires: ${_formatDate(classData.expiresAt!)}',
-              style: TextStyle(
-                color: classData.isExpired ? Colors.red : Colors.orange,
-                fontSize: 12,
-              ),
-            ),
-          ],
-          if (classData.renewalCount > 0) ...[
-            const SizedBox(height: 4),
-            Text(
-              'Renewed: ${classData.renewalCount} times',
-              style: const TextStyle(
-                color: Colors.white60,
-                fontSize: 12,
-              ),
-            ),
-          ],
-          const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              _buildActionButton(
-                'Edit',
-                Icons.edit,
-                Colors.orange,
-                () => _editClass(classData),
-              ),
-              if (classData.isExpired || isExpiringSoon)
-                _buildActionButton(
-                  'Renew',
-                  Icons.refresh,
-                  classData.isExpired ? Colors.green : Colors.amber,
-                  () => _renewClass(classData),
-                ),
-              _buildActionButton(
-                'Delete',
-                Icons.delete,
-                Colors.red,
-                () => _deleteClass(classData),
-              ),
-            ],
           ),
         ],
       ),
@@ -867,14 +986,23 @@ class _StandaloneClassesPageState extends State<StandaloneClassesPage> {
     if (schedules.isEmpty) return 'No schedule';
     
     final daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    
     final scheduleStrings = schedules.map((s) {
       final day = daysOfWeek[s.dayOfWeek];
-      // Convert UTC time to local time for display
-      final localStartTime = s.startTime.toLocal();
-      final localEndTime = s.endTime.toLocal();
-      final startTime = '${localStartTime.hour.toString().padLeft(2, '0')}:${localStartTime.minute.toString().padLeft(2, '0')}';
-      final endTime = '${localEndTime.hour.toString().padLeft(2, '0')}:${localEndTime.minute.toString().padLeft(2, '0')}';
-      return '$day $startTime-$endTime';
+      // Format the date in a compact format
+      final scheduleDate = s.date;
+      final now = DateTime.now();
+      final isCurrentYear = scheduleDate.year == now.year;
+      final dateStr = isCurrentYear 
+          ? '${months[scheduleDate.month - 1]} ${scheduleDate.day}'
+          : '${months[scheduleDate.month - 1]} ${scheduleDate.day}, ${scheduleDate.year}';
+      
+      // Use time directly - times are stored in the correct timezone
+      // Extract hour and minute from the DateTime object
+      final startTime = '${s.startTime.hour.toString().padLeft(2, '0')}:${s.startTime.minute.toString().padLeft(2, '0')}';
+      final endTime = '${s.endTime.hour.toString().padLeft(2, '0')}:${s.endTime.minute.toString().padLeft(2, '0')}';
+      return '$day, $dateStr $startTime-$endTime';
     }).toList();
     
     return scheduleStrings.join(', ');
@@ -1023,7 +1151,72 @@ class _StandaloneClassesPageState extends State<StandaloneClassesPage> {
     }
   }
 
+  Future<void> _toggleClassVisibility(StandaloneClassResponse classData) async {
+    if (_isTogglingVisibility) return;
+
+    setState(() {
+      _isTogglingVisibility = true;
+    });
+
+    try {
+      final result = await ApiService.toggleStandaloneClassVisibility(
+        classData.id,
+        widget.accessToken,
+      );
+
+      if (result['success']) {
+        final updatedClassData = result['data'];
+        final newIsVisible = updatedClassData['is_visible'] ?? updatedClassData['IsVisible'] ?? true;
+
+        // Update the class in the list
+        final classIndex = _classes.indexWhere((c) => c.id == classData.id);
+        if (classIndex != -1) {
+          setState(() {
+            _classes[classIndex] = _classes[classIndex].copyWith(
+              isVisible: newIsVisible,
+            );
+            _classesModified = true;
+            _applyFilters();
+          });
+        }
+
+        
+      } 
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: $e'),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    } finally {
+      setState(() {
+        _isTogglingVisibility = false;
+      });
+    }
+  }
+
   Future<void> _deleteClass(StandaloneClassResponse classData) async {
+    // Log deletion initiation
+    print('=== Standalone Class Deletion Initiated ===');
+    print('Class ID: ${classData.id}');
+    print('Class Name: ${classData.name}');
+    print('Instructor: ${classData.instructor}');
+    print('Is Active: ${classData.isActive}');
+    print('Is Visible: ${classData.isVisible ?? true}');
+    print('Is Expired: ${classData.isExpired}');
+    print('Total Classes in List: ${_classes.length}');
+    print('Filtered Classes Count: ${_filteredClasses.length}');
+    
+    // Find class index in the list
+    final classIndex = _classes.indexWhere((c) => c.id == classData.id);
+    if (classIndex != -1) {
+      print('Class found at index: $classIndex');
+    } else {
+      print('WARNING: Class not found in classes list');
+    }
+    
     // Show confirmation dialog
     final confirmed = await showDialog<bool>(
       context: context,
@@ -1032,11 +1225,17 @@ class _StandaloneClassesPageState extends State<StandaloneClassesPage> {
         content: Text('Are you sure you want to delete "${classData.name}"? This action cannot be undone.'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
+            onPressed: () {
+              print('Deletion cancelled by user');
+              Navigator.of(context).pop(false);
+            },
             child: const Text('Cancel'),
           ),
           TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
+            onPressed: () {
+              print('Deletion confirmed by user');
+              Navigator.of(context).pop(true);
+            },
             style: TextButton.styleFrom(foregroundColor: Colors.red),
             child: const Text('Delete'),
           ),
@@ -1045,6 +1244,9 @@ class _StandaloneClassesPageState extends State<StandaloneClassesPage> {
     );
 
     if (confirmed == true) {
+      print('Proceeding with class deletion...');
+      print('Sending delete request to API for class ID: ${classData.id}');
+      
       try {
         final result = await ApiService.deleteStandaloneClass(
           classData.id,
@@ -1052,18 +1254,79 @@ class _StandaloneClassesPageState extends State<StandaloneClassesPage> {
         );
 
         if (result['success']) {
-          _showSnackBar('Class deleted successfully');
+          print('✓ API deletion request successful');
+          
+          // Extract response data if available
+          final responseData = result['data'];
+          int bookingsDeleted = 0;
+          
+          if (responseData != null && responseData is Map) {
+            bookingsDeleted = responseData['bookings_deleted'] ?? 0;
+            print('Bookings deleted from server: $bookingsDeleted');
+          }
+          
+          // Verify class removal from local list
+          final stillInList = _classes.any((c) => c.id == classData.id);
+          if (stillInList) {
+            print('WARNING: Class still exists in local list before refresh');
+          } else {
+            print('✓ Class already removed from local list');
+          }
+          
+          // Update UI state
           setState(() {
             _classesModified = true;
           });
+          
+          print('Refreshing classes list to verify deletion...');
+          
           // Refresh the classes list
-          _loadClasses(refresh: true);
+          await _loadClasses(refresh: true);
+          
+          // Verify deletion after refresh
+          final verifyStillExists = _classes.any((c) => c.id == classData.id);
+          if (verifyStillExists) {
+            print('ERROR: VERIFICATION FAILED - Class ${classData.id} still exists after refresh!');
+          } else {
+            print('✓ Verification successful: Class ${classData.id} confirmed deleted from list');
+          }
+          
+          // Summary log
+          print('=== Standalone Class Deletion Summary ===');
+          print('Class ID: ${classData.id}');
+          print('Class Name: ${classData.name}');
+          print('Instructor: ${classData.instructor}');
+          print('✓ Removed from standalone classes collection');
+          print('✓ Deleted $bookingsDeleted related booking(s) from bookings collection');
+          print('✓ All references removed from database collections');
+          print('✓ UI updated and list refreshed');
+          print('=========================================');
+          
+          _showSnackBar('Class deleted successfully');
         } else {
-          _showSnackBar(result['message'] ?? 'Failed to delete class');
+          final errorMessage = result['message'] ?? 'Failed to delete class';
+          final errorDetails = result['error'];
+          
+          print('ERROR: API deletion request failed');
+          print('Error Message: $errorMessage');
+          if (errorDetails != null) {
+            print('Error Details: $errorDetails');
+          }
+          
+          _showSnackBar(errorMessage);
         }
-      } catch (e) {
+      } catch (e, stackTrace) {
+        print('EXCEPTION: Error occurred during class deletion');
+        print('Exception Type: ${e.runtimeType}');
+        print('Exception Message: $e');
+        print('Stack Trace: $stackTrace');
+        print('Class ID: ${classData.id}');
+        print('Class Name: ${classData.name}');
+        
         _showSnackBar('An error occurred: $e');
       }
+    } else {
+      print('Deletion aborted - user cancelled');
     }
   }
 

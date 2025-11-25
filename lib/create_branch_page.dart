@@ -43,9 +43,25 @@ class _CreateBranchPageState extends State<CreateBranchPage> {
   final TextEditingController _teamMemberNameController = TextEditingController();
   final TextEditingController _teamMemberEmailController = TextEditingController();
   final TextEditingController _teamMemberPhoneController = TextEditingController();
-  final TextEditingController _teamMemberRoleController = TextEditingController();
+  final TextEditingController _teamMemberPasswordController = TextEditingController();
+  final TextEditingController _teamMemberConfirmPasswordController = TextEditingController();
   String _selectedCountryCode = '+1';
+  String _selectedTeamMemberRole = 'viewer';
   bool _showAddTeamMemberForm = false;
+  bool _obscureTeamMemberPassword = true;
+  bool _obscureTeamMemberConfirmPassword = true;
+  static const List<Map<String, String>> _teamMemberRoleOptions = [
+    {
+      'value': 'admin',
+      'title': 'Admin',
+      'subtitle': 'Can manage branch & login',
+    },
+    {
+      'value': 'viewer',
+      'title': 'Viewer',
+      'subtitle': 'Read-only access',
+    },
+  ];
   
   // Image handling
   final ImagePicker _imagePicker = ImagePicker();
@@ -203,7 +219,8 @@ class _CreateBranchPageState extends State<CreateBranchPage> {
     _teamMemberNameController.dispose();
     _teamMemberEmailController.dispose();
     _teamMemberPhoneController.dispose();
-    _teamMemberRoleController.dispose();
+    _teamMemberPasswordController.dispose();
+    _teamMemberConfirmPasswordController.dispose();
     
     super.dispose();
   }
@@ -723,51 +740,23 @@ class _CreateBranchPageState extends State<CreateBranchPage> {
                                     ),
                                     child: Column(
                                       children: [
-                                        // Name and Email Row
-                                        Row(
-                                          children: [
-                                            Expanded(
-                                              child: _buildTeamMemberInputField(
-                                                controller: _teamMemberNameController,
-                                                hintText: 'Full Name',
-                                                icon: Icons.person,
-                                              ),
-                                            ),
-                                            const SizedBox(width: 16),
-                                            Expanded(
-                                              child: _buildTeamMemberInputField(
-                                                controller: _teamMemberEmailController,
-                                                hintText: 'Email',
-                                                icon: Icons.email,
-                                              ),
-                                            ),
-                                          ],
+                                        // Full Name
+                                        _buildTeamMemberInputField(
+                                          controller: _teamMemberNameController,
+                                          hintText: 'Full Name',
+                                          icon: Icons.person,
                                         ),
                                         const SizedBox(height: 16),
                                         
-                                        // Phone and Role Row
-                                        Row(
-                                          children: [
-                                            Expanded(
-                                              child: _buildTeamMemberInputField(
-                                                controller: _teamMemberPhoneController,
-                                                hintText: 'Phone Number',
-                                                icon: Icons.phone,
-                                              ),
-                                            ),
-                                            const SizedBox(width: 16),
-                                            Expanded(
-                                              child: _buildTeamMemberInputField(
-                                                controller: _teamMemberRoleController,
-                                                hintText: 'Role',
-                                                icon: Icons.work,
-                                              ),
-                                            ),
-                                          ],
+                                        // Email
+                                        _buildTeamMemberInputField(
+                                          controller: _teamMemberEmailController,
+                                          hintText: 'Email',
+                                          icon: Icons.email,
                                         ),
                                         const SizedBox(height: 16),
                                         
-                                        // Country Code and Add Button
+                                        // Phone Number with Country Code
                                         Row(
                                           children: [
                                             Container(
@@ -819,31 +808,87 @@ class _CreateBranchPageState extends State<CreateBranchPage> {
                                             ),
                                             const SizedBox(width: 16),
                                             Expanded(
-                                              child: GestureDetector(
-                                                onTap: _addTeamMember,
-                                                child: Container(
-                                                  padding: const EdgeInsets.symmetric(vertical: 12),
-                                                  decoration: BoxDecoration(
-                                                    gradient: const LinearGradient(
-                                                      begin: Alignment.topCenter,
-                                                      end: Alignment.bottomCenter,
-                                                      colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
-                                                    ),
-                                                    borderRadius: BorderRadius.circular(8),
-                                                  ),
-                                                  child: const Center(
-                                                    child: Text(
-                                                      'Add Team Member',
-                                                      style: TextStyle(
-                                                        color: Colors.black,
-                                                        fontWeight: FontWeight.w600,
-                                                      ),
-                                                    ),
+                                              child: _buildTeamMemberInputField(
+                                                controller: _teamMemberPhoneController,
+                                                hintText: 'Phone Number',
+                                                icon: Icons.phone,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 16),
+                                        
+                                        // Role
+                                        _buildTeamMemberRoleDropdown(),
+                                        const SizedBox(height: 16),
+                                        
+                                        // Password
+                                        _buildTeamMemberInputField(
+                                          controller: _teamMemberPasswordController,
+                                          hintText: 'Password',
+                                          icon: Icons.lock,
+                                          isPassword: true,
+                                          obscureText: _obscureTeamMemberPassword,
+                                          onToggleVisibility: () {
+                                            setState(() {
+                                              _obscureTeamMemberPassword = !_obscureTeamMemberPassword;
+                                            });
+                                          },
+                                        ),
+                                        const SizedBox(height: 16),
+                                        
+                                        // Confirm Password
+                                        _buildTeamMemberInputField(
+                                          controller: _teamMemberConfirmPasswordController,
+                                          hintText: 'Confirm Password',
+                                          icon: Icons.lock_outline,
+                                          isPassword: true,
+                                          obscureText: _obscureTeamMemberConfirmPassword,
+                                          onToggleVisibility: () {
+                                            setState(() {
+                                              _obscureTeamMemberConfirmPassword = !_obscureTeamMemberConfirmPassword;
+                                            });
+                                          },
+                                        ),
+                                        const SizedBox(height: 8),
+                                        const Align(
+                                          alignment: Alignment.centerLeft,
+                                          child: Text(
+                                            'Password is required for all team members. Only team members with Admin or Viewer role can sign in to the branch portal.',
+                                            style: TextStyle(
+                                              color: Colors.white70,
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 16),
+                                        
+                                        // Add Button
+                                        SizedBox(
+                                          width: double.infinity,
+                                          child: GestureDetector(
+                                            onTap: _addTeamMember,
+                                            child: Container(
+                                              padding: const EdgeInsets.symmetric(vertical: 12),
+                                              decoration: BoxDecoration(
+                                                gradient: const LinearGradient(
+                                                  begin: Alignment.topCenter,
+                                                  end: Alignment.bottomCenter,
+                                                  colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
+                                                ),
+                                                borderRadius: BorderRadius.circular(8),
+                                              ),
+                                              child: const Center(
+                                                child: Text(
+                                                  'Add Team Member',
+                                                  style: TextStyle(
+                                                    color: Colors.black,
+                                                    fontWeight: FontWeight.w600,
                                                   ),
                                                 ),
                                               ),
                                             ),
-                                          ],
+                                          ),
                                         ),
                                       ],
                                     ),
@@ -922,12 +967,12 @@ class _CreateBranchPageState extends State<CreateBranchPage> {
                                             ),
                                           ),
                                                     Text(
-                                            '${member.role} • ${member.email}',
-                                            style: const TextStyle(
-                                              color: Colors.white70,
+                                                      '${member.role.toUpperCase()} • ${member.email}',
+                                                      style: const TextStyle(
+                                                        color: Colors.white70,
                                                         fontSize: 11,
-                                            ),
-                                          ),
+                                                      ),
+                                                    ),
                                               Text(
                                                 '${member.countryCode}${member.phoneNumber}',
                                                 style: const TextStyle(
@@ -1084,7 +1129,7 @@ class _CreateBranchPageState extends State<CreateBranchPage> {
                             ),
                           ),
                           
-                          const SizedBox(height: 40),
+                          const SizedBox(height: 100),
                         ],
                       ),
                     ),
@@ -1229,6 +1274,7 @@ class _CreateBranchPageState extends State<CreateBranchPage> {
         capacity: standaloneClass.capacity,
         instructor: standaloneClass.instructor,
         schedule: standaloneClass.schedule, // Include the schedule from the original class
+        isVisible: standaloneClass.isVisible ?? true,
       )).toList();
 
       // Create branch request data
@@ -1248,10 +1294,24 @@ class _CreateBranchPageState extends State<CreateBranchPage> {
       print('=== Branch Creation Debug ===');
       print('Team Members Count: ${_teamMembers.length}');
       for (int i = 0; i < _teamMembers.length; i++) {
-        print('Team Member $i: ${_teamMembers[i].toJson()}');
+        final memberJson = _teamMembers[i].toJson();
+        print('Team Member $i: $memberJson');
+        print('  - Has password field: ${memberJson.containsKey('password')}');
+        print('  - Password value: ${memberJson['password']}');
+        print('  - Password is empty: ${memberJson['password']?.toString().isEmpty ?? true}');
       }
       print('Branch Data JSON:');
-      print(jsonEncode(branchData.toJson()));
+      final branchJson = branchData.toJson();
+      print(jsonEncode(branchJson));
+      // Also check team_members in the final JSON
+      if (branchJson['team_members'] != null) {
+        final teamMembersList = branchJson['team_members'] as List;
+        for (int i = 0; i < teamMembersList.length; i++) {
+          final member = teamMembersList[i] as Map<String, dynamic>;
+          print('Final JSON Team Member $i password: ${member['password']}');
+          print('Final JSON Team Member $i has password key: ${member.containsKey('password')}');
+        }
+      }
       print('============================');
 
       // Call API to create branch
@@ -1348,6 +1408,9 @@ class _CreateBranchPageState extends State<CreateBranchPage> {
     required TextEditingController controller,
     required String hintText,
     required IconData icon,
+    bool isPassword = false,
+    bool obscureText = false,
+    VoidCallback? onToggleVisibility,
   }) {
     return Container(
       decoration: BoxDecoration(
@@ -1380,6 +1443,7 @@ class _CreateBranchPageState extends State<CreateBranchPage> {
           Expanded(
             child: TextField(
               controller: controller,
+              obscureText: obscureText,
               style: const TextStyle(color: Colors.white, fontSize: 14),
               decoration: InputDecoration(
                 hintText: hintText,
@@ -1388,8 +1452,91 @@ class _CreateBranchPageState extends State<CreateBranchPage> {
               ),
             ),
           ),
+          if (isPassword && onToggleVisibility != null)
+            IconButton(
+              onPressed: onToggleVisibility,
+              icon: Icon(
+                obscureText ? Icons.visibility : Icons.visibility_off,
+                color: Colors.white70,
+                size: 18,
+              ),
+            ),
         ],
       ),
+    );
+  }
+
+  Widget _buildTeamMemberRoleDropdown() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Role',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: const Color(0xFFF8BB0C),
+              width: 1.5,
+            ),
+            color: Colors.black.withOpacity(0.2),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              value: _selectedTeamMemberRole,
+              isExpanded: true,
+              dropdownColor: Colors.black,
+              icon: const Icon(Icons.keyboard_arrow_down, color: Colors.white),
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+              ),
+              items: _teamMemberRoleOptions
+                  .map(
+                    (option) => DropdownMenuItem<String>(
+                      value: option['value'],
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            option['title'] ?? '',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            option['subtitle'] ?? '',
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                  .toList(),
+              onChanged: (String? value) {
+                if (value == null) return;
+                setState(() {
+                  _selectedTeamMemberRole = value;
+                });
+              },
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -1398,7 +1545,9 @@ class _CreateBranchPageState extends State<CreateBranchPage> {
     if (_teamMemberNameController.text.isEmpty ||
         _teamMemberEmailController.text.isEmpty ||
         _teamMemberPhoneController.text.isEmpty ||
-        _teamMemberRoleController.text.isEmpty) {
+        _teamMemberPasswordController.text.isEmpty ||
+        _teamMemberConfirmPasswordController.text.isEmpty ||
+        _selectedTeamMemberRole.isEmpty) {
       _showSnackBar('Please fill in all team member fields');
       return;
     }
@@ -1409,14 +1558,42 @@ class _CreateBranchPageState extends State<CreateBranchPage> {
       return;
     }
 
+    // Password validation
+    if (_teamMemberPasswordController.text.length < 8) {
+      _showSnackBar('Password must be at least 8 characters');
+      return;
+    }
+
+    // Password confirmation validation
+    if (_teamMemberPasswordController.text != _teamMemberConfirmPasswordController.text) {
+      _showSnackBar('Passwords do not match');
+      return;
+    }
+
+    // Validate password is not empty (double check)
+    final password = _teamMemberPasswordController.text.trim();
+    if (password.isEmpty) {
+      _showSnackBar('Password cannot be empty');
+      return;
+    }
+
     // Create team member
     final teamMember = TeamMemberModel(
-      fullName: _teamMemberNameController.text,
-      email: _teamMemberEmailController.text,
-      phoneNumber: _teamMemberPhoneController.text,
+      fullName: _teamMemberNameController.text.trim(),
+      email: _teamMemberEmailController.text.trim(),
+      phoneNumber: _teamMemberPhoneController.text.trim(),
       countryCode: _selectedCountryCode,
-      role: _teamMemberRoleController.text,
+      role: _selectedTeamMemberRole,
+      password: password, // Use trimmed password
     );
+    
+    // Debug: Verify password is included
+    print('=== Team Member Creation Debug ===');
+    print('Team Member JSON: ${teamMember.toJson()}');
+    print('Password in JSON: ${teamMember.toJson()['password']}');
+    print('Password length: ${password.length}');
+    print('Password is empty: ${password.isEmpty}');
+    print('==================================');
 
     setState(() {
       _teamMembers.add(teamMember);
@@ -1454,8 +1631,12 @@ class _CreateBranchPageState extends State<CreateBranchPage> {
     _teamMemberNameController.clear();
     _teamMemberEmailController.clear();
     _teamMemberPhoneController.clear();
-    _teamMemberRoleController.clear();
+    _teamMemberPasswordController.clear();
+    _teamMemberConfirmPasswordController.clear();
     _selectedCountryCode = '+1';
+    _selectedTeamMemberRole = 'viewer';
+    _obscureTeamMemberPassword = true;
+    _obscureTeamMemberConfirmPassword = true;
   }
 
   // Image Upload Methods

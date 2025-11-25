@@ -38,6 +38,7 @@ class _SuperAdminDashboardPageState extends State<SuperAdminDashboardPage> {
   bool _isSidebarOpen = false;
   bool _isLoggingOut = false;
   String? _backgroundImageUrl;
+  bool _showStats = false; // Track if stats are visible
   
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
@@ -592,39 +593,76 @@ class _SuperAdminDashboardPageState extends State<SuperAdminDashboardPage> {
 
                     const SizedBox(height: 20),
 
-                                         // Stats Cards
-                     Padding(
-                       padding: const EdgeInsets.symmetric(horizontal: 18.0),
-                       child: Row(
-                         children: [
-                           Expanded(
-                             child: _buildStatCard(
-                               'Total Branches',
-                               _totalBranches.toString(),
-                               Icons.business,
-                             ),
-                           ),
-                           const SizedBox(width: 16),
-                           Expanded(
-                             child: _buildStatCard(
-                               'Total Classes',
-                               _branches.fold(0, (sum, branch) => sum + branch.classes.length).toString(),
-                               Icons.fitness_center,
-                             ),
-                           ),
-                           const SizedBox(width: 16),
-                           Expanded(
-                             child: _buildStatCard(
-                               'Total Team Members',
-                               _branches.fold(0, (sum, branch) => sum + branch.teamMembers.length).toString(),
-                               Icons.people,
-                             ),
-                           ),
-                         ],
-                       ),
-                     ),
+                    // Collapsible Arrow Button
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 18.0),
+                      child: GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            _showStats = !_showStats;
+                          });
+                        },
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                _showStats ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                                color: Colors.white70,
+                                size: 24,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
 
-                    const SizedBox(height: 20),
+                    // Collapsible Stats Cards
+                    AnimatedSize(
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeInOut,
+                      child: _showStats
+                          ? Column(
+                              children: [
+                                const SizedBox(height: 10),
+                                // Stats Cards
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 18.0),
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                        child: _buildStatCard(
+                                          'Total Branches',
+                                          _totalBranches.toString(),
+                                          Icons.business,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 16),
+                                      Expanded(
+                                        child: _buildStatCard(
+                                          'Total Classes',
+                                          _branches.fold(0, (sum, branch) => sum + branch.classes.length).toString(),
+                                          Icons.fitness_center,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 16),
+                                      Expanded(
+                                        child: _buildStatCard(
+                                          'Total Team Members',
+                                          _branches.fold(0, (sum, branch) => sum + branch.teamMembers.length).toString(),
+                                          Icons.people,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(height: 20),
+                              ],
+                            )
+                          : const SizedBox.shrink(),
+                    ),
 
                     // Branches List Header
                     Padding(
@@ -1334,8 +1372,8 @@ class _SuperAdminDashboardPageState extends State<SuperAdminDashboardPage> {
     );
   }
 
-  void _viewBranch(BranchResponse branch) {
-    Navigator.push(
+  Future<void> _viewBranch(BranchResponse branch) async {
+    final result = await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => BranchDetailPage(
@@ -1344,6 +1382,10 @@ class _SuperAdminDashboardPageState extends State<SuperAdminDashboardPage> {
         ),
       ),
     );
+    
+    if (result == true) {
+      _loadBranches(refresh: true);
+    }
   }
 
   Future<void> _editBranch(BranchResponse branch) async {

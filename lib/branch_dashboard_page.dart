@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:convert';
 import 'services/api_service.dart';
 import 'models/branch_class_models.dart';
 import 'models/standalone_class_models.dart';
@@ -7,11 +8,13 @@ import 'branch_users_page.dart';
 class BranchDashboardPage extends StatefulWidget {
   final Map<String, dynamic> branchData;
   final String accessToken;
+  final bool canEdit;
   
   const BranchDashboardPage({
     super.key,
     required this.branchData,
     required this.accessToken,
+    this.canEdit = true, // Default to true for backward compatibility
   });
 
   @override
@@ -184,6 +187,33 @@ class _BranchDashboardPageState extends State<BranchDashboardPage> {
                     ),
                     textAlign: TextAlign.center,
                   ),
+                  
+                  if (!widget.canEdit) ...[
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.withOpacity(0.3),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: Colors.orange, width: 1),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.visibility, color: Colors.white, size: 16),
+                          SizedBox(width: 6),
+                          Text(
+                            'View Only Mode',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                   
                   const SizedBox(height: 30),
                   
@@ -669,7 +699,7 @@ class _BranchDashboardPageState extends State<BranchDashboardPage> {
                 ),
               ),
               const SizedBox(height: 8),
-              ...classData.schedule.map((schedule) => _buildScheduleItem(schedule)),
+              ..._getSortedSchedules(classData.schedule).map((schedule) => _buildScheduleItem(schedule)),
               const SizedBox(height: 16),
             ],
             
@@ -689,21 +719,38 @@ class _BranchDashboardPageState extends State<BranchDashboardPage> {
                     child: const Text('View Details'),
                   ),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () => _editSchedule(classData),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFF8BB0C),
-                      foregroundColor: Colors.black,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
+                if (widget.canEdit) ...[
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () => _editSchedule(classData),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFF8BB0C),
+                        foregroundColor: Colors.black,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
                       ),
+                      child: const Text('Edit Schedule'),
                     ),
-                    child: const Text('Edit Schedule'),
                   ),
-                ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () => _editInstructor(classData),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue.withOpacity(0.8),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      child: const Text('Edit Instructor'),
+                    ),
+                  ),
+                ],
               ],
             ),
           ],
@@ -737,22 +784,56 @@ class _BranchDashboardPageState extends State<BranchDashboardPage> {
     );
   }
 
+  List<ClassSchedule> _getSortedSchedules(List<ClassSchedule> schedules) {
+    // Separate recurring schedules from specific date schedules
+    final recurringSchedules = <ClassSchedule>[];
+    final specificDateSchedules = <ClassSchedule>[];
+    
+    for (final schedule in schedules) {
+      final isRecurring = schedule.date.year == 2024 && 
+                         schedule.date.month == 1 && 
+                         schedule.date.day == 1;
+      if (isRecurring) {
+        recurringSchedules.add(schedule);
+      } else {
+        specificDateSchedules.add(schedule);
+      }
+    }
+    
+    // Sort specific date schedules by date, then by start time
+    specificDateSchedules.sort((a, b) {
+      final dateCompare = a.date.compareTo(b.date);
+      if (dateCompare != 0) return dateCompare;
+      // If dates are the same, sort by start time
+      return a.startTime.compareTo(b.startTime);
+    });
+    
+    // Sort recurring schedules by day of week, then by start time
+    recurringSchedules.sort((a, b) {
+      final dayCompare = a.dayOfWeek.compareTo(b.dayOfWeek);
+      if (dayCompare != 0) return dayCompare;
+      // If same day, sort by start time
+      return a.startTime.compareTo(b.startTime);
+    });
+    
+    // Return specific date schedules first, then recurring schedules
+    return [...specificDateSchedules, ...recurringSchedules];
+  }
+
   Widget _buildScheduleItem(ClassSchedule schedule) {
     final days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     final dayName = days[schedule.dayOfWeek];
-    // Convert UTC times to local for display
-    final localStartTime = schedule.startTime.toLocal();
-    final localEndTime = schedule.endTime.toLocal();
-    final startTime = '${localStartTime.hour.toString().padLeft(2, '0')}:${localStartTime.minute.toString().padLeft(2, '0')}';
-    final endTime = '${localEndTime.hour.toString().padLeft(2, '0')}:${localEndTime.minute.toString().padLeft(2, '0')}';
+    // Display UTC times directly without timezone conversion
+    final startTime = '${schedule.startTime.hour.toString().padLeft(2, '0')}:${schedule.startTime.minute.toString().padLeft(2, '0')}';
+    final endTime = '${schedule.endTime.hour.toString().padLeft(2, '0')}:${schedule.endTime.minute.toString().padLeft(2, '0')}';
     
-    // Check if this is a next week schedule (has specific date)
-    final isNextWeekSchedule = schedule.startTime.year > 2024 || 
-                              (schedule.startTime.year == 2024 && schedule.startTime.month > 1);
+    // Check if this is a next week schedule (recurring schedules have date == DateTime(2024, 1, 1))
+    final isRecurring = schedule.date.year == 2024 && schedule.date.month == 1 && schedule.date.day == 1;
+    final isNextWeekSchedule = !isRecurring;
     
     String scheduleText;
     if (isNextWeekSchedule) {
-      final date = schedule.startTime;
+      final date = schedule.date;
       scheduleText = '${date.day}/${date.month}/${date.year} ($dayName): $startTime - $endTime';
     } else {
       scheduleText = '$dayName: $startTime - $endTime';
@@ -843,7 +924,19 @@ class _BranchDashboardPageState extends State<BranchDashboardPage> {
   }
 
   void _editSchedule(BranchClassResponse classData) {
+    if (!widget.canEdit) {
+      _showSnackBar('You do not have permission to edit schedules');
+      return;
+    }
     _showEditScheduleDialog(classData);
+  }
+
+  void _editInstructor(BranchClassResponse classData) {
+    if (!widget.canEdit) {
+      _showSnackBar('You do not have permission to edit instructors');
+      return;
+    }
+    _showEditInstructorDialog(classData);
   }
 
   void _showClassDetailsDialog(BranchClassResponse classData) {
@@ -874,21 +967,19 @@ class _BranchDashboardPageState extends State<BranchDashboardPage> {
                 const SizedBox(height: 16),
                 const Text('Schedule:', style: TextStyle(fontWeight: FontWeight.bold)),
                 const SizedBox(height: 8),
-                ...classData.schedule.map((schedule) {
+                ..._getSortedSchedules(classData.schedule).map((schedule) {
                   final days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
                   final dayName = days[schedule.dayOfWeek];
-                  // Convert UTC times to local for display
-                  final localStartTime = schedule.startTime.toLocal();
-                  final localEndTime = schedule.endTime.toLocal();
-                  final startTime = '${localStartTime.hour.toString().padLeft(2, '0')}:${localStartTime.minute.toString().padLeft(2, '0')}';
-                  final endTime = '${localEndTime.hour.toString().padLeft(2, '0')}:${localEndTime.minute.toString().padLeft(2, '0')}';
+                  // Display UTC times directly without timezone conversion
+                  final startTime = '${schedule.startTime.hour.toString().padLeft(2, '0')}:${schedule.startTime.minute.toString().padLeft(2, '0')}';
+                  final endTime = '${schedule.endTime.hour.toString().padLeft(2, '0')}:${schedule.endTime.minute.toString().padLeft(2, '0')}';
                   
-                  // Check if this is a next week schedule
-                  final isNextWeekSchedule = schedule.startTime.year > 2024 || 
-                                            (schedule.startTime.year == 2024 && schedule.startTime.month > 1);
+                  // Check if this is a next week schedule (recurring schedules have date == DateTime(2024, 1, 1))
+                  final isRecurring = schedule.date.year == 2024 && schedule.date.month == 1 && schedule.date.day == 1;
+                  final isNextWeekSchedule = !isRecurring;
                   
                   if (isNextWeekSchedule) {
-                    final date = localStartTime;
+                    final date = schedule.date;
                     return Text('${date.day}/${date.month}/${date.year} ($dayName): $startTime - $endTime');
                   } else {
                     return Text('$dayName: $startTime - $endTime');
@@ -918,32 +1009,35 @@ class _BranchDashboardPageState extends State<BranchDashboardPage> {
         builder: (context, setDialogState) => AlertDialog(
           backgroundColor: Colors.white,
           title: Text('Edit Schedule - ${classData.name}'),
-          content: SizedBox(
-            width: double.maxFinite,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Current schedules
-                if (schedules.isNotEmpty) ...[
-                  const Text('Current Schedules:', style: TextStyle(fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 8),
-                  ...schedules.asMap().entries.map((entry) {
+          content: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(context).size.height * 0.6,
+            ),
+            child: SingleChildScrollView(
+              child: SizedBox(
+                width: double.maxFinite,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                  // Current schedules
+                  if (schedules.isNotEmpty) ...[
+                    const Text('Current Schedules:', style: TextStyle(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 8),
+                    ...schedules.asMap().entries.map((entry) {
                     final index = entry.key;
                     final schedule = entry.value;
                     final dayName = days[schedule.dayOfWeek];
-                    // Convert UTC times to local for display
-                    final localStartTime = schedule.startTime.toLocal();
-                    final localEndTime = schedule.endTime.toLocal();
-                    final startTime = '${localStartTime.hour.toString().padLeft(2, '0')}:${localStartTime.minute.toString().padLeft(2, '0')}';
-                    final endTime = '${localEndTime.hour.toString().padLeft(2, '0')}:${localEndTime.minute.toString().padLeft(2, '0')}';
+                    // Display UTC times directly without timezone conversion
+                    final startTime = '${schedule.startTime.hour.toString().padLeft(2, '0')}:${schedule.startTime.minute.toString().padLeft(2, '0')}';
+                    final endTime = '${schedule.endTime.hour.toString().padLeft(2, '0')}:${schedule.endTime.minute.toString().padLeft(2, '0')}';
                     
-                    // Check if this is a next week schedule
-                    final isNextWeekSchedule = schedule.startTime.year > 2024 || 
-                                              (schedule.startTime.year == 2024 && schedule.startTime.month > 1);
+                    // Check if this is a next week schedule (recurring schedules have date == DateTime(2024, 1, 1))
+                    final isRecurring = schedule.date.year == 2024 && schedule.date.month == 1 && schedule.date.day == 1;
+                    final isNextWeekSchedule = !isRecurring;
                     
                     String scheduleText;
                     if (isNextWeekSchedule) {
-                      final date = schedule.startTime;
+                      final date = schedule.date;
                       scheduleText = '${date.day}/${date.month}/${date.year} ($dayName): $startTime - $endTime';
                     } else {
                       scheduleText = '$dayName: $startTime - $endTime';
@@ -973,18 +1067,20 @@ class _BranchDashboardPageState extends State<BranchDashboardPage> {
                               ),
                             ),
                           ),
-                          IconButton(
-                            icon: const Icon(Icons.edit, size: 16),
-                            onPressed: () => _editScheduleItem(setDialogState, schedules, index),
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.delete, size: 16, color: Colors.red),
-                            onPressed: () {
-                              setDialogState(() {
-                                schedules.removeAt(index);
-                              });
-                            },
-                          ),
+                          if (widget.canEdit) ...[
+                            IconButton(
+                              icon: const Icon(Icons.edit, size: 16),
+                              onPressed: () => _editScheduleItem(setDialogState, schedules, index),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.delete, size: 16, color: Colors.red),
+                              onPressed: () {
+                                setDialogState(() {
+                                  schedules.removeAt(index);
+                                });
+                              },
+                            ),
+                          ],
                         ],
                       ),
                     );
@@ -992,12 +1088,316 @@ class _BranchDashboardPageState extends State<BranchDashboardPage> {
                   const SizedBox(height: 16),
                 ],
                 
-                // Add new schedule button
-                ElevatedButton(
-                  onPressed: () => _addScheduleItem(setDialogState, schedules),
-                  child: const Text('Add Schedule'),
+                  // Edit All Schedule button (only if user can edit)
+                  if (widget.canEdit)
+                    ElevatedButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        _showEditAllScheduleDialog(classData);
+                      },
+                      child: const Text('Edit All Schedule'),
+                    ),
+                  ],
                 ),
-              ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            if (widget.canEdit)
+              TextButton(
+                onPressed: () async {
+                  await _saveSchedule(classData.id, schedules);
+                  Navigator.pop(context);
+                },
+                child: const Text('Save'),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showEditInstructorDialog(BranchClassResponse classData) {
+    final TextEditingController instructorController = TextEditingController(text: classData.instructor);
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
+        title: Text('Edit Instructor - ${classData.name}'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: instructorController,
+              enabled: widget.canEdit,
+              decoration: InputDecoration(
+                labelText: 'Instructor Name',
+                hintText: widget.canEdit ? 'Enter instructor name' : 'View only',
+                border: const OutlineInputBorder(),
+              ),
+              maxLength: 100,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Current instructor: ${classData.instructor}',
+              style: const TextStyle(
+                fontSize: 14,
+                color: Colors.grey,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          if (widget.canEdit)
+            TextButton(
+              onPressed: () async {
+                final newInstructor = instructorController.text.trim();
+                if (newInstructor.isEmpty) {
+                  _showSnackBar('Please enter an instructor name');
+                  return;
+                }
+                if (newInstructor == classData.instructor) {
+                  _showSnackBar('No changes made');
+                  Navigator.pop(context);
+                  return;
+                }
+                
+                await _updateInstructor(classData.id, newInstructor);
+                Navigator.pop(context);
+              },
+              child: const Text('Update'),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _updateInstructor(String classId, String instructor) async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final instructorData = UpdateClassInstructorRequest(instructor: instructor);
+      final result = await ApiService.updateBranchClassInstructor(
+        classId,
+        instructorData,
+        accessToken,
+      );
+
+      if (result['success']) {
+        _showSnackBar('Instructor updated successfully');
+        _loadClasses(); // Refresh the classes list
+      } else {
+        _showSnackBar(result['message'] ?? 'Failed to update instructor');
+      }
+    } catch (e) {
+      _showSnackBar('An error occurred: $e');
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  void _editScheduleItem(StateSetter setDialogState, List<ClassSchedule> schedules, int index) {
+    _showScheduleItemDialog(setDialogState, schedules, editingIndex: index);
+  }
+
+  void _showEditAllScheduleDialog(BranchClassResponse classData) {
+    List<ClassSchedule> allSchedules = List.from(classData.schedule);
+    final List<String> days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    
+    // Extract recurring schedules by grouping schedules with same day of week
+    // Group by day_of_week to allow updating all schedules for a specific day
+    Map<int, List<ClassSchedule>> groupedByDayOfWeek = {};
+    
+    for (final schedule in allSchedules) {
+      final dayOfWeek = schedule.dayOfWeek;
+      if (!groupedByDayOfWeek.containsKey(dayOfWeek)) {
+        groupedByDayOfWeek[dayOfWeek] = [];
+      }
+      groupedByDayOfWeek[dayOfWeek]!.add(schedule);
+    }
+    
+    // Find days that have multiple schedules (recurring pattern)
+    // Use the most common time as the template, or the first one if all have different times
+    Map<int, ClassSchedule> recurringSchedules = {};
+    for (final entry in groupedByDayOfWeek.entries) {
+      if (entry.value.length > 1) {
+        // This day has multiple schedules - find the most common time pattern
+        Map<String, int> timePatternCounts = {};
+        for (final schedule in entry.value) {
+          final timeKey = '${schedule.startTime.hour}_${schedule.startTime.minute}_${schedule.endTime.hour}_${schedule.endTime.minute}';
+          timePatternCounts[timeKey] = (timePatternCounts[timeKey] ?? 0) + 1;
+        }
+        
+        // Find the most common time pattern
+        String? mostCommonTimeKey;
+        int maxCount = 0;
+        for (final timeEntry in timePatternCounts.entries) {
+          if (timeEntry.value > maxCount) {
+            maxCount = timeEntry.value;
+            mostCommonTimeKey = timeEntry.key;
+          }
+        }
+        
+        // Use the schedule with the most common time pattern, or the first one
+        ClassSchedule? templateSchedule;
+        if (mostCommonTimeKey != null) {
+          final parts = mostCommonTimeKey.split('_');
+          final startH = int.parse(parts[0]);
+          final startM = int.parse(parts[1]);
+          final endH = int.parse(parts[2]);
+          final endM = int.parse(parts[3]);
+          
+          templateSchedule = entry.value.firstWhere(
+            (s) => s.startTime.hour == startH && 
+                   s.startTime.minute == startM &&
+                   s.endTime.hour == endH &&
+                   s.endTime.minute == endM,
+            orElse: () => entry.value.first,
+          );
+        } else {
+          templateSchedule = entry.value.first;
+        }
+        
+        recurringSchedules[entry.key] = templateSchedule;
+      }
+    }
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          backgroundColor: Colors.white,
+          title: Text('Edit All Schedule - ${classData.name}'),
+          content: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(context).size.height * 0.6,
+            ),
+            child: SingleChildScrollView(
+              child: SizedBox(
+                width: double.maxFinite,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Recurring Weekly Schedules',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Edit recurring schedules that apply to all similar days (e.g., all Mondays)',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    // Show existing recurring schedules
+                    ...recurringSchedules.entries.map((entry) {
+                      final dayOfWeek = entry.key;
+                      final schedule = entry.value;
+                      final dayName = days[dayOfWeek];
+                      final startTime = TimeOfDay.fromDateTime(schedule.startTime);
+                      final endTime = TimeOfDay.fromDateTime(schedule.endTime);
+                      
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.blue[50],
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.blue[200]!),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                const Icon(Icons.repeat, color: Colors.blue, size: 20),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Every $dayName',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                                const Spacer(),
+                                IconButton(
+                                  icon: const Icon(Icons.edit, size: 18),
+                                  onPressed: () => _editRecurringSchedule(
+                                    setDialogState,
+                                    recurringSchedules,
+                                    allSchedules,
+                                    dayOfWeek,
+                                    schedule,
+                                    classData.id,
+                                  ),
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.delete, color: Colors.red, size: 18),
+                                  onPressed: () {
+                                    setDialogState(() {
+                                      recurringSchedules.remove(dayOfWeek);
+                                      // Remove from all schedules
+                                      allSchedules.removeWhere((s) => 
+                                        s.dayOfWeek == dayOfWeek &&
+                                        s.date.year == 2024 && 
+                                        s.date.month == 1 && 
+                                        s.date.day == 1
+                                      );
+                                    });
+                                  },
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              '${startTime.hour.toString().padLeft(2, '0')}:${startTime.minute.toString().padLeft(2, '0')} - ${endTime.hour.toString().padLeft(2, '0')}:${endTime.minute.toString().padLeft(2, '0')}',
+                              style: const TextStyle(
+                                fontSize: 14,
+                                color: Colors.black87,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
+                    const SizedBox(height: 16),
+                    // Add new recurring schedule button
+                    ElevatedButton.icon(
+                      onPressed: () => _addRecurringSchedule(
+                        setDialogState,
+                        recurringSchedules,
+                        allSchedules,
+                        days,
+                      ),
+                      icon: const Icon(Icons.add),
+                      label: const Text('Add Recurring Schedule'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue,
+                        foregroundColor: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
           actions: [
@@ -1007,7 +1407,23 @@ class _BranchDashboardPageState extends State<BranchDashboardPage> {
             ),
             TextButton(
               onPressed: () async {
-                await _saveSchedule(classData.id, schedules);
+                // Merge recurring schedules with existing specific date schedules
+                final finalSchedules = <ClassSchedule>[];
+                
+                // Add all recurring schedules
+                finalSchedules.addAll(recurringSchedules.values);
+                
+                // Add all non-recurring schedules from original list
+                for (final schedule in classData.schedule) {
+                  final isRecurring = schedule.date.year == 2024 && 
+                                     schedule.date.month == 1 && 
+                                     schedule.date.day == 1;
+                  if (!isRecurring) {
+                    finalSchedules.add(schedule);
+                  }
+                }
+                
+                await _saveSchedule(classData.id, finalSchedules);
                 Navigator.pop(context);
               },
               child: const Text('Save'),
@@ -1018,36 +1434,318 @@ class _BranchDashboardPageState extends State<BranchDashboardPage> {
     );
   }
 
-  void _addScheduleItem(StateSetter setDialogState, List<ClassSchedule> schedules) {
-    _showScheduleItemDialog(setDialogState, schedules);
-  }
-
-  void _editScheduleItem(StateSetter setDialogState, List<ClassSchedule> schedules, int index) {
-    _showScheduleItemDialog(setDialogState, schedules, editingIndex: index);
-  }
-
-  void _showScheduleItemDialog(StateSetter setDialogState, List<ClassSchedule> schedules, {int? editingIndex}) {
-    int selectedDay = editingIndex != null ? schedules[editingIndex].dayOfWeek : 0;
-    TimeOfDay startTime = editingIndex != null 
-        ? TimeOfDay.fromDateTime(schedules[editingIndex].startTime.toLocal())
-        : const TimeOfDay(hour: 9, minute: 0);
-    TimeOfDay endTime = editingIndex != null 
-        ? TimeOfDay.fromDateTime(schedules[editingIndex].endTime.toLocal())
-        : const TimeOfDay(hour: 10, minute: 0);
-    final List<String> days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-    
-    // For next week scheduling
-    bool isNextWeekSchedule = false;
-    DateTime? selectedDate;
+  void _addRecurringSchedule(
+    StateSetter setDialogState,
+    Map<int, ClassSchedule> recurringSchedules,
+    List<ClassSchedule> allSchedules,
+    List<String> days,
+  ) {
+    int selectedDay = 0;
+    TimeOfDay startTime = const TimeOfDay(hour: 9, minute: 0);
+    TimeOfDay endTime = const TimeOfDay(hour: 10, minute: 0);
 
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setTimeDialogState) => AlertDialog(
           backgroundColor: Colors.white,
-          title: Text(
-            editingIndex != null ? 'Edit Schedule' : 'Add Schedule',
-            style: const TextStyle(
+          title: const Text('Add Recurring Schedule'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              DropdownButtonFormField<int>(
+                value: selectedDay,
+                decoration: const InputDecoration(
+                  labelText: 'Day of Week',
+                  border: OutlineInputBorder(),
+                ),
+                items: days.asMap().entries.map((entry) {
+                  return DropdownMenuItem(
+                    value: entry.key,
+                    child: Text(entry.value),
+                  );
+                }).toList(),
+                onChanged: (value) {
+                  setTimeDialogState(() {
+                    selectedDay = value!;
+                  });
+                },
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: ListTile(
+                      title: const Text('Start Time'),
+                      subtitle: Text('${startTime.hour.toString().padLeft(2, '0')}:${startTime.minute.toString().padLeft(2, '0')}'),
+                      onTap: () async {
+                        final time = await showTimePicker(
+                          context: context,
+                          initialTime: startTime,
+                        );
+                        if (time != null) {
+                          setTimeDialogState(() {
+                            startTime = time;
+                          });
+                        }
+                      },
+                    ),
+                  ),
+                  Expanded(
+                    child: ListTile(
+                      title: const Text('End Time'),
+                      subtitle: Text('${endTime.hour.toString().padLeft(2, '0')}:${endTime.minute.toString().padLeft(2, '0')}'),
+                      onTap: () async {
+                        final time = await showTimePicker(
+                          context: context,
+                          initialTime: endTime,
+                        );
+                        if (time != null) {
+                          setTimeDialogState(() {
+                            endTime = time;
+                          });
+                        }
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                if (startTime.hour > endTime.hour || 
+                    (startTime.hour == endTime.hour && startTime.minute >= endTime.minute)) {
+                  _showSnackBar('End time must be after start time');
+                  return;
+                }
+
+                if (recurringSchedules.containsKey(selectedDay)) {
+                  _showSnackBar('A recurring schedule already exists for ${days[selectedDay]}');
+                  return;
+                }
+
+                // Create recurring schedule
+                final utcStartTime = DateTime.utc(2024, 1, 1, startTime.hour, startTime.minute);
+                final utcEndTime = DateTime.utc(2024, 1, 1, endTime.hour, endTime.minute);
+                final newSchedule = ClassSchedule(
+                  dayOfWeek: selectedDay,
+                  date: DateTime(2024, 1, 1),
+                  startTime: utcStartTime,
+                  endTime: utcEndTime,
+                );
+
+                setDialogState(() {
+                  recurringSchedules[selectedDay] = newSchedule;
+                  allSchedules.add(newSchedule);
+                });
+
+                Navigator.pop(context);
+              },
+              child: const Text('Add'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _editRecurringSchedule(
+    StateSetter setDialogState,
+    Map<int, ClassSchedule> recurringSchedules,
+    List<ClassSchedule> allSchedules,
+    int dayOfWeek,
+    ClassSchedule schedule,
+    String classId, // Not used for bulk update, but kept for compatibility
+  ) async {
+    TimeOfDay startTime = TimeOfDay.fromDateTime(schedule.startTime);
+    TimeOfDay endTime = TimeOfDay.fromDateTime(schedule.endTime);
+    final List<String> days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setTimeDialogState) => AlertDialog(
+          backgroundColor: Colors.white,
+          title: Text('Edit Recurring Schedule - ${days[dayOfWeek]}'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: ListTile(
+                      title: const Text('Start Time'),
+                      subtitle: Text('${startTime.hour.toString().padLeft(2, '0')}:${startTime.minute.toString().padLeft(2, '0')}'),
+                      onTap: () async {
+                        final time = await showTimePicker(
+                          context: context,
+                          initialTime: startTime,
+                        );
+                        if (time != null) {
+                          setTimeDialogState(() {
+                            startTime = time;
+                          });
+                        }
+                      },
+                    ),
+                  ),
+                  Expanded(
+                    child: ListTile(
+                      title: const Text('End Time'),
+                      subtitle: Text('${endTime.hour.toString().padLeft(2, '0')}:${endTime.minute.toString().padLeft(2, '0')}'),
+                      onTap: () async {
+                        final time = await showTimePicker(
+                          context: context,
+                          initialTime: endTime,
+                        );
+                        if (time != null) {
+                          setTimeDialogState(() {
+                            endTime = time;
+                          });
+                        }
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () async {
+                if (startTime.hour > endTime.hour || 
+                    (startTime.hour == endTime.hour && startTime.minute >= endTime.minute)) {
+                  _showSnackBar('End time must be after start time');
+                  return;
+                }
+
+                // Format times as ISO 8601 datetime strings for the API
+                // The backend expects time.Time which requires full datetime in ISO 8601 format
+                // We use today's date with the specified time, in UTC
+                final now = DateTime.now().toUtc();
+                final startDateTime = DateTime.utc(now.year, now.month, now.day, startTime.hour, startTime.minute, 0);
+                final endDateTime = DateTime.utc(now.year, now.month, now.day, endTime.hour, endTime.minute, 0);
+                final startTimeStr = startDateTime.toIso8601String();
+                final endTimeStr = endDateTime.toIso8601String();
+
+                // Ensure day_of_week matches backend format (0=Sunday, 1=Monday, ..., 6=Saturday)
+                print('=== Bulk Update Class Time Debug ===');
+                print('Day of Week: $dayOfWeek (${days[dayOfWeek]})');
+                print('Start Time: $startTimeStr');
+                print('End Time: $endTimeStr');
+                print('Full URL will be: /api/branch/classes/bulk-update-time');
+
+                // Create bulk update request
+                // Note: The backend uses authenticated branch context for BranchAdmin,
+                // so we don't need to pass branchId
+                final bulkUpdateRequest = BulkUpdateClassTimeRequest(
+                  dayOfWeek: dayOfWeek,
+                  newStartTime: startTimeStr,
+                  newEndTime: endTimeStr,
+                );
+                
+                print('Request JSON: ${jsonEncode(bulkUpdateRequest.toJson())}');
+
+                // Show loading
+                setTimeDialogState(() {
+                  // Close the dialog first
+                });
+                Navigator.pop(context);
+
+                // Call API to bulk update class times for all classes in the branch
+                setState(() {
+                  _isLoading = true;
+                });
+
+                try {
+                  final result = await ApiService.bulkUpdateClassTime(
+                    bulkUpdateRequest,
+                    accessToken,
+                  );
+
+                  if (result['success']) {
+                    final responseData = result['data'];
+                    if (responseData != null) {
+                      final response = BulkUpdateClassTimeResponse.fromJson(responseData);
+                      final message = 'Updated ${response.updatedClassesCount} classes, ${response.updatedSchedulesCount} schedules for ${response.dayOfWeek}';
+                      _showSnackBar(message);
+                      print('Bulk update successful: $message');
+                      print('Updated dates: ${response.updatedDates}');
+                    } else {
+                      _showSnackBar('Recurring schedule updated successfully');
+                    }
+                    // Reload classes to get updated schedule
+                    await _loadClasses();
+                  } else {
+                    final errorMsg = result['message'] ?? 'Failed to update recurring schedule';
+                    final errorDetails = result['error'];
+                    print('Bulk update failed: $errorMsg');
+                    if (errorDetails != null) {
+                      print('Error details: $errorDetails');
+                    }
+                    _showSnackBar(errorMsg);
+                  }
+                } catch (e) {
+                  print('Exception during bulk update: $e');
+                  _showSnackBar('An error occurred: $e');
+                } finally {
+                  setState(() {
+                    _isLoading = false;
+                  });
+                }
+              },
+              child: const Text('Update'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showScheduleItemDialog(StateSetter setDialogState, List<ClassSchedule> schedules, {int? editingIndex}) {
+    // Only allow editing specific dates, not recurring schedules
+    if (editingIndex == null) {
+      _showSnackBar('Please use "Edit All Schedule" to add new schedules');
+      return;
+    }
+    
+    final existingSchedule = schedules[editingIndex];
+    // Check if this is a recurring schedule
+    final isRecurring = existingSchedule.date.year == 2024 && 
+                       existingSchedule.date.month == 1 && 
+                       existingSchedule.date.day == 1;
+    
+    if (isRecurring) {
+      _showSnackBar('Please use "Edit All Schedule" to edit recurring schedules');
+      return;
+    }
+    
+    TimeOfDay startTime = TimeOfDay.fromDateTime(existingSchedule.startTime);
+    TimeOfDay endTime = TimeOfDay.fromDateTime(existingSchedule.endTime);
+    DateTime selectedDate = DateTime(
+      existingSchedule.date.year,
+      existingSchedule.date.month,
+      existingSchedule.date.day,
+    );
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setTimeDialogState) => AlertDialog(
+          backgroundColor: Colors.white,
+          title: const Text(
+            'Edit Schedule',
+            style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
               color: Colors.black87,
@@ -1059,100 +1757,25 @@ class _BranchDashboardPageState extends State<BranchDashboardPage> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-              // Schedule type selection
-              Row(
-                children: [
-                  Expanded(
-                    child: RadioListTile<bool>(
-                      title: const Text(
-                        'Recurring Every week',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.black87,
-                        ),
-                      ),
-                      value: false,
-                      groupValue: isNextWeekSchedule,
-                      onChanged: (value) {
-                        setTimeDialogState(() {
-                          isNextWeekSchedule = value!;
-                          selectedDate = null;
-                        });
-                      },
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    ),
-                  ),
-                  Expanded(
-                    child: RadioListTile<bool>(
-                      title: const Text(
-                        'Next Week Specific date',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.black87,
-                        ),
-                      ),
-                      value: true,
-                      groupValue: isNextWeekSchedule,
-                      onChanged: (value) {
-                        setTimeDialogState(() {
-                          isNextWeekSchedule = value!;
-                          // Set default to next week's same day
-                          final now = DateTime.now();
-                          final nextWeek = now.add(const Duration(days: 7));
-                          selectedDate = DateTime(nextWeek.year, nextWeek.month, nextWeek.day);
-                        });
-                      },
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              
-              // Day selection (for recurring) or Date selection (for next week)
-              if (!isNextWeekSchedule) ...[
-                DropdownButtonFormField<int>(
-                  value: selectedDay,
-                  decoration: const InputDecoration(
-                    labelText: 'Day of Week',
-                    border: OutlineInputBorder(),
-                  ),
-                  items: days.asMap().entries.map((entry) {
-                    return DropdownMenuItem(
-                      value: entry.key,
-                      child: Text(entry.value),
-                    );
-                  }).toList(),
-                  onChanged: (value) {
+              // Date selection
+              ListTile(
+                title: const Text('Date'),
+                subtitle: Text('${selectedDate.day}/${selectedDate.month}/${selectedDate.year}'),
+                trailing: const Icon(Icons.calendar_today),
+                onTap: () async {
+                  final date = await showDatePicker(
+                    context: context,
+                    initialDate: selectedDate,
+                    firstDate: DateTime.now(),
+                    lastDate: DateTime.now().add(const Duration(days: 365)),
+                  );
+                  if (date != null) {
                     setTimeDialogState(() {
-                      selectedDay = value!;
+                      selectedDate = date;
                     });
-                  },
-                ),
-              ] else ...[
-                ListTile(
-                  title: const Text('Date'),
-                  subtitle: Text(selectedDate != null 
-                      ? '${selectedDate!.day}/${selectedDate!.month}/${selectedDate!.year}'
-                      : 'Select a date'),
-                  trailing: const Icon(Icons.calendar_today),
-                  onTap: () async {
-                    final date = await showDatePicker(
-                      context: context,
-                      initialDate: selectedDate ?? DateTime.now().add(const Duration(days: 7)),
-                      firstDate: DateTime.now().add(const Duration(days: 1)),
-                      lastDate: DateTime.now().add(const Duration(days: 14)), // Allow up to 2 weeks ahead
-                    );
-                    if (date != null) {
-                      setTimeDialogState(() {
-                        selectedDate = date;
-                      });
-                    }
-                  },
-                ),
-              ],
+                  }
+                },
+              ),
               const SizedBox(height: 16),
               
               // Time selection
@@ -1211,90 +1834,54 @@ class _BranchDashboardPageState extends State<BranchDashboardPage> {
                   return;
                 }
 
-                // Validate date selection for next week scheduling
-                if (isNextWeekSchedule && selectedDate == null) {
-                  _showSnackBar('Please select a date for next week scheduling');
-                  return;
-                }
-
-                // Check for overlapping schedules
+                // Check for overlapping schedules on the same date
                 for (int i = 0; i < schedules.length; i++) {
                   if (i == editingIndex) continue;
                   
                   final existingSchedule = schedules[i];
-                  bool hasConflict = false;
+                  // Check if existing schedule is recurring (skip conflict check for recurring)
+                  final existingIsRecurring = existingSchedule.date.year == 2024 && 
+                                             existingSchedule.date.month == 1 && 
+                                             existingSchedule.date.day == 1;
                   
-                  if (isNextWeekSchedule) {
-                    // For next week scheduling, check if the selected date conflicts with any existing schedule
-                                      if (existingSchedule.dayOfWeek == selectedDate!.weekday % 7) { // Convert to 0-6 format
-                    final existingStart = TimeOfDay.fromDateTime(existingSchedule.startTime.toLocal());
-                    final existingEnd = TimeOfDay.fromDateTime(existingSchedule.endTime.toLocal());
+                  if (!existingIsRecurring) {
+                    // Check if it's the same date
+                    if (existingSchedule.date.year == selectedDate.year &&
+                        existingSchedule.date.month == selectedDate.month &&
+                        existingSchedule.date.day == selectedDate.day) {
+                      final existingStart = TimeOfDay.fromDateTime(existingSchedule.startTime);
+                      final existingEnd = TimeOfDay.fromDateTime(existingSchedule.endTime);
                       
                       if ((startTime.hour < existingEnd.hour || 
                            (startTime.hour == existingEnd.hour && startTime.minute < existingEnd.minute)) &&
                           (endTime.hour > existingStart.hour || 
                            (endTime.hour == existingStart.hour && endTime.minute > existingStart.minute))) {
-                        hasConflict = true;
+                        _showSnackBar('Schedule times overlap with existing schedule on this date');
+                        return;
                       }
                     }
-                  } else {
-                    // For recurring schedules, check day of week conflicts
-                    if (existingSchedule.dayOfWeek == selectedDay) {
-                      final existingStart = TimeOfDay.fromDateTime(existingSchedule.startTime.toLocal());
-                      final existingEnd = TimeOfDay.fromDateTime(existingSchedule.endTime.toLocal());
-                      
-                      if ((startTime.hour < existingEnd.hour || 
-                           (startTime.hour == existingEnd.hour && startTime.minute < existingEnd.minute)) &&
-                          (endTime.hour > existingStart.hour || 
-                           (endTime.hour == existingStart.hour && endTime.minute > existingStart.minute))) {
-                        hasConflict = true;
-                      }
-                    }
-                  }
-                  
-                  if (hasConflict) {
-                    _showSnackBar('Schedule times overlap with existing schedule');
-                    return;
                   }
                 }
 
-                ClassSchedule newSchedule;
-                if (isNextWeekSchedule) {
-                  // Create schedule for specific date
-                  final scheduleDate = selectedDate!;
-                  // Create local DateTime first, then convert to UTC
-                  final localStartTime = DateTime(scheduleDate.year, scheduleDate.month, scheduleDate.day, startTime.hour, startTime.minute);
-                  final localEndTime = DateTime(scheduleDate.year, scheduleDate.month, scheduleDate.day, endTime.hour, endTime.minute);
-                  newSchedule = ClassSchedule(
-                    dayOfWeek: scheduleDate.weekday % 7, // Convert to 0-6 format (Sunday = 0)
-                    date: scheduleDate,
-                    startTime: localStartTime.toUtc(),
-                    endTime: localEndTime.toUtc(),
-                  );
-                } else {
-                  // Create recurring schedule
-                  // Create local DateTime first, then convert to UTC
-                  final localStartTime = DateTime(2024, 1, 1, startTime.hour, startTime.minute);
-                  final localEndTime = DateTime(2024, 1, 1, endTime.hour, endTime.minute);
-                  newSchedule = ClassSchedule(
-                    dayOfWeek: selectedDay,
-                    date: DateTime(2024, 1, 1), // Placeholder date for recurring schedules
-                    startTime: localStartTime.toUtc(),
-                    endTime: localEndTime.toUtc(),
-                  );
-                }
+                // Create schedule for specific date
+                final scheduleDate = selectedDate;
+                // Create UTC DateTime directly (treat entered times as UTC)
+                final utcStartTime = DateTime.utc(scheduleDate.year, scheduleDate.month, scheduleDate.day, startTime.hour, startTime.minute);
+                final utcEndTime = DateTime.utc(scheduleDate.year, scheduleDate.month, scheduleDate.day, endTime.hour, endTime.minute);
+                final newSchedule = ClassSchedule(
+                  dayOfWeek: scheduleDate.weekday % 7, // Convert to 0-6 format (Sunday = 0)
+                  date: scheduleDate,
+                  startTime: utcStartTime,
+                  endTime: utcEndTime,
+                );
 
                 setDialogState(() {
-                  if (editingIndex != null) {
-                    schedules[editingIndex] = newSchedule;
-                  } else {
-                    schedules.add(newSchedule);
-                  }
+                  schedules[editingIndex] = newSchedule;
                 });
 
                 Navigator.pop(context);
               },
-              child: Text(editingIndex != null ? 'Update' : 'Add'),
+              child: const Text('Update'),
             ),
           ],
         ),

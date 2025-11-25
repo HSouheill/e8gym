@@ -40,9 +40,25 @@ class _EditBranchPageState extends State<EditBranchPage> {
   final TextEditingController _teamMemberNameController = TextEditingController();
   final TextEditingController _teamMemberEmailController = TextEditingController();
   final TextEditingController _teamMemberPhoneController = TextEditingController();
-  final TextEditingController _teamMemberRoleController = TextEditingController();
+  final TextEditingController _teamMemberPasswordController = TextEditingController();
+  final TextEditingController _teamMemberConfirmPasswordController = TextEditingController();
   final String _selectedCountryCode = '+1';
+  String _selectedTeamMemberRole = 'viewer';
   bool _showAddTeamMemberForm = false;
+  bool _obscureTeamMemberPassword = true;
+  bool _obscureTeamMemberConfirmPassword = true;
+  static const List<Map<String, String>> _teamMemberRoleOptions = [
+    {
+      'value': 'admin',
+      'title': 'Admin',
+      'subtitle': 'Can manage branch & login',
+    },
+    {
+      'value': 'viewer',
+      'title': 'Viewer',
+      'subtitle': 'Read-only access',
+    },
+  ];
 
   // Image handling
   final ImagePicker _imagePicker = ImagePicker();
@@ -65,6 +81,14 @@ class _EditBranchPageState extends State<EditBranchPage> {
     
     // Initialize team members
     _teamMembers = List.from(widget.branch.teamMembers);
+    
+    // Debug: Log team members initialization
+    print('=== Edit Branch Page - Team Members Debug ===');
+    print('Branch: ${widget.branch.branchName}');
+    print('Team Members Count: ${widget.branch.teamMembers.length}');
+    print('Team Members: ${widget.branch.teamMembers.map((m) => m.fullName).toList()}');
+    print('Initialized Team Members Count: ${_teamMembers.length}');
+    print('=============================================');
     
     // Initialize selected classes will be done after loading available classes
     _selectedClasses = [];
@@ -147,7 +171,8 @@ class _EditBranchPageState extends State<EditBranchPage> {
     _teamMemberNameController.dispose();
     _teamMemberEmailController.dispose();
     _teamMemberPhoneController.dispose();
-    _teamMemberRoleController.dispose();
+    _teamMemberPasswordController.dispose();
+    _teamMemberConfirmPasswordController.dispose();
     
     super.dispose();
   }
@@ -419,7 +444,9 @@ class _EditBranchPageState extends State<EditBranchPage> {
                                 radius: 20,
                                 backgroundColor: const Color(0xFFF8BB0C),
                                 child: Text(
-                                  member.fullName[0].toUpperCase(),
+                                  member.fullName.isNotEmpty 
+                                      ? member.fullName[0].toUpperCase()
+                                      : '?',
                                   style: const TextStyle(
                                     color: Colors.black,
                                     fontWeight: FontWeight.bold,
@@ -517,6 +544,7 @@ class _EditBranchPageState extends State<EditBranchPage> {
                         ),
                 ),
               ),
+              const SizedBox(height: 40),
             ],
           ),
         ),
@@ -605,7 +633,8 @@ class _EditBranchPageState extends State<EditBranchPage> {
               ),
             ],
           ),
-          if (_branchImageFile != null) ...[
+          // Display image preview (newly selected or existing)
+          if (_branchImageFile != null || widget.branch.image != null) ...[
             const SizedBox(height: 12),
             Container(
               height: 100,
@@ -616,10 +645,36 @@ class _EditBranchPageState extends State<EditBranchPage> {
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(8),
-                child: Image.file(
-                  _branchImageFile!,
-                  fit: BoxFit.cover,
-                ),
+                child: _branchImageFile != null
+                    ? Image.file(
+                        _branchImageFile!,
+                        fit: BoxFit.cover,
+                      )
+                    : widget.branch.image != null
+                        ? Image.network(
+                            widget.branch.image!,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Container(
+                                color: Colors.grey[200],
+                                child: const Icon(
+                                  Icons.broken_image,
+                                  color: Colors.grey,
+                                  size: 40,
+                                ),
+                              );
+                            },
+                            loadingBuilder: (context, child, loadingProgress) {
+                              if (loadingProgress == null) return child;
+                              return Container(
+                                color: Colors.grey[200],
+                                child: const Center(
+                                  child: CircularProgressIndicator(),
+                                ),
+                              );
+                            },
+                          )
+                        : const SizedBox.shrink(),
               ),
             ),
           ],
@@ -673,14 +728,18 @@ class _EditBranchPageState extends State<EditBranchPage> {
     required IconData icon,
     TextInputType? keyboardType,
     String? Function(String?)? validator,
+    bool obscureText = false,
+    Widget? suffixIcon,
   }) {
     return TextFormField(
       controller: controller,
       keyboardType: keyboardType,
       validator: validator,
+      obscureText: obscureText,
       decoration: InputDecoration(
         labelText: label,
         prefixIcon: Icon(icon, color: const Color(0xFFF8BB0C)),
+        suffixIcon: suffixIcon,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
         ),
@@ -788,73 +847,110 @@ class _EditBranchPageState extends State<EditBranchPage> {
       ),
       child: Column(
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: _buildTextField(
-                  controller: _teamMemberNameController,
-                  label: 'Full Name',
-                  icon: Icons.person,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Name is required';
-                    }
-                    return null;
-                  },
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildTextField(
-                  controller: _teamMemberRoleController,
-                  label: 'Role',
-                  icon: Icons.work,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Role is required';
-                    }
-                    return null;
-                  },
-                ),
-              ),
-            ],
+          _buildTextField(
+            controller: _teamMemberNameController,
+            label: 'Full Name',
+            icon: Icons.person,
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'Name is required';
+              }
+              return null;
+            },
           ),
           const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: _buildTextField(
-                  controller: _teamMemberEmailController,
-                  label: 'Email',
-                  icon: Icons.email,
-                  keyboardType: TextInputType.emailAddress,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Email is required';
-                    }
-                    if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
-                      return 'Please enter a valid email';
-                    }
-                    return null;
-                  },
-                ),
+          _buildTeamMemberRoleDropdown(),
+          const SizedBox(height: 16),
+          _buildTextField(
+            controller: _teamMemberEmailController,
+            label: 'Email',
+            icon: Icons.email,
+            keyboardType: TextInputType.emailAddress,
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'Email is required';
+              }
+              if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
+                return 'Please enter a valid email';
+              }
+              return null;
+            },
+          ),
+          const SizedBox(height: 16),
+          _buildTextField(
+            controller: _teamMemberPhoneController,
+            label: 'Phone',
+            icon: Icons.phone,
+            keyboardType: TextInputType.phone,
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'Phone is required';
+              }
+              return null;
+            },
+          ),
+          const SizedBox(height: 16),
+          _buildTextField(
+            controller: _teamMemberPasswordController,
+            label: 'Password',
+            icon: Icons.lock,
+            obscureText: _obscureTeamMemberPassword,
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'Password is required';
+              }
+              if (value.length < 8) {
+                return 'Password must be at least 8 characters';
+              }
+              return null;
+            },
+            suffixIcon: IconButton(
+              icon: Icon(
+                _obscureTeamMemberPassword ? Icons.visibility : Icons.visibility_off,
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildTextField(
-                  controller: _teamMemberPhoneController,
-                  label: 'Phone',
-                  icon: Icons.phone,
-                  keyboardType: TextInputType.phone,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Phone is required';
-                    }
-                    return null;
-                  },
-                ),
+              onPressed: () {
+                setState(() {
+                  _obscureTeamMemberPassword = !_obscureTeamMemberPassword;
+                });
+              },
+            ),
+          ),
+          const SizedBox(height: 16),
+          _buildTextField(
+            controller: _teamMemberConfirmPasswordController,
+            label: 'Confirm Password',
+            icon: Icons.lock_outline,
+            obscureText: _obscureTeamMemberConfirmPassword,
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'Please confirm password';
+              }
+              if (value != _teamMemberPasswordController.text) {
+                return 'Passwords do not match';
+              }
+              return null;
+            },
+            suffixIcon: IconButton(
+              icon: Icon(
+                _obscureTeamMemberConfirmPassword ? Icons.visibility : Icons.visibility_off,
               ),
-            ],
+              onPressed: () {
+                setState(() {
+                  _obscureTeamMemberConfirmPassword = !_obscureTeamMemberConfirmPassword;
+                });
+              },
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              'Password is required for all team members. Only team members with Admin or Viewer role can sign in to the branch portal.',
+              style: TextStyle(
+                color: Colors.black54,
+                fontSize: 12,
+              ),
+            ),
           ),
           const SizedBox(height: 16),
           ElevatedButton.icon(
@@ -890,12 +986,100 @@ class _EditBranchPageState extends State<EditBranchPage> {
     }
   }
 
+  Widget _buildTeamMemberRoleDropdown() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Role',
+          style: TextStyle(
+            color: Colors.black87,
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: const Color(0xFFF8BB0C),
+              width: 1.5,
+            ),
+            color: Colors.white,
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              value: _selectedTeamMemberRole,
+              isExpanded: true,
+              dropdownColor: Colors.white,
+              icon: const Icon(Icons.keyboard_arrow_down, color: Colors.black87),
+              style: const TextStyle(
+                color: Colors.black87,
+                fontSize: 14,
+              ),
+              items: _teamMemberRoleOptions
+                  .map(
+                    (option) => DropdownMenuItem<String>(
+                      value: option['value'],
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            option['title'] ?? '',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              color: Colors.black87,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            option['subtitle'] ?? '',
+                            style: const TextStyle(
+                              color: Colors.black54,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                  .toList(),
+              onChanged: (String? value) {
+                if (value == null) return;
+                setState(() {
+                  _selectedTeamMemberRole = value;
+                });
+              },
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   void _addTeamMember() {
     if (_teamMemberNameController.text.isEmpty ||
         _teamMemberEmailController.text.isEmpty ||
         _teamMemberPhoneController.text.isEmpty ||
-        _teamMemberRoleController.text.isEmpty) {
+        _teamMemberPasswordController.text.isEmpty ||
+        _teamMemberConfirmPasswordController.text.isEmpty ||
+        _selectedTeamMemberRole.isEmpty) {
       _showSnackBar('Please fill in all fields');
+      return;
+    }
+
+    // Password validation
+    if (_teamMemberPasswordController.text.length < 8) {
+      _showSnackBar('Password must be at least 8 characters');
+      return;
+    }
+
+    // Password confirmation validation
+    if (_teamMemberPasswordController.text != _teamMemberConfirmPasswordController.text) {
+      _showSnackBar('Passwords do not match');
       return;
     }
 
@@ -904,7 +1088,8 @@ class _EditBranchPageState extends State<EditBranchPage> {
       email: _teamMemberEmailController.text,
       phoneNumber: _teamMemberPhoneController.text,
       countryCode: _selectedCountryCode,
-      role: _teamMemberRoleController.text,
+      role: _selectedTeamMemberRole,
+      password: _teamMemberPasswordController.text,
     );
 
     setState(() {
@@ -916,7 +1101,11 @@ class _EditBranchPageState extends State<EditBranchPage> {
     _teamMemberNameController.clear();
     _teamMemberEmailController.clear();
     _teamMemberPhoneController.clear();
-    _teamMemberRoleController.clear();
+    _teamMemberPasswordController.clear();
+    _teamMemberConfirmPasswordController.clear();
+    _selectedTeamMemberRole = 'viewer';
+    _obscureTeamMemberPassword = true;
+    _obscureTeamMemberConfirmPassword = true;
 
     _showSnackBar('Team member added successfully');
   }
@@ -958,9 +1147,18 @@ class _EditBranchPageState extends State<EditBranchPage> {
         capacity: standaloneClass.capacity,
         instructor: standaloneClass.instructor,
         schedule: standaloneClass.schedule, // Include the schedule from standalone class
+        isVisible: standaloneClass.isVisible ?? true,
       )).toList();
 
+      // Filter team members: only include new ones with passwords
+      // Existing team members loaded from branch don't have passwords (for security)
+      // Only newly added team members will have passwords
+      final newTeamMembers = _teamMembers.where((member) => 
+        member.password.isNotEmpty
+      ).toList();
+
       // Create update request
+      // Only include teamMembers if there are new ones to add
       final updateRequest = UpdateBranchRequest(
         branchId: _branchIdController.text.trim(),
         branchName: _branchNameController.text.trim(),
@@ -970,7 +1168,7 @@ class _EditBranchPageState extends State<EditBranchPage> {
         location: _locationController.text.trim(),
         image: _branchImageFile != null ? _branchImageFile!.path : widget.branch.image,
         classes: classModels,
-        teamMembers: _teamMembers,
+        teamMembers: newTeamMembers.isNotEmpty ? newTeamMembers : null,
         isActive: true,
       );
 

@@ -6,6 +6,7 @@ class CreateStandaloneClassRequest {
   final List<ClassSchedule> schedule;
   final int? duration;
   final List<String>? images;
+  final bool isVisible;
 
   CreateStandaloneClassRequest({
     required this.name,
@@ -15,6 +16,7 @@ class CreateStandaloneClassRequest {
     required this.schedule,
     this.duration,
     this.images,
+    this.isVisible = true,
   });
 
   Map<String, dynamic> toJson() {
@@ -34,6 +36,8 @@ class CreateStandaloneClassRequest {
       data['images'] = images;
     }
     
+    data['is_visible'] = isVisible;
+    
     return data;
   }
 
@@ -50,6 +54,7 @@ class CreateStandaloneClassRequest {
       images: (json['images'] as List<dynamic>?)
           ?.map((image) => image.toString())
           .toList(),
+      isVisible: json['is_visible'] ?? json['IsVisible'] ?? true,
     );
   }
 }
@@ -130,6 +135,7 @@ class StandaloneClassResponse {
   final List<ClassSchedule> schedule;
   final List<String> images;
   final bool isActive;
+  final bool? isVisible;
   final DateTime? expiresAt;
   final bool isExpired;
   final int renewalCount;
@@ -147,6 +153,7 @@ class StandaloneClassResponse {
     required this.schedule,
     required this.images,
     required this.isActive,
+    this.isVisible,
     this.expiresAt,
     this.isExpired = false,
     this.renewalCount = 0,
@@ -179,12 +186,51 @@ class StandaloneClassResponse {
           ?.map((image) => image.toString())
           .toList() ?? [],
       isActive: json['is_active'] ?? false,
+      isVisible: json['is_visible'] ?? json['IsVisible'] ?? true,
       expiresAt: json['expires_at'] != null ? DateTime.parse(json['expires_at']) : null,
       isExpired: json['is_expired'] ?? false,
       renewalCount: json['renewal_count'] != null ? int.tryParse(json['renewal_count'].toString()) ?? 0 : 0,
       createdAt: DateTime.parse(json['created_at']),
       updatedAt: DateTime.parse(json['updated_at']),
       createdBy: json['created_by'] ?? '',
+    );
+  }
+  
+  StandaloneClassResponse copyWith({
+    String? id,
+    String? name,
+    String? description,
+    String? instructor,
+    int? duration,
+    int? capacity,
+    List<ClassSchedule>? schedule,
+    List<String>? images,
+    bool? isActive,
+    bool? isVisible,
+    DateTime? expiresAt,
+    bool? isExpired,
+    int? renewalCount,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    String? createdBy,
+  }) {
+    return StandaloneClassResponse(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      description: description ?? this.description,
+      instructor: instructor ?? this.instructor,
+      duration: duration ?? this.duration,
+      capacity: capacity ?? this.capacity,
+      schedule: schedule ?? this.schedule,
+      images: images ?? this.images,
+      isActive: isActive ?? this.isActive,
+      isVisible: isVisible ?? this.isVisible,
+      expiresAt: expiresAt ?? this.expiresAt,
+      isExpired: isExpired ?? this.isExpired,
+      renewalCount: renewalCount ?? this.renewalCount,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      createdBy: createdBy ?? this.createdBy,
     );
   }
 }

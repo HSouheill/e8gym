@@ -137,3 +137,69 @@ class BookingListResponse {
     );
   }
 }
+
+class ClassScheduleAvailability {
+  final String scheduleId;
+  final DateTime date;
+  final DateTime startTime;
+  final DateTime endTime;
+  final int bookedCount;
+  final int availableSlots;
+  final bool isAvailable;
+  final bool isPast;
+
+  ClassScheduleAvailability({
+    required this.scheduleId,
+    required this.date,
+    required this.startTime,
+    required this.endTime,
+    required this.bookedCount,
+    required this.availableSlots,
+    required this.isAvailable,
+    required this.isPast,
+  });
+
+  factory ClassScheduleAvailability.fromJson(Map<String, dynamic> json) {
+    return ClassScheduleAvailability(
+      scheduleId: json['schedule_id']?.toString() ?? '',
+      date: DateTime.parse(json['date']),
+      startTime: DateTime.parse(json['start_time']),
+      endTime: DateTime.parse(json['end_time']),
+      bookedCount: json['booked_count'] ?? 0,
+      availableSlots: json['available_slots'] ?? 0,
+      isAvailable: json['is_available'] ?? false,
+      isPast: json['is_past'] ?? false,
+    );
+  }
+}
+
+class ClassSchedulesResponse {
+  final String classId;
+  final String className;
+  final String instructor;
+  final int capacity;
+  final List<ClassScheduleAvailability> schedules;
+  final int totalSchedules;
+
+  ClassSchedulesResponse({
+    required this.classId,
+    required this.className,
+    required this.instructor,
+    required this.capacity,
+    required this.schedules,
+    required this.totalSchedules,
+  });
+
+  factory ClassSchedulesResponse.fromJson(Map<String, dynamic> json) {
+    return ClassSchedulesResponse(
+      classId: json['class_id']?.toString() ?? '',
+      className: json['class_name']?.toString() ?? '',
+      instructor: json['instructor']?.toString() ?? '',
+      capacity: json['capacity'] ?? 0,
+      schedules: (json['schedules'] as List<dynamic>?)
+          ?.map((schedule) => ClassScheduleAvailability.fromJson(schedule))
+          .toList() ?? [],
+      totalSchedules: json['total_schedules'] ?? 0,
+    );
+  }
+}

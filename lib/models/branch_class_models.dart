@@ -11,6 +11,9 @@ class BranchClassResponse {
   final String instructor;
   final List<String> images;
   final bool isActive;
+  final bool? isVisible; // Visibility flag - if false, class should be hidden from users
+  final DateTime? expiresAt;
+  final bool isExpired;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -24,11 +27,46 @@ class BranchClassResponse {
     required this.instructor,
     this.images = const [],
     required this.isActive,
+    this.isVisible,
+    this.expiresAt,
+    this.isExpired = false,
     required this.createdAt,
     required this.updatedAt,
   });
 
   factory BranchClassResponse.fromJson(Map<String, dynamic> json) {
+    // Parse expiration date if available
+    DateTime? expiresAt;
+    bool isExpired = false;
+    
+    if (json['expires_at'] != null && json['expires_at'].toString().isNotEmpty) {
+      try {
+        expiresAt = DateTime.parse(json['expires_at'].toString());
+        // Check if the class has expired (end date has passed)
+        final now = DateTime.now();
+        final endOfDay = DateTime(expiresAt.year, expiresAt.month, expiresAt.day, 23, 59, 59);
+        isExpired = now.isAfter(endOfDay);
+      } catch (e) {
+        // If parsing fails, ignore the expiration date
+        expiresAt = null;
+      }
+    } else if (json['end_date'] != null && json['end_date'].toString().isNotEmpty) {
+      // Also check for end_date field as an alternative
+      try {
+        expiresAt = DateTime.parse(json['end_date'].toString());
+        final now = DateTime.now();
+        final endOfDay = DateTime(expiresAt.year, expiresAt.month, expiresAt.day, 23, 59, 59);
+        isExpired = now.isAfter(endOfDay);
+      } catch (e) {
+        expiresAt = null;
+      }
+    }
+    
+    // If is_expired is explicitly provided, use it
+    if (json['is_expired'] != null) {
+      isExpired = json['is_expired'] == true || json['is_expired'] == 'true';
+    }
+
     return BranchClassResponse(
       id: json['id']?.toString() ?? '',
       name: json['name']?.toString() ?? '',
@@ -43,6 +81,9 @@ class BranchClassResponse {
           ?.map((image) => image.toString())
           .toList() ?? [],
       isActive: json['is_active'] ?? false,
+      isVisible: json['is_visible'] ?? json['IsVisible'] ?? true, // Default to true if not specified
+      expiresAt: expiresAt,
+      isExpired: isExpired,
       createdAt: json['created_at'] != null 
           ? DateTime.parse(json['created_at'].toString())
           : DateTime.now(),
@@ -50,6 +91,15 @@ class BranchClassResponse {
           ? DateTime.parse(json['updated_at'].toString())
           : DateTime.now(),
     );
+  }
+  
+  /// Check if the class is expired based on expiration date
+  bool get hasExpired {
+    if (isExpired) return true;
+    if (expiresAt == null) return false;
+    final now = DateTime.now();
+    final endOfDay = DateTime(expiresAt!.year, expiresAt!.month, expiresAt!.day, 23, 59, 59);
+    return now.isAfter(endOfDay);
   }
 }
 
@@ -89,5 +139,99 @@ class UpdateClassScheduleRequest {
 
   List<Map<String, dynamic>> toJson() {
     return schedule.map((s) => s.toJson()).toList();
+  }
+}
+
+/// Update Class Instructor Request Model
+class UpdateClassInstructorRequest {
+  final String instructor;
+
+  UpdateClassInstructorRequest({
+    required this.instructor,
+  });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'instructor': instructor,
+    };
+  }
+}
+
+/// Update Class with Recurring Schedule Request Model
+class UpdateClassRecurringRequest {
+  final int dayOfWeek; // 0-6 (Sunday=0, Monday=1, ..., Saturday=6)
+  final String? newStartTime; // Format: "HH:MM:SS" or "HH:MM"
+  final String? newEndTime; // Format: "HH:MM:SS" or "HH:MM"
+  final bool updateRecurring;
+
+  UpdateClassRecurringRequest({
+    required this.dayOfWeek,
+    this.newStartTime,
+    this.newEndTime,
+    this.updateRecurring = true,
+  });
+
+  Map<String, dynamic> toJson() {
+    final json = <String, dynamic>{
+      'update_recurring': updateRecurring,
+      'day_of_week': dayOfWeek,
+    };
+    
+    if (newStartTime != null) {
+      json['new_start_time'] = newStartTime;
+    }
+    
+    if (newEndTime != null) {
+      json['new_end_time'] = newEndTime;
+    }
+    
+    return json;
+  }
+}
+
+/// Bulk Update Class Time Request Model
+class BulkUpdateClassTimeRequest {
+  final int dayOfWeek; // 0-6 (Sunday=0, Monday=1, ..., Saturday=6)
+  final String newStartTime; // Format: "HH:MM:SS" or ISO time format
+  final String newEndTime; // Format: "HH:MM:SS" or ISO time format
+
+  BulkUpdateClassTimeRequest({
+    required this.dayOfWeek,
+    required this.newStartTime,
+    required this.newEndTime,
+  });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'day_of_week': dayOfWeek,
+      'new_start_time': newStartTime,
+      'new_end_time': newEndTime,
+    };
+  }
+}
+
+/// Bulk Update Class Time Response Model
+class BulkUpdateClassTimeResponse {
+  final int updatedClassesCount;
+  final int updatedSchedulesCount;
+  final List<String> updatedDates;
+  final String dayOfWeek;
+
+  BulkUpdateClassTimeResponse({
+    required this.updatedClassesCount,
+    required this.updatedSchedulesCount,
+    required this.updatedDates,
+    required this.dayOfWeek,
+  });
+
+  factory BulkUpdateClassTimeResponse.fromJson(Map<String, dynamic> json) {
+    return BulkUpdateClassTimeResponse(
+      updatedClassesCount: json['updated_classes_count'] ?? 0,
+      updatedSchedulesCount: json['updated_schedules_count'] ?? 0,
+      updatedDates: (json['updated_dates'] as List<dynamic>?)
+          ?.map((date) => date.toString())
+          .toList() ?? [],
+      dayOfWeek: json['day_of_week']?.toString() ?? '',
+    );
   }
 }
