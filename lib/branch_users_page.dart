@@ -276,7 +276,7 @@ class _BranchUsersPageState extends State<BranchUsersPage> {
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
+                colors: [Colors.white, Colors.white70],
               ),
             ),
           ),
@@ -330,7 +330,7 @@ class _BranchUsersPageState extends State<BranchUsersPage> {
                             gradient: const LinearGradient(
                               begin: Alignment.topCenter,
                               end: Alignment.bottomCenter,
-                              colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
+                              colors: [Colors.white, Colors.white70],
                             ),
                             shape: BoxShape.circle,
                           ),
@@ -361,7 +361,7 @@ class _BranchUsersPageState extends State<BranchUsersPage> {
                             gradient: const LinearGradient(
                               begin: Alignment.topCenter,
                               end: Alignment.bottomCenter,
-                              colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
+                              colors: [Colors.white, Colors.white70],
                             ),
                             shape: BoxShape.circle,
                           ),
@@ -693,7 +693,7 @@ class _BranchUsersPageState extends State<BranchUsersPage> {
       child: ListTile(
         contentPadding: const EdgeInsets.all(16),
         leading: CircleAvatar(
-          backgroundColor: const Color(0xFFF8BB0C),
+          backgroundColor: Colors.white,
           radius: 25,
           child: Text(
             user.fullName.substring(0, 1).toUpperCase(),
@@ -953,7 +953,7 @@ class _BranchUserDetailPageState extends State<BranchUserDetailPage> {
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
+                colors: [Colors.white, Colors.white70],
               ),
             ),
           ),
@@ -1007,7 +1007,7 @@ class _BranchUserDetailPageState extends State<BranchUserDetailPage> {
                             gradient: const LinearGradient(
                               begin: Alignment.topCenter,
                               end: Alignment.bottomCenter,
-                              colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
+                              colors: [Colors.white, Colors.white70],
                             ),
                             shape: BoxShape.circle,
                           ),
@@ -1064,7 +1064,7 @@ class _BranchUserDetailPageState extends State<BranchUserDetailPage> {
       child: Column(
         children: [
           CircleAvatar(
-            backgroundColor: const Color(0xFFF8BB0C),
+            backgroundColor: Colors.white,
             radius: 40,
             child: Text(
               widget.user.fullName.substring(0, 1).toUpperCase(),
@@ -1188,6 +1188,12 @@ class _BranchUserDetailPageState extends State<BranchUserDetailPage> {
   }
 
   Widget _buildBookingCard(BranchUserBooking booking) {
+    final displayClassName = booking.className.isNotEmpty
+        ? booking.className
+        : 'Class ${booking.classId.substring(0, booking.classId.length >= 6 ? 6 : booking.classId.length)}';
+    final displayInstructor = booking.instructor.isNotEmpty ? booking.instructor : 'Not specified';
+    final notesAvailable = booking.notes != null && booking.notes!.trim().isNotEmpty;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
@@ -1203,7 +1209,7 @@ class _BranchUserDetailPageState extends State<BranchUserDetailPage> {
             children: [
               Expanded(
                 child: Text(
-                  booking.className,
+                  displayClassName,
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 16,
@@ -1230,7 +1236,7 @@ class _BranchUserDetailPageState extends State<BranchUserDetailPage> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Instructor: ${booking.instructor}',
+            'Instructor: $displayInstructor',
             style: const TextStyle(color: Colors.white70, fontSize: 14),
           ),
           const SizedBox(height: 8),
@@ -1255,10 +1261,27 @@ class _BranchUserDetailPageState extends State<BranchUserDetailPage> {
               ),
             ],
           ),
+          if (notesAvailable) ...[
+            const SizedBox(height: 8),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(Icons.sticky_note_2_outlined, color: Colors.white70, size: 16),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    booking.notes!.trim(),
+                    style: const TextStyle(color: Colors.white70, fontSize: 14),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );
   }
+
 
   Widget _buildLoadMoreBookingsButton() {
     if (_hasMoreBookings) {

@@ -40,9 +40,10 @@ class _UserDashboardState extends State<UserDashboard> {
   final TextEditingController _classSearchController = TextEditingController();
   String _classSearchQuery = '';
   
-  // Booked classes tracking
-  Set<String> _bookedClassIds = {};
-  Map<String, String> _classIdToBookingId = {}; // Map class ID to booking ID for cancellation
+  // Booked classes tracking - allows multiple bookings per class
+  // Key: "classId_scheduleId" or "classId_date_time", Value: booking ID
+  Map<String, String> _bookingKeyToBookingId = {}; // Map booking key to booking ID
+  List<BookingResponse> _allBookings = []; // Store all bookings for reference
   
   // BMI data
   BMIResponse? _userBMI;
@@ -187,20 +188,25 @@ class _UserDashboardState extends State<UserDashboard> {
         // Parse using BookingListResponse model
         final bookingListResponse = BookingListResponse.fromJson(bookingsData);
         
-        // Extract class IDs and booking IDs from bookings (only active/confirmed bookings)
-        final bookedIds = <String>{};
-        final classToBookingMap = <String, String>{};
+        // Store all bookings and create mapping by composite key (classId + scheduleId)
+        final bookingKeyMap = <String, String>{};
+        final allBookingsList = <BookingResponse>[];
+        
         for (var booking in bookingListResponse.bookings) {
-          // Only count bookings that are not cancelled
+          // Store all bookings (including cancelled for reference)
+          allBookingsList.add(booking);
+          
+          // Only track active bookings (not cancelled)
           if (booking.status != 'cancelled' && booking.classId.isNotEmpty) {
-            bookedIds.add(booking.classId);
-            classToBookingMap[booking.classId] = booking.id;
+            // Create composite key: classId_scheduleId
+            final bookingKey = '${booking.classId}_${booking.scheduleId}';
+            bookingKeyMap[bookingKey] = booking.id;
           }
         }
         
         setState(() {
-          _bookedClassIds = bookedIds;
-          _classIdToBookingId = classToBookingMap;
+          _bookingKeyToBookingId = bookingKeyMap;
+          _allBookings = allBookingsList;
         });
         await _saveBookedClassesToStorage();
       } else {
@@ -217,20 +223,12 @@ class _UserDashboardState extends State<UserDashboard> {
   Future<void> _loadBookedClassesFromStorage() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final bookedIdsJson = prefs.getString('booked_class_ids');
-      final bookingIdMapJson = prefs.getString('class_booking_id_map');
-      
-      if (bookedIdsJson != null) {
-        final List<dynamic> bookedIds = jsonDecode(bookedIdsJson);
-        setState(() {
-          _bookedClassIds = bookedIds.map((id) => id.toString()).toSet();
-        });
-      }
+      final bookingIdMapJson = prefs.getString('booking_key_to_id_map');
       
       if (bookingIdMapJson != null) {
         final Map<String, dynamic> bookingIdMap = jsonDecode(bookingIdMapJson);
         setState(() {
-          _classIdToBookingId = bookingIdMap.map((key, value) => MapEntry(key.toString(), value.toString()));
+          _bookingKeyToBookingId = bookingIdMap.map((key, value) => MapEntry(key.toString(), value.toString()));
         });
       }
     } catch (e) {
@@ -241,30 +239,82 @@ class _UserDashboardState extends State<UserDashboard> {
   Future<void> _saveBookedClassesToStorage() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('booked_class_ids', jsonEncode(_bookedClassIds.toList()));
-      await prefs.setString('class_booking_id_map', jsonEncode(_classIdToBookingId));
+      await prefs.setString('booking_key_to_id_map', jsonEncode(_bookingKeyToBookingId));
     } catch (e) {
       print('Error saving booked classes to storage: $e');
     }
   }
 
-  bool _isClassBooked(String classId) {
-    return _bookedClassIds.contains(classId);
+  // Get all bookings for a specific class
+  List<BookingResponse> _getBookingsForClass(String classId) {
+    return _allBookings.where((booking) => 
+      booking.classId == classId && booking.status != 'cancelled'
+    ).toList();
   }
 
-  Future<void> _handleCancelBooking(BranchClassResponse classData) async {
+  // Get booking ID for a specific schedule
+  String? _getBookingIdForSchedule(String classId, String scheduleId) {
+    final bookingKey = '${classId}_$scheduleId';
+    return _bookingKeyToBookingId[bookingKey];
+  }
+
+  Color _getStatusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'confirmed':
+        return Colors.green;
+      case 'pending':
+        return Colors.orange;
+      case 'cancelled':
+        return Colors.red;
+      case 'completed':
+        return Colors.blue;
+      case 'no_show':
+        return Colors.grey;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  Future<void> _handleCancelBooking(BranchClassResponse classData, String? scheduleId) async {
     if (_accessToken == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Authentication required'),
+          content: Text('Authentication required', style: const TextStyle(color: Colors.black)),
           backgroundColor: Colors.red,
         ),
       );
       return;
     }
 
-    // Get booking ID for this class
-    final bookingId = _classIdToBookingId[classData.id];
+    // If scheduleId is provided, cancel that specific booking
+    // Otherwise, show dialog to select which booking to cancel
+    String? bookingId;
+    
+    if (scheduleId != null) {
+      bookingId = _getBookingIdForSchedule(classData.id, scheduleId);
+    } else {
+      // Show dialog to select which booking to cancel if multiple exist
+      final bookings = _getBookingsForClass(classData.id);
+      if (bookings.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No active bookings found for this class'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        return;
+      }
+      
+      if (bookings.length == 1) {
+        bookingId = bookings.first.id;
+      } else {
+        // Show selection dialog for multiple bookings
+        final selectedBooking = await _showBookingSelectionDialog(classData, bookings);
+        if (selectedBooking == null) return;
+        bookingId = selectedBooking.id;
+      }
+    }
+
     if (bookingId == null || bookingId.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -296,7 +346,7 @@ class _UserDashboardState extends State<UserDashboard> {
             Text(
               'Location: ${_userBranch?.branchName}',
               style: const TextStyle(
-                color: Color(0xFFF8BB0C),
+                color: Colors.white,
                 fontSize: 12,
                 fontWeight: FontWeight.w500,
               ),
@@ -362,21 +412,29 @@ class _UserDashboardState extends State<UserDashboard> {
       barrierDismissible: false,
       builder: (context) => const Center(
         child: CircularProgressIndicator(
-          valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFF8BB0C)),
+          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
         ),
       ),
     );
 
     try {
+      // Cancel booking using the update endpoint (PUT /api/bookings/:id)
+      // This internally calls updateBooking with status: 'cancelled'
       final result = await ApiService.cancelBooking(bookingId, _accessToken!);
 
       Navigator.of(context).pop(); // Close loading dialog
 
       if (result['success']) {
-        // Remove class ID from booked classes
+        // Find and remove the cancelled booking from tracking
+        final bookingToRemove = _allBookings.firstWhere(
+          (b) => b.id == bookingId,
+          orElse: () => _allBookings.first,
+        );
+        
+        final bookingKey = '${bookingToRemove.classId}_${bookingToRemove.scheduleId}';
         setState(() {
-          _bookedClassIds.remove(classData.id);
-          _classIdToBookingId.remove(classData.id);
+          _bookingKeyToBookingId.remove(bookingKey);
+          _allBookings.removeWhere((b) => b.id == bookingId);
         });
         await _saveBookedClassesToStorage();
         
@@ -395,7 +453,7 @@ class _UserDashboardState extends State<UserDashboard> {
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(result['message'] ?? 'Failed to cancel booking'),
+            content: Text(result['message'] ?? 'Failed to cancel booking', style: const TextStyle(color: Colors.black)),
             backgroundColor: Colors.red,
             duration: const Duration(seconds: 3),
           ),
@@ -405,7 +463,7 @@ class _UserDashboardState extends State<UserDashboard> {
       Navigator.of(context).pop(); // Close loading dialog
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error cancelling booking: $e'),
+          content: Text('Error cancelling booking: $e', style: const TextStyle(color: Colors.black)),
           backgroundColor: Colors.red,
         ),
       );
@@ -693,7 +751,7 @@ class _UserDashboardState extends State<UserDashboard> {
     if (_accessToken == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Authentication required'),
+          content: Text('Authentication required', style: const TextStyle(color: Colors.black)),
           backgroundColor: Colors.red,
         ),
       );
@@ -720,7 +778,7 @@ class _UserDashboardState extends State<UserDashboard> {
     if (_userBranch == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Branch information is missing'),
+          content: Text('Branch information is missing', style: const TextStyle(color: Colors.black)),
           backgroundColor: Colors.red,
         ),
       );
@@ -733,7 +791,7 @@ class _UserDashboardState extends State<UserDashboard> {
       barrierDismissible: false,
       builder: (context) => const Center(
         child: CircularProgressIndicator(
-          valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFF8BB0C)),
+          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
         ),
       ),
     );
@@ -752,7 +810,7 @@ class _UserDashboardState extends State<UserDashboard> {
       if (!schedulesResult['success']) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(schedulesResult['message'] ?? 'Failed to load available schedules'),
+            content: Text(schedulesResult['message'] ?? 'Failed to load available schedules', style: const TextStyle(color: Colors.black)),
             backgroundColor: Colors.red,
           ),
         );
@@ -794,7 +852,7 @@ class _UserDashboardState extends State<UserDashboard> {
               Text(
                 classData.name,
                 style: const TextStyle(
-                  color: Color(0xFFF8BB0C),
+                  color: Colors.white,
                   fontSize: 16,
                   fontWeight: FontWeight.w500,
                 ),
@@ -820,7 +878,7 @@ class _UserDashboardState extends State<UserDashboard> {
                       color: Colors.white.withOpacity(0.05),
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(
-                        color: const Color(0xFFF8BB0C).withOpacity(0.3),
+                        color: Colors.white.withOpacity(0.3),
                         width: 1,
                       ),
                     ),
@@ -840,7 +898,7 @@ class _UserDashboardState extends State<UserDashboard> {
                           Text(
                             '${DateFormat('HH:mm').format(schedule.startTime)} - ${DateFormat('HH:mm').format(schedule.endTime)}',
                             style: const TextStyle(
-                              color: Color(0xFFF8BB0C),
+                              color: Colors.white,
                               fontSize: 14,
                             ),
                           ),
@@ -859,7 +917,7 @@ class _UserDashboardState extends State<UserDashboard> {
                       trailing: schedule.isAvailable
                           ? const Icon(
                               Icons.check_circle,
-                              color: Color(0xFFF8BB0C),
+                              color: Colors.white,
                             )
                           : const Icon(
                               Icons.cancel,
@@ -918,7 +976,7 @@ class _UserDashboardState extends State<UserDashboard> {
               Text(
                 'Location: ${_userBranch?.branchName}',
                 style: const TextStyle(
-                  color: Color(0xFFF8BB0C),
+                  color: Colors.white,
                   fontSize: 12,
                   fontWeight: FontWeight.w500,
                 ),
@@ -926,7 +984,7 @@ class _UserDashboardState extends State<UserDashboard> {
               Text(
                 'Instructor: ${schedulesData.instructor}',
                 style: const TextStyle(
-                  color: Color(0xFFF8BB0C),
+                  color: Colors.white,
                   fontSize: 12,
                   fontWeight: FontWeight.w500,
                 ),
@@ -944,7 +1002,7 @@ class _UserDashboardState extends State<UserDashboard> {
             ElevatedButton(
               onPressed: () => Navigator.of(context).pop(true),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFF8BB0C),
+                backgroundColor: Colors.white,
                 foregroundColor: Colors.black,
               ),
               child: const Text('Confirm Booking'),
@@ -961,7 +1019,7 @@ class _UserDashboardState extends State<UserDashboard> {
         barrierDismissible: false,
         builder: (context) => const Center(
           child: CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFF8BB0C)),
+            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
           ),
         ),
       );
@@ -995,21 +1053,21 @@ class _UserDashboardState extends State<UserDashboard> {
           ),
         );
       } else {
-        // Check if it's a booking conflict (already booked)
+        // Check if it's a booking conflict (same time slot)
         final errorMessage = result['message'] ?? 'Failed to book class';
-        final isBookingConflict = errorMessage.toLowerCase().contains('already') || 
-                                 errorMessage.toLowerCase().contains('booked') ||
-                                 errorMessage.toLowerCase().contains('conflict') ||
-                                 errorMessage.toLowerCase().contains('duplicate');
+        final isTimeConflict = errorMessage.toLowerCase().contains('conflict') ||
+                              errorMessage.toLowerCase().contains('same time') ||
+                              (errorMessage.toLowerCase().contains('already') && 
+                               errorMessage.toLowerCase().contains('time'));
         
-        if (isBookingConflict) {
-          // Show custom popup for booking conflict
+        if (isTimeConflict) {
+          // Show custom popup for time conflict
           _showBookingConflictDialog(classData.name);
         } else {
           // Show regular error snackbar for other errors
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(errorMessage),
+              content: Text(errorMessage, style: const TextStyle(color: Colors.black)),
               backgroundColor: Colors.red,
             ),
           );
@@ -1019,7 +1077,7 @@ class _UserDashboardState extends State<UserDashboard> {
       Navigator.of(context).pop(); // Close loading dialog
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error booking class: $e'),
+          content: Text('Error booking class: $e', style: const TextStyle(color: Colors.black)),
           backgroundColor: Colors.red,
         ),
       );
@@ -1027,22 +1085,182 @@ class _UserDashboardState extends State<UserDashboard> {
   }
 
 
-  String _formatTime(DateTime time) {
-    // Display UTC time directly without timezone conversion
-    return DateFormat('HH:mm').format(time);
+  Widget _buildGroupedSchedule(List<ClassSchedule> schedules) {
+    final days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    
+    // Group schedules by day of week
+    Map<int, List<ClassSchedule>> groupedByDay = {};
+    Map<int, List<ClassSchedule>> specificDatesByDay = {};
+    
+    for (final schedule in schedules) {
+      final isRecurring = schedule.date.year >= 2099;
+      
+      if (isRecurring) {
+        // Recurring schedule - group by day of week
+        if (!groupedByDay.containsKey(schedule.dayOfWeek)) {
+          groupedByDay[schedule.dayOfWeek] = [];
+        }
+        groupedByDay[schedule.dayOfWeek]!.add(schedule);
+      } else {
+        // Specific date schedule - group by day name
+        if (!specificDatesByDay.containsKey(schedule.dayOfWeek)) {
+          specificDatesByDay[schedule.dayOfWeek] = [];
+        }
+        specificDatesByDay[schedule.dayOfWeek]!.add(schedule);
+      }
+    }
+    
+    // Sort days
+    final sortedDays = <int>[];
+    for (int i = 0; i < 7; i++) {
+      if (groupedByDay.containsKey(i) || specificDatesByDay.containsKey(i)) {
+        sortedDays.add(i);
+      }
+    }
+    
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: sortedDays.map((dayOfWeek) {
+        final recurringSchedules = groupedByDay[dayOfWeek] ?? [];
+        final specificSchedules = specificDatesByDay[dayOfWeek] ?? [];
+        final allSchedules = [...recurringSchedules, ...specificSchedules];
+        
+        // Sort schedules by start time
+        allSchedules.sort((a, b) => a.startTime.compareTo(b.startTime));
+        
+        return GestureDetector(
+          onTap: () => _showDayScheduleDialog(days[dayOfWeek], allSchedules),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.white.withOpacity(0.3)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  days[dayOfWeek],
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '${allSchedules.length}',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 4),
+                const Icon(
+                  Icons.chevron_right,
+                  color: Colors.white70,
+                  size: 16,
+                ),
+              ],
+            ),
+          ),
+        );
+      }).toList(),
+    );
   }
 
-  String _formatSchedule(List<ClassSchedule> schedule) {
-    if (schedule.isEmpty) return 'No schedule available';
-    
-    // Group schedules by date to show complete date information
-    final scheduleStrings = schedule.map((s) {
-      final dateStr = DateFormat('EEEE, d MMMM yyyy').format(s.date);
-      final timeRange = '${_formatTime(s.startTime)}-${_formatTime(s.endTime)}';
-      return '$dateStr: $timeRange';
-    }).toList();
-    
-    return scheduleStrings.join('\n');
+  void _showDayScheduleDialog(String dayName, List<ClassSchedule> schedules) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
+        title: Text('$dayName Schedule'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: schedules.isEmpty
+              ? const Text('No schedules for this day')
+              : ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: schedules.length,
+                  itemBuilder: (context, index) {
+                    final schedule = schedules[index];
+                    final isRecurring = schedule.date.year >= 2099;
+                    final startTime = '${schedule.startTime.hour.toString().padLeft(2, '0')}:${schedule.startTime.minute.toString().padLeft(2, '0')}';
+                    final endTime = '${schedule.endTime.hour.toString().padLeft(2, '0')}:${schedule.endTime.minute.toString().padLeft(2, '0')}';
+                    
+                    String scheduleText;
+                    if (isRecurring) {
+                      scheduleText = '$startTime - $endTime';
+                    } else {
+                      final date = schedule.date;
+                      scheduleText = '${date.day}/${date.month}/${date.year}: $startTime - $endTime';
+                    }
+                    
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: isRecurring ? Colors.blue[50] : Colors.orange[50],
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: isRecurring ? Colors.blue[200]! : Colors.orange[300]!,
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            isRecurring ? Icons.repeat : Icons.event,
+                            color: isRecurring ? Colors.blue : Colors.orange,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  scheduleText,
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    color: isRecurring ? Colors.blue[900] : Colors.orange[900],
+                                  ),
+                                ),
+                                if (isRecurring)
+                                  Text(
+                                    'Recurring weekly',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.blue[700],
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
   }
 
   // BMI Methods
@@ -1109,10 +1327,10 @@ class _UserDashboardState extends State<UserDashboard> {
                 hintStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
                 border: OutlineInputBorder(),
                 enabledBorder: OutlineInputBorder(
-                  borderSide: BorderSide(color: Color(0xFFF8BB0C)),
+                  borderSide: BorderSide(color: Colors.white),
                 ),
                 focusedBorder: OutlineInputBorder(
-                  borderSide: BorderSide(color: Color(0xFFF8BB0C), width: 2),
+                  borderSide: BorderSide(color: Colors.white, width: 2),
                 ),
               ),
             ),
@@ -1128,10 +1346,10 @@ class _UserDashboardState extends State<UserDashboard> {
                 hintStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
                 border: OutlineInputBorder(),
                 enabledBorder: OutlineInputBorder(
-                  borderSide: BorderSide(color: Color(0xFFF8BB0C)),
+                  borderSide: BorderSide(color: Colors.white),
                 ),
                 focusedBorder: OutlineInputBorder(
-                  borderSide: BorderSide(color: Color(0xFFF8BB0C), width: 2),
+                  borderSide: BorderSide(color: Colors.white, width: 2),
                 ),
               ),
             ),
@@ -1193,7 +1411,7 @@ class _UserDashboardState extends State<UserDashboard> {
               if (height == null || weight == null) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
-                    content: Text('Please enter valid height and weight'),
+                    content: Text('Please enter valid height and weight', style: const TextStyle(color: Colors.black)),
                     backgroundColor: Colors.red,
                   ),
                 );
@@ -1203,7 +1421,7 @@ class _UserDashboardState extends State<UserDashboard> {
               if (height < 50 || height > 300) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
-                    content: Text('Height must be between 50 and 300 cm'),
+                    content: Text('Height must be between 50 and 300 cm', style: const TextStyle(color: Colors.black)),
                     backgroundColor: Colors.red,
                   ),
                 );
@@ -1213,7 +1431,7 @@ class _UserDashboardState extends State<UserDashboard> {
               if (weight < 20 || weight > 500) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
-                    content: Text('Weight must be between 20 and 500 kg'),
+                    content: Text('Weight must be between 20 and 500 kg', style: const TextStyle(color: Colors.black)),
                     backgroundColor: Colors.red,
                   ),
                 );
@@ -1226,7 +1444,7 @@ class _UserDashboardState extends State<UserDashboard> {
               });
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFF8BB0C),
+              backgroundColor: Colors.white,
               foregroundColor: Colors.black,
             ),
             child: const Text('Calculate BMI'),
@@ -1249,7 +1467,7 @@ class _UserDashboardState extends State<UserDashboard> {
       barrierDismissible: false,
       builder: (context) => const Center(
         child: CircularProgressIndicator(
-          valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFF8BB0C)),
+          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
         ),
       ),
     );
@@ -1276,7 +1494,7 @@ class _UserDashboardState extends State<UserDashboard> {
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(result['message'] ?? 'Failed to update BMI'),
+            content: Text(result['message'] ?? 'Failed to update BMI', style: const TextStyle(color: Colors.black)),
             backgroundColor: Colors.red,
           ),
         );
@@ -1285,7 +1503,7 @@ class _UserDashboardState extends State<UserDashboard> {
       Navigator.of(context).pop(); // Close loading dialog
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error updating BMI: $e'),
+          content: Text('Error updating BMI: $e', style: const TextStyle(color: Colors.black)),
           backgroundColor: Colors.red,
         ),
       );
@@ -1297,6 +1515,315 @@ class _UserDashboardState extends State<UserDashboard> {
     if (bmi < 25) return Colors.green; // Normal
     if (bmi < 30) return Colors.orange; // Overweight
     return Colors.red; // Obese
+  }
+
+  Future<BookingResponse?> _showBookingSelectionDialog(
+    BranchClassResponse classData,
+    List<BookingResponse> bookings,
+  ) async {
+    return await showDialog<BookingResponse>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1A1A),
+        title: Text(
+          'Select Booking to Cancel',
+          style: const TextStyle(color: Colors.white),
+        ),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView.builder(
+            shrinkWrap: true,
+            itemCount: bookings.length,
+            itemBuilder: (context, index) {
+              final booking = bookings[index];
+              return Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.05),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: Colors.white.withOpacity(0.3),
+                    width: 1,
+                  ),
+                ),
+                child: ListTile(
+                  title: Text(
+                    DateFormat('EEEE, MMM dd, yyyy').format(booking.classDate),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 4),
+                      Text(
+                        '${DateFormat('HH:mm').format(booking.startTime)} - ${DateFormat('HH:mm').format(booking.endTime)}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: _getStatusColor(booking.status).withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          booking.status.toUpperCase(),
+                          style: TextStyle(
+                            color: _getStatusColor(booking.status),
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  onTap: () => Navigator.of(context).pop(booking),
+                ),
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(color: Colors.white70),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _handleUpdateBooking(BookingResponse booking) async {
+    if (_accessToken == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Authentication required', style: const TextStyle(color: Colors.black)),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    final TextEditingController notesController = TextEditingController(
+      text: booking.notes ?? '',
+    );
+    String? selectedStatus = booking.status;
+
+    final result = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          backgroundColor: const Color(0xFF1A1A1A),
+          title: const Text(
+            'Update Booking',
+            style: TextStyle(color: Colors.white),
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Class: ${booking.className}',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Date: ${DateFormat('EEEE, MMM dd, yyyy').format(booking.classDate)}',
+                  style: const TextStyle(color: Colors.white70),
+                ),
+                Text(
+                  'Time: ${DateFormat('HH:mm').format(booking.startTime)} - ${DateFormat('HH:mm').format(booking.endTime)}',
+                  style: const TextStyle(color: Colors.white70),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Status:',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                DropdownButtonFormField<String>(
+                  value: selectedStatus,
+                  decoration: InputDecoration(
+                    filled: true,
+                    fillColor: Colors.white.withOpacity(0.1),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: const BorderSide(color: Colors.white),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: const BorderSide(color: Colors.white),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: const BorderSide(color: Colors.white, width: 2),
+                    ),
+                  ),
+                  dropdownColor: const Color(0xFF1A1A1A),
+                  style: const TextStyle(color: Colors.white),
+                  items: ['confirmed', 'cancelled', 'completed', 'no_show']
+                      .map((status) => DropdownMenuItem(
+                            value: status,
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 12,
+                                  height: 12,
+                                  decoration: BoxDecoration(
+                                    color: _getStatusColor(status),
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Text(status.toUpperCase()),
+                              ],
+                            ),
+                          ))
+                      .toList(),
+                  onChanged: (value) {
+                    setDialogState(() {
+                      selectedStatus = value;
+                    });
+                  },
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Notes:',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: notesController,
+                  maxLines: 3,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    filled: true,
+                    fillColor: Colors.white.withOpacity(0.1),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: const BorderSide(color: Colors.white),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: const BorderSide(color: Colors.white),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: const BorderSide(color: Colors.white, width: 2),
+                    ),
+                    hintText: 'Add notes...',
+                    hintStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text(
+                'Cancel',
+                style: TextStyle(color: Colors.white70),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).pop({
+                  'status': selectedStatus,
+                  'notes': notesController.text.trim(),
+                });
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.white,
+                foregroundColor: Colors.black,
+              ),
+              child: const Text('Update'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (result == null) return;
+
+    // Show loading indicator
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(
+          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+        ),
+      ),
+    );
+
+    try {
+      final updateRequest = UpdateBookingRequest(
+        status: result['status'] != booking.status ? result['status'] : null,
+        notes: result['notes'] != (booking.notes ?? '') ? result['notes'] : null,
+      );
+
+      final updateResult = await ApiService.updateBooking(
+        booking.id,
+        updateRequest,
+        _accessToken!,
+      );
+
+      Navigator.of(context).pop(); // Close loading dialog
+
+      if (updateResult['success']) {
+        // Reload bookings to get updated list
+        await _loadUserBookings();
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              updateResult['message'] ?? 'Booking updated successfully',
+            ),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(updateResult['message'] ?? 'Failed to update booking', style: const TextStyle(color: Colors.black)),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (e) {
+      Navigator.of(context).pop(); // Close loading dialog
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error updating booking: $e', style: const TextStyle(color: Colors.black)),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   void _showBookingConflictDialog(String className) {
@@ -1398,7 +1925,7 @@ class _UserDashboardState extends State<UserDashboard> {
           ElevatedButton(
             onPressed: () => Navigator.of(context).pop(),
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFF8BB0C),
+              backgroundColor: Colors.white,
               foregroundColor: Colors.black,
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
               shape: RoundedRectangleBorder(
@@ -1525,7 +2052,7 @@ Widget build(BuildContext context) {
             onPressed: _toggleSidebar,
             icon: Icon(
               _isSidebarOpen ? Icons.menu_open : Icons.menu,
-              color: const Color(0xFFF8BB0C),
+              color: Colors.white,
               size: 28,
             ),
             tooltip: _isSidebarOpen ? 'Hide Menu' : 'Show Menu',
@@ -1566,7 +2093,7 @@ Widget build(BuildContext context) {
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.1),
         borderRadius: BorderRadius.circular(25),
-        border: Border.all(color: const Color(0xFFF8BB0C), width: 1),
+        border: Border.all(color: Colors.white, width: 1),
       ),
       child: TextField(
         controller: _classSearchController,
@@ -1591,11 +2118,11 @@ Widget build(BuildContext context) {
         decoration: BoxDecoration(
           color: Colors.white.withOpacity(0.1),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFF8BB0C), width: 1),
+          border: Border.all(color: Colors.white, width: 1),
         ),
         child: const Center(
           child: CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFF8BB0C)),
+            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
           ),
         ),
       );
@@ -1606,7 +2133,7 @@ Widget build(BuildContext context) {
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.1),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFF8BB0C), width: 1),
+        border: Border.all(color: Colors.white, width: 1),
       ),
       child: _userBMI != null ? _buildBMIInfo() : _buildBMIEmpty(),
     );
@@ -1691,7 +2218,7 @@ Widget build(BuildContext context) {
             child: Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: const Color(0xFFF8BB0C),
+                color: Colors.white,
                 borderRadius: BorderRadius.circular(8),
               ),
               child: const Icon(
@@ -1717,11 +2244,11 @@ Widget build(BuildContext context) {
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.1),
               borderRadius: BorderRadius.circular(25),
-              border: Border.all(color: const Color(0xFFF8BB0C), width: 2),
+              border: Border.all(color: Colors.white, width: 2),
             ),
             child: const Icon(
               Icons.monitor_weight_outlined,
-              color: Color(0xFFF8BB0C),
+              color: Colors.white,
               size: 24,
             ),
           ),
@@ -1759,7 +2286,7 @@ Widget build(BuildContext context) {
                 gradient: const LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
+                  colors: [Colors.white, Colors.white70],
                 ),
                 borderRadius: BorderRadius.circular(20),
               ),
@@ -1782,7 +2309,7 @@ Widget build(BuildContext context) {
     if (_isLoading && _classes.isEmpty) {
       return const Center(
         child: CircularProgressIndicator(
-          valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFF8BB0C)),
+          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
         ),
       );
     }
@@ -1807,7 +2334,7 @@ Widget build(BuildContext context) {
             ElevatedButton(
               onPressed: () => _loadUserBranchClasses(refresh: true),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFF8BB0C),
+                backgroundColor: Colors.white,
                 foregroundColor: Colors.black,
               ),
               child: const Text('Retry'),
@@ -1888,7 +2415,7 @@ Widget build(BuildContext context) {
                   _onClassSearchChanged('');
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFF8BB0C),
+                  backgroundColor: Colors.white,
                   foregroundColor: Colors.black,
                 ),
                 child: const Text('Clear Search'),
@@ -1904,7 +2431,7 @@ Widget build(BuildContext context) {
         await _loadUserBranchClasses(refresh: true);
         await _loadUserBookings();
       },
-      color: const Color(0xFFF8BB0C),
+      color: Colors.white,
       child: ListView.builder(
         padding: const EdgeInsets.all(16),
         itemCount: filteredClasses.length,
@@ -1917,7 +2444,8 @@ Widget build(BuildContext context) {
 
 
   Widget _buildClassCard(BranchClassResponse classData) {
-    final isBooked = _isClassBooked(classData.id);
+    final bookings = _getBookingsForClass(classData.id);
+    final hasBookings = bookings.isNotEmpty;
     
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -1925,16 +2453,16 @@ Widget build(BuildContext context) {
         color: Colors.white.withOpacity(0.1),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: isBooked ? Colors.green : const Color(0xFFF8BB0C),
-          width: isBooked ? 2 : 1,
+          color: hasBookings ? Colors.green : Colors.white,
+          width: hasBookings ? 2 : 1,
         ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Booked Badge
-          if (isBooked)
+          // Booked Badge - show count if multiple bookings
+          if (hasBookings)
             Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
@@ -1953,9 +2481,11 @@ Widget build(BuildContext context) {
                     size: 20,
                   ),
                   const SizedBox(width: 8),
-                  const Text(
-                    'You have booked this class',
-                    style: TextStyle(
+                  Text(
+                    bookings.length == 1
+                        ? 'You have booked this class'
+                        : 'You have ${bookings.length} bookings for this class',
+                    style: const TextStyle(
                       color: Colors.green,
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
@@ -1990,7 +2520,7 @@ Widget build(BuildContext context) {
                           fit: BoxFit.cover,
                           errorBuilder: (context, error, stackTrace) {
                             return Container(
-                              color: const Color(0xFFF8BB0C).withOpacity(0.3),
+                              color: Colors.white.withOpacity(0.3),
                               child: const Center(
                                 child: Icon(
                                   Icons.fitness_center,
@@ -2006,7 +2536,7 @@ Widget build(BuildContext context) {
                               color: Colors.white.withOpacity(0.1),
                               child: const Center(
                                 child: CircularProgressIndicator(
-                                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFF8BB0C)),
+                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                                 ),
                               ),
                             );
@@ -2016,7 +2546,7 @@ Widget build(BuildContext context) {
                     ),
                   ),
                   // Booked indicator overlay on image
-                  if (isBooked)
+                  if (hasBookings)
                     Positioned(
                       top: 8,
                       right: 8,
@@ -2026,10 +2556,13 @@ Widget build(BuildContext context) {
                           color: Colors.green.withOpacity(0.9),
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(
-                          Icons.check,
-                          color: Colors.white,
-                          size: 20,
+                        child: Text(
+                          bookings.length > 1 ? bookings.length.toString() : '',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
                         ),
                       ),
                     ),
@@ -2049,7 +2582,7 @@ Widget build(BuildContext context) {
                       width: 8,
                       height: 8,
                       decoration: BoxDecoration(
-                        color: const Color(0xFFF8BB0C),
+                        color: Colors.white,
                         borderRadius: BorderRadius.circular(4),
                       ),
                     ),
@@ -2110,80 +2643,130 @@ Widget build(BuildContext context) {
                   const Text(
                     'Schedule:',
                     style: TextStyle(
-                      color: Color(0xFFF8BB0C),
+                      color: Colors.white,
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    _formatSchedule(classData.schedule),
-                    style: const TextStyle(
-                      color: Colors.white70,
-                      fontSize: 12,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                    maxLines: 3,
-                  ),
+                  const SizedBox(height: 8),
+                  _buildGroupedSchedule(classData.schedule),
                 ],
                 
                 const SizedBox(height: 16),
                 
-                // Book/Cancel button
-                if (isBooked)
-                  Row(
-                    children: [
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: () => _handleCancelBooking(classData),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.red.withOpacity(0.8),
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                          ),
-                          child: const Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
+                // Show existing bookings if any
+                if (hasBookings) ...[
+                  const Text(
+                    'Your Bookings:',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  ...bookings.map((booking) => Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.05),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: Colors.green.withOpacity(0.3),
+                        width: 1,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Icon(Icons.cancel, size: 20),
-                              SizedBox(width: 8),
                               Text(
-                                'Cancel Booking',
-                                style: TextStyle(
+                                DateFormat('MMM dd, yyyy').format(booking.classDate),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 14,
                                   fontWeight: FontWeight.bold,
-                                  fontSize: 16,
                                 ),
                               ),
+                              const SizedBox(height: 4),
+                              Text(
+                                '${DateFormat('HH:mm').format(booking.startTime)} - ${DateFormat('HH:mm').format(booking.endTime)}',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                ),
+                              ),
+                              if (booking.notes != null && booking.notes!.isNotEmpty) ...[
+                                const SizedBox(height: 4),
+                                Text(
+                                  booking.notes!,
+                                  style: TextStyle(
+                                    color: Colors.white.withOpacity(0.7),
+                                    fontSize: 11,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
                             ],
                           ),
                         ),
-                      ),
-                    ],
-                  )
-                else
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: () => _handleBookClass(classData),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFF8BB0C),
-                        foregroundColor: Colors.black,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: _getStatusColor(booking.status).withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            booking.status.toUpperCase(),
+                            style: TextStyle(
+                              color: _getStatusColor(booking.status),
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                         ),
-                      ),
-                      child: const Text(
-                        'Book Class',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
+                        const SizedBox(width: 8),
+                        IconButton(
+                          icon: const Icon(Icons.edit, color: Colors.white, size: 20),
+                          onPressed: () => _handleUpdateBooking(booking),
+                          tooltip: 'Update booking',
                         ),
+                        IconButton(
+                          icon: const Icon(Icons.cancel, color: Colors.red, size: 20),
+                          onPressed: () => _handleCancelBooking(classData, booking.scheduleId),
+                          tooltip: 'Cancel booking',
+                        ),
+                      ],
+                    ),
+                  )),
+                  const SizedBox(height: 12),
+                ],
+                
+                // Book button - always show, allowing multiple bookings
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () => _handleBookClass(classData),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      foregroundColor: Colors.black,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: Text(
+                      hasBookings ? 'Book Another Time' : 'Book Class',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
                       ),
                     ),
                   ),
+                ),
               ],
             ),
           ),
@@ -2199,7 +2782,7 @@ Widget build(BuildContext context) {
         children: [
           Icon(
             icon,
-            color: const Color(0xFFF8BB0C),
+            color: Colors.white,
             size: 16,
           ),
           const SizedBox(width: 8),

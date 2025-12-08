@@ -115,7 +115,7 @@ class _ChangeBranchPageState extends State<ChangeBranchPage> {
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(result['message'] ?? 'Failed to change branch'),
+            content: Text(result['message'] ?? 'Failed to change branch', style: const TextStyle(color: Colors.black)),
             backgroundColor: Colors.red,
           ),
         );
@@ -123,7 +123,7 @@ class _ChangeBranchPageState extends State<ChangeBranchPage> {
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error changing branch: $e'),
+          content: Text('Error changing branch: $e', style: const TextStyle(color: Colors.black)),
           backgroundColor: Colors.red,
         ),
       );
@@ -248,7 +248,7 @@ class _ChangeBranchPageState extends State<ChangeBranchPage> {
     if (_isLoading) {
       return const Center(
         child: CircularProgressIndicator(
-          valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFF8BB0C)),
+          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
         ),
       );
     }
@@ -273,7 +273,7 @@ class _ChangeBranchPageState extends State<ChangeBranchPage> {
             ElevatedButton(
               onPressed: _loadBranches,
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFF8BB0C),
+                backgroundColor: Colors.white,
                 foregroundColor: Colors.black,
               ),
               child: const Text('Retry'),
@@ -318,7 +318,7 @@ class _ChangeBranchPageState extends State<ChangeBranchPage> {
             children: [
               const Icon(
                 Icons.info_outline,
-                color: Color(0xFFF8BB0C),
+                color: Colors.white,
                 size: 20,
               ),
               const SizedBox(width: 12),
@@ -350,7 +350,7 @@ class _ChangeBranchPageState extends State<ChangeBranchPage> {
                 margin: const EdgeInsets.only(bottom: 12),
                 child: Material(
                   color: isSelected 
-                      ? const Color(0xFFF8BB0C).withOpacity(0.2)
+                      ? Colors.white.withOpacity(0.2)
                       : Colors.white.withOpacity(0.05),
                   borderRadius: BorderRadius.circular(8),
                   child: InkWell(
@@ -366,7 +366,7 @@ class _ChangeBranchPageState extends State<ChangeBranchPage> {
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(
                           color: isSelected 
-                              ? const Color(0xFFF8BB0C)
+                              ? Colors.white
                               : isCurrentBranch
                                   ? Colors.green
                                   : Colors.white.withOpacity(0.1),
@@ -382,12 +382,12 @@ class _ChangeBranchPageState extends State<ChangeBranchPage> {
                             decoration: BoxDecoration(
                               color: isCurrentBranch
                                   ? Colors.green.withOpacity(0.2)
-                                  : const Color(0xFFF8BB0C).withOpacity(0.2),
+                                  : Colors.white.withOpacity(0.2),
                               borderRadius: BorderRadius.circular(25),
                               border: Border.all(
                                 color: isCurrentBranch
                                     ? Colors.green
-                                    : const Color(0xFFF8BB0C),
+                                    : Colors.white,
                                 width: 2,
                               ),
                             ),
@@ -395,7 +395,7 @@ class _ChangeBranchPageState extends State<ChangeBranchPage> {
                               isCurrentBranch ? Icons.check : Icons.location_on,
                               color: isCurrentBranch
                                   ? Colors.green
-                                  : const Color(0xFFF8BB0C),
+                                  : Colors.white,
                               size: 24,
                             ),
                           ),
@@ -468,7 +468,7 @@ class _ChangeBranchPageState extends State<ChangeBranchPage> {
                           if (isSelected && !isCurrentBranch)
                             const Icon(
                               Icons.radio_button_checked,
-                              color: Color(0xFFF8BB0C),
+                              color: Colors.white,
                               size: 24,
                             )
                           else if (!isCurrentBranch)
@@ -496,7 +496,7 @@ class _ChangeBranchPageState extends State<ChangeBranchPage> {
             child: ElevatedButton(
               onPressed: _isChanging ? null : _changeBranch,
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFF8BB0C),
+                backgroundColor: Colors.white,
                 foregroundColor: Colors.black,
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(

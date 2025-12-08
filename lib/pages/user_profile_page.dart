@@ -198,7 +198,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
         return Theme(
           data: Theme.of(context).copyWith(
             colorScheme: const ColorScheme.dark(
-              primary: Color(0xFFF8BB0C),
+              primary: Colors.white,
               onPrimary: Colors.black,
               surface: Color(0xFF1A1A1A),
               onSurface: Colors.white,
@@ -253,7 +253,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(result['message'] ?? 'Failed to update profile'),
+            content: Text(result['message'] ?? 'Failed to update profile', style: const TextStyle(color: Colors.black)),
             backgroundColor: Colors.red,
           ),
         );
@@ -261,7 +261,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error updating profile: $e'),
+          content: Text('Error updating profile: $e', style: const TextStyle(color: Colors.black)),
           backgroundColor: Colors.red,
         ),
       );
@@ -284,7 +284,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
+                colors: [Colors.white, Colors.white70],
               ),
             ),
           ),
@@ -359,7 +359,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
                       child: Padding(
                         padding: EdgeInsets.all(16.0),
                         child: CircularProgressIndicator(
-                          valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFF8BB0C)),
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                         ),
                       ),
                     ),
@@ -485,7 +485,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
                             child: ElevatedButton(
                               onPressed: _isLoading ? null : _updateProfile,
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFFF8BB0C),
+                                backgroundColor: Colors.white,
                                 foregroundColor: Colors.black,
                                 padding: const EdgeInsets.symmetric(vertical: 16),
                                 shape: RoundedRectangleBorder(
@@ -540,7 +540,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,
-        prefixIcon: Icon(icon, color: const Color(0xFFF8BB0C)),
+        prefixIcon: Icon(icon, color: Colors.white),
         labelStyle: const TextStyle(color: Colors.white70),
         hintStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
         border: OutlineInputBorder(
@@ -548,11 +548,11 @@ class _UserProfilePageState extends State<UserProfilePage> {
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: Color(0xFFF8BB0C)),
+          borderSide: const BorderSide(color: Colors.white),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: Color(0xFFF8BB0C), width: 2),
+          borderSide: const BorderSide(color: Colors.white, width: 2),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
@@ -588,13 +588,13 @@ class _UserProfilePageState extends State<UserProfilePage> {
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.1),
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: const Color(0xFFF8BB0C)),
+              border: Border.all(color: Colors.white),
             ),
             child: Row(
               children: [
                 const Icon(
                   Icons.calendar_today,
-                  color: Color(0xFFF8BB0C),
+                  color: Colors.white,
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -610,7 +610,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
                 ),
                 const Icon(
                   Icons.arrow_drop_down,
-                  color: Color(0xFFF8BB0C),
+                  color: Colors.white,
                 ),
               ],
             ),

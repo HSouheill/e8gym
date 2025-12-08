@@ -206,7 +206,7 @@ class _SuperAdminUsersPageState extends State<SuperAdminUsersPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Branches & Users'),
-        backgroundColor: const Color(0xFFF8BB0C),
+        backgroundColor: Colors.white,
         foregroundColor: Colors.black,
         actions: [
           IconButton(
@@ -238,7 +238,7 @@ class _SuperAdminUsersPageState extends State<SuperAdminUsersPage> {
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
+                colors: [Colors.white, Colors.white70],
               ),
             ),
           ),
@@ -247,7 +247,7 @@ class _SuperAdminUsersPageState extends State<SuperAdminUsersPage> {
           Container(
             decoration: const BoxDecoration(
               image: DecorationImage(
-                image: AssetImage('assets/background/background.png'),
+                image: AssetImage('assets/E8Logos/admin_dashboard_background.jpeg'),
                 fit: BoxFit.cover,
               ),
             ),
@@ -296,10 +296,10 @@ class _SuperAdminUsersPageState extends State<SuperAdminUsersPage> {
                   onChanged: _onSearchChanged,
                   decoration: InputDecoration(
                     hintText: 'Search branches...',
-                    prefixIcon: const Icon(Icons.search, color: Color(0xFFF8BB0C)),
+                    prefixIcon: const Icon(Icons.search, color: Colors.white),
                     suffixIcon: _searchQuery.isNotEmpty
                         ? IconButton(
-                            icon: const Icon(Icons.clear, color: Color(0xFFF8BB0C)),
+                            icon: const Icon(Icons.clear, color: Colors.white),
                             onPressed: () {
                               _searchController.clear();
                               _onSearchChanged('');
@@ -327,7 +327,7 @@ class _SuperAdminUsersPageState extends State<SuperAdminUsersPage> {
                         padding: const EdgeInsets.all(16.0),
                         child: Row(
                           children: [
-                            const Icon(Icons.business, color: Color(0xFFF8BB0C)),
+                            const Icon(Icons.business, color: Colors.white),
                             const SizedBox(width: 8),
                             Text(
                               'Branches (${_totalBranches})',
@@ -343,7 +343,7 @@ class _SuperAdminUsersPageState extends State<SuperAdminUsersPage> {
                                 height: 20,
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2,
-                                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFF8BB0C)),
+                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                                 ),
                               ),
                           ],
@@ -355,7 +355,7 @@ class _SuperAdminUsersPageState extends State<SuperAdminUsersPage> {
                         child: _isLoading && _branches.isEmpty
                             ? const Center(
                                 child: CircularProgressIndicator(
-                                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFF8BB0C)),
+                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                                 ),
                               )
                             : _branches.isEmpty
@@ -386,7 +386,7 @@ class _SuperAdminUsersPageState extends State<SuperAdminUsersPage> {
                                               _onSearchChanged('');
                                             },
                                             style: ElevatedButton.styleFrom(
-                                              backgroundColor: const Color(0xFFF8BB0C),
+                                              backgroundColor: Colors.white,
                                               foregroundColor: Colors.black,
                                             ),
                                             child: const Text('Clear Search'),
@@ -415,7 +415,7 @@ class _SuperAdminUsersPageState extends State<SuperAdminUsersPage> {
                                                 padding: EdgeInsets.all(16.0),
                                                 child: Center(
                                                   child: CircularProgressIndicator(
-                                                    valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFF8BB0C)),
+                                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                                                   ),
                                                 ),
                                               );
@@ -452,7 +452,7 @@ class _SuperAdminUsersPageState extends State<SuperAdminUsersPage> {
       child: ExpansionTile(
         leading: CircleAvatar(
           radius: 25,
-          backgroundColor: const Color(0xFFF8BB0C),
+          backgroundColor: Colors.white,
           backgroundImage: branch.imageUrl != null 
               ? NetworkImage(branch.imageUrl!)
               : null,
@@ -497,7 +497,7 @@ class _SuperAdminUsersPageState extends State<SuperAdminUsersPage> {
             Text(
               'Users: ${branch.userCount}',
               style: const TextStyle(
-                color: Color(0xFFF8BB0C),
+                color: Colors.white,
                 fontSize: 12,
                 fontWeight: FontWeight.w500,
               ),
@@ -556,7 +556,7 @@ class _SuperAdminUsersPageState extends State<SuperAdminUsersPage> {
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 14,
-                      color: Color(0xFFF8BB0C),
+                      color: Colors.white,
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -709,7 +709,7 @@ class _SuperAdminUsersPageState extends State<SuperAdminUsersPage> {
                     return ListTile(
                       leading: CircleAvatar(
                         radius: 20,
-                        backgroundColor: const Color(0xFFF8BB0C),
+                        backgroundColor: Colors.white,
                         child: Text(
                           user.fullName.isNotEmpty ? user.fullName[0].toUpperCase() : '?',
                           style: const TextStyle(
@@ -775,7 +775,7 @@ class _SuperAdminUsersPageState extends State<SuperAdminUsersPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: const Color(0xFFF8BB0C),
+        backgroundColor: Colors.white,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),

@@ -71,7 +71,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(result['message'] ?? 'Failed to change password'),
+            content: Text(result['message'] ?? 'Failed to change password', style: const TextStyle(color: Colors.black)),
             backgroundColor: Colors.red,
           ),
         );
@@ -79,7 +79,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error changing password: $e'),
+          content: Text('Error changing password: $e', style: const TextStyle(color: Colors.black)),
           backgroundColor: Colors.red,
         ),
       );
@@ -263,7 +263,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                                 const Text(
                                   'Password Requirements:',
                                   style: TextStyle(
-                                    color: Color(0xFFF8BB0C),
+                                    color: Colors.white,
                                     fontSize: 14,
                                     fontWeight: FontWeight.bold,
                                   ),
@@ -284,7 +284,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                             child: ElevatedButton(
                               onPressed: _isLoading ? null : _changePassword,
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFFF8BB0C),
+                                backgroundColor: Colors.white,
                                 foregroundColor: Colors.black,
                                 padding: const EdgeInsets.symmetric(vertical: 16),
                                 shape: RoundedRectangleBorder(
@@ -339,12 +339,12 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,
-        prefixIcon: Icon(icon, color: const Color(0xFFF8BB0C)),
+        prefixIcon: Icon(icon, color: Colors.white),
         suffixIcon: IconButton(
           onPressed: onToggleObscure,
           icon: Icon(
             obscureText ? Icons.visibility_off : Icons.visibility,
-            color: const Color(0xFFF8BB0C),
+            color: Colors.white,
           ),
         ),
         labelStyle: const TextStyle(color: Colors.white70),
@@ -354,11 +354,11 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: Color(0xFFF8BB0C)),
+          borderSide: const BorderSide(color: Colors.white),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: Color(0xFFF8BB0C), width: 2),
+          borderSide: const BorderSide(color: Colors.white, width: 2),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
@@ -381,7 +381,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
         children: [
           const Icon(
             Icons.check_circle_outline,
-            color: Color(0xFFF8BB0C),
+            color: Colors.white,
             size: 16,
           ),
           const SizedBox(width: 8),

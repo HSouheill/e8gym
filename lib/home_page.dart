@@ -120,7 +120,7 @@ class _HomePageState extends State<HomePage> {
         final errorMessage = SecureErrorHandler.sanitizeErrorMessage('Logout failed', error: e);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(errorMessage),
+            content: Text(errorMessage, style: const TextStyle(color: Colors.black)),
             backgroundColor: Colors.red,
           ),
         );
@@ -136,7 +136,7 @@ class _HomePageState extends State<HomePage> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
+            colors: [Colors.white, Colors.white70],
           ),
         ),
         child: Stack(
@@ -264,7 +264,7 @@ class _HomePageState extends State<HomePage> {
                                 },
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: Colors.white,
-                                  foregroundColor: const Color(0xFFF8BB0C),
+                                  foregroundColor: Colors.white,
                                   padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(25),
@@ -281,7 +281,7 @@ class _HomePageState extends State<HomePage> {
                                 },
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: Colors.white,
-                                  foregroundColor: const Color(0xFFF8BB0C),
+                                  foregroundColor: Colors.white,
                                   padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(25),

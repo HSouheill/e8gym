@@ -31,7 +31,7 @@ class MedicalCitationsPage extends StatelessWidget {
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
                 gradient: const LinearGradient(
-                  colors: [Color(0xFFF8BB0C), Color(0xFFE6A500)],
+                  colors: [Colors.white, Color(0xFFE6A500)],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
@@ -203,7 +203,7 @@ class MedicalCitationsPage extends StatelessWidget {
                     child: const Text(
                       'support@e8gym.online',
                       style: TextStyle(
-                        color: Color(0xFFF8BB0C),
+                        color: Colors.white,
                         fontSize: 14,
                         decoration: TextDecoration.underline,
                       ),
@@ -230,7 +230,7 @@ class MedicalCitationsPage extends StatelessWidget {
           children: [
             Icon(
               icon,
-              color: const Color(0xFFF8BB0C),
+              color: Colors.white,
               size: 24,
             ),
             const SizedBox(width: 12),
@@ -284,7 +284,7 @@ class MedicalCitationsPage extends StatelessWidget {
                     Text(
                       subtitle,
                       style: const TextStyle(
-                        color: Color(0xFFF8BB0C),
+                        color: Colors.white,
                         fontSize: 14,
                       ),
                     ),
@@ -296,7 +296,7 @@ class MedicalCitationsPage extends StatelessWidget {
                 child: Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF8BB0C),
+                    color: Colors.white,
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: const Icon(

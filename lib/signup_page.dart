@@ -158,10 +158,9 @@ class _SignupPageState extends State<SignupPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error loading branches: $e'),
+            content: Text('Error loading branches: $e', style: const TextStyle(color: Colors.black)),
             backgroundColor: Colors.red,
-            ),
-          
+          ),
         );
       }
     } finally {
@@ -179,7 +178,7 @@ class _SignupPageState extends State<SignupPage> {
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Could not open $url'),
+            content: Text('Could not open $url', style: const TextStyle(color: Colors.black)),
             backgroundColor: Colors.red,
           ),
         );
@@ -187,7 +186,7 @@ class _SignupPageState extends State<SignupPage> {
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error opening link: $e'),
+          content: Text('Error opening link: $e', style: const TextStyle(color: Colors.black)),
           backgroundColor: Colors.red,
         ),
       );
@@ -204,7 +203,7 @@ class _SignupPageState extends State<SignupPage> {
         return Theme(
           data: Theme.of(context).copyWith(
             colorScheme: const ColorScheme.dark(
-              primary: Color(0xFFF8BB0C),
+              primary: Colors.white,
               onPrimary: Colors.black,
               surface: Color(0xFF1A1A1A),
               onSurface: Colors.white,
@@ -232,7 +231,7 @@ class _SignupPageState extends State<SignupPage> {
     if (!_acceptPolicies) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please accept the Privacy Policy and Terms & Conditions to continue'),
+          content: Text('Please accept the Privacy Policy and Terms & Conditions to continue', style: const TextStyle(color: Colors.black)),
           backgroundColor: Colors.red,
         ),
       );
@@ -273,53 +272,47 @@ class _SignupPageState extends State<SignupPage> {
       );
       await storageService.saveUserData(response.user);
       
+      if (!mounted) return;
+
       setState(() {
         _isLoading = false;
       });
 
-      // Show success message
       // ScaffoldMessenger.of(context).showSnackBar(
       //   const SnackBar(
-      //     content: Text('Account created successfully!'),
+      //     content: Text('Account created successfully! Redirecting to your dashboard...'),
       //     backgroundColor: Colors.green,
+      //     duration: Duration(seconds: 3),
       //   ),
       // );
 
-      // Navigate back to login page (main.dart)
-      try {
-        Navigator.pop(context);
-        // Show additional success message on login page
-        // ScaffoldMessenger.of(context).showSnackBar(
-        //   const SnackBar(
-        //     content: Text('Account created successfully! You can now log in.'),
-        //     backgroundColor: Colors.green,
-        //     duration: Duration(seconds: 4),
-        //   ),
-        // );
-      } catch (e) {
-        print('Navigation error: $e'); // Debug log
-        // Fallback: show error and stay on signup page
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Navigation failed: ${e.toString()}'),
-            backgroundColor: Colors.orange,
-          ),
-        );
-      }
+      Navigator.pushNamedAndRemoveUntil(context, '/dashboard', (route) => false);
       
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
 
       String errorMessage = 'Signup failed. Please try again.';
+      String? errorDetails;
       if (e is AuthException) {
         errorMessage = e.message;
+        if (e.details.isNotEmpty && e.details.toLowerCase() != 'unknown error') {
+          errorDetails = e.details;
+        }
       }
+
+      if (!mounted) return;
+
+      final displayMessage = errorDetails != null && errorDetails != errorMessage
+          ? '$errorMessage\n$errorDetails'
+          : errorMessage;
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(errorMessage),
+          content: Text(displayMessage, style: const TextStyle(color: Colors.black)),
           backgroundColor: Colors.red,
         ),
       );
@@ -530,7 +523,7 @@ class _SignupPageState extends State<SignupPage> {
                         children: [
                           Container(
                             decoration: BoxDecoration(
-                              color: const Color(0xFFF8BB0C),
+                              color: Colors.white,
                               borderRadius: BorderRadius.circular(6),
                             ),
                             padding: EdgeInsets.all(screenWidth * (isSmallDevice ? 0.012 : isLargeDevice ? 0.008 : 0.01)),
@@ -560,7 +553,7 @@ class _SignupPageState extends State<SignupPage> {
                         children: [
                           Container(
                             decoration: BoxDecoration(
-                              color: const Color(0xFFF8BB0C),
+                              color: Colors.white,
                               borderRadius: BorderRadius.circular(6),
                             ),
                             padding: EdgeInsets.all(screenWidth * (isSmallDevice ? 0.012 : isLargeDevice ? 0.008 : 0.01)),
@@ -572,7 +565,7 @@ class _SignupPageState extends State<SignupPage> {
                           ),
                           SizedBox(width: screenWidth * (isSmallDevice ? 0.025 : isLargeDevice ? 0.015 : 0.02)),
                           Text(
-                            'Products & Services - "Place for Athletes"',
+                            'Products & Services - "Made for Athletes"',
                             style: TextStyle(
                               color: Colors.white,
                               fontSize: fontSizeSmall * (isSmallDevice ? 0.85 : isLargeDevice ? 0.75 : 0.8),
@@ -695,7 +688,7 @@ class _SignupPageState extends State<SignupPage> {
                           child: _isLoading
                               ? Center(
                                   child: CircularProgressIndicator(
-                                    valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFF8BB0C)),
+                                    valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
                                     strokeWidth: screenWidth * (isSmallDevice ? 0.01 : isLargeDevice ? 0.006 : 0.008),
                                   ),
                                 )
@@ -738,7 +731,7 @@ class _SignupPageState extends State<SignupPage> {
                                 decoration: BoxDecoration(
                                   border: Border(
                                     bottom: BorderSide(
-                                      color: const Color(0xFFF8BB0C),
+                                      color: Colors.white,
                                       width: 1.5,
                                     ),
                                   ),
@@ -746,11 +739,11 @@ class _SignupPageState extends State<SignupPage> {
                                 child: Text(
                                   'Log in',
                                   style: TextStyle(
-                                    color: const Color(0xFFF8BB0C),
+                                    color: Colors.white,
                                     fontSize: fontSizeSmall * (isSmallDevice ? 0.9 : isLargeDevice ? 0.8 : 0.85),
                                     fontWeight: FontWeight.w600,
                                     decoration: TextDecoration.underline,
-                                    decorationColor: const Color(0xFFF8BB0C),
+                                    decorationColor: Colors.white,
                                   ),
                                 ),
                               ),
@@ -799,7 +792,7 @@ class _SignupPageState extends State<SignupPage> {
       decoration: const BoxDecoration(
         border: Border(
           bottom: BorderSide(
-            color: Color(0xFFF8BB0C),
+            color: Colors.white,
             width: 2,
           ),
         ),
@@ -808,7 +801,7 @@ class _SignupPageState extends State<SignupPage> {
         children: [
           Container(
             decoration: BoxDecoration(
-              color: const Color(0xFFF8BB0C),
+                                    color: Colors.white,
               borderRadius: BorderRadius.circular(6),
             ),
             padding: EdgeInsets.all(padding),
@@ -871,7 +864,7 @@ class _SignupPageState extends State<SignupPage> {
               },
               child: Container(
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF8BB0C),
+                                    color: Colors.white,
                   borderRadius: BorderRadius.circular(6),
                 ),
                 padding: EdgeInsets.all(padding),
@@ -912,7 +905,7 @@ class _SignupPageState extends State<SignupPage> {
       decoration: const BoxDecoration(
         border: Border(
           bottom: BorderSide(
-            color: Color(0xFFF8BB0C),
+            color: Colors.white,
             width: 2,
           ),
         ),
@@ -921,7 +914,7 @@ class _SignupPageState extends State<SignupPage> {
         children: [
           Container(
             decoration: BoxDecoration(
-              color: const Color(0xFFF8BB0C),
+                                    color: Colors.white,
               borderRadius: BorderRadius.circular(6),
             ),
             padding: EdgeInsets.all(padding),
@@ -1014,7 +1007,7 @@ class _SignupPageState extends State<SignupPage> {
       decoration: const BoxDecoration(
         border: Border(
           bottom: BorderSide(
-            color: Color(0xFFF8BB0C),
+            color: Colors.white,
             width: 2,
           ),
         ),
@@ -1023,7 +1016,7 @@ class _SignupPageState extends State<SignupPage> {
         children: [
           Container(
             decoration: BoxDecoration(
-              color: const Color(0xFFF8BB0C),
+                                    color: Colors.white,
               borderRadius: BorderRadius.circular(6),
             ),
             padding: EdgeInsets.all(padding),
@@ -1094,7 +1087,7 @@ class _SignupPageState extends State<SignupPage> {
       decoration: const BoxDecoration(
         border: Border(
           bottom: BorderSide(
-            color: Color(0xFFF8BB0C),
+            color: Colors.white,
             width: 2,
           ),
         ),
@@ -1103,7 +1096,7 @@ class _SignupPageState extends State<SignupPage> {
         children: [
           Container(
             decoration: BoxDecoration(
-              color: const Color(0xFFF8BB0C),
+                                    color: Colors.white,
               borderRadius: BorderRadius.circular(6),
             ),
             padding: EdgeInsets.all(padding),
@@ -1136,7 +1129,7 @@ class _SignupPageState extends State<SignupPage> {
                         height: iconSizeMedium,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFF8BB0C)),
+                          valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
                         ),
                       )
                     else if (_branches.isEmpty)
@@ -1235,7 +1228,7 @@ class _SignupPageState extends State<SignupPage> {
             child: Text(
               'Cancel',
               style: TextStyle(
-                color: const Color(0xFFF8BB0C),
+                                    color: Colors.white,
                 fontSize: MediaQuery.of(context).size.width * 0.04,
               ),
             ),
@@ -1281,9 +1274,9 @@ class _SignupPageState extends State<SignupPage> {
                 _acceptPolicies = value ?? false;
               });
             },
-            activeColor: const Color(0xFFF8BB0C),
+            activeColor: Colors.white,
             checkColor: Colors.black,
-            side: const BorderSide(color: Color(0xFFF8BB0C), width: 2),
+            side: const BorderSide(color: Colors.white, width: 2),
           ),
         ),
         SizedBox(width: spacing),
@@ -1305,7 +1298,7 @@ class _SignupPageState extends State<SignupPage> {
                   TextSpan(
                     text: 'Privacy Policy',
                     style: TextStyle(
-                      color: const Color(0xFFF8BB0C),
+                                    color: Colors.white,
                       decoration: TextDecoration.underline,
                       fontWeight: FontWeight.w600,
                     ),
@@ -1320,7 +1313,7 @@ class _SignupPageState extends State<SignupPage> {
                   TextSpan(
                     text: 'Terms & Conditions',
                     style: TextStyle(
-                      color: const Color(0xFFF8BB0C),
+                                    color: Colors.white,
                       decoration: TextDecoration.underline,
                       fontWeight: FontWeight.w600,
                     ),
@@ -1337,7 +1330,7 @@ class _SignupPageState extends State<SignupPage> {
               onTap: () => _launchURL('https://e8gym.online/privacy'),
               child: Icon(
                 Icons.open_in_new,
-                color: const Color(0xFFF8BB0C),
+                                    color: Colors.white,
                 size: fontSizeSmall * (isSmallDevice ? 0.8 : isLargeDevice ? 0.7 : 0.75),
               ),
             ),
@@ -1346,7 +1339,7 @@ class _SignupPageState extends State<SignupPage> {
               onTap: () => _launchURL('https://e8gym.online/terms_conditions'),
               child: Icon(
                 Icons.open_in_new,
-                color: const Color(0xFFF8BB0C),
+                                    color: Colors.white,
                 size: fontSizeSmall * (isSmallDevice ? 0.8 : isLargeDevice ? 0.7 : 0.75),
               ),
             ),

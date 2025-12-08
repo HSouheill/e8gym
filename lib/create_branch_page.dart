@@ -174,7 +174,7 @@ class _CreateBranchPageState extends State<CreateBranchPage> {
             });
           } catch (parseError) {
             print('Error parsing class data: $parseError');
-            _showSnackBar('Error parsing class data. Please try again.');
+            _showSnackBar('Error parsing class data. Please try again.', isError: true);
             setState(() {
               _availableClasses = [];
             });
@@ -186,14 +186,14 @@ class _CreateBranchPageState extends State<CreateBranchPage> {
           });
         }
       } else {
-        _showSnackBar(result['message'] ?? 'Failed to load available classes');
+        _showSnackBar(result['message'] ?? 'Failed to load available classes', isError: true);
         setState(() {
           _availableClasses = [];
         });
       }
     } catch (e) {
       print('Exception in _loadAvailableClasses: $e');
-      _showSnackBar('An error occurred while loading classes: $e');
+      _showSnackBar('An error occurred while loading classes: $e', isError: true);
       setState(() {
         _availableClasses = [];
       });
@@ -236,7 +236,7 @@ class _CreateBranchPageState extends State<CreateBranchPage> {
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
+                colors: [Colors.white, Colors.white70],
               ),
             ),
           ),
@@ -292,7 +292,7 @@ class _CreateBranchPageState extends State<CreateBranchPage> {
                             gradient: const LinearGradient(
                               begin: Alignment.topCenter,
                               end: Alignment.bottomCenter,
-                              colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
+                              colors: [Colors.white, Colors.white70],
                             ),
                             shape: BoxShape.circle,
                           ),
@@ -471,7 +471,7 @@ class _CreateBranchPageState extends State<CreateBranchPage> {
                                           gradient: const LinearGradient(
                                             begin: Alignment.topCenter,
                                             end: Alignment.bottomCenter,
-                                            colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
+                                            colors: [Colors.white, Colors.white70],
                                           ),
                                           borderRadius: BorderRadius.circular(8),
                                         ),
@@ -610,7 +610,7 @@ class _CreateBranchPageState extends State<CreateBranchPage> {
                                                 }
                                               });
                                             },
-                                            activeColor: const Color(0xFFF8BB0C),
+                                            activeColor: Colors.white,
                                             checkColor: Colors.black,
                                           ),
                                           onTap: () {
@@ -715,7 +715,7 @@ class _CreateBranchPageState extends State<CreateBranchPage> {
                                         decoration: BoxDecoration(
                                           color: _showAddTeamMemberForm 
                                               ? Colors.red.withOpacity(0.3)
-                                              : const Color(0xFFF8BB0C),
+                                              : Colors.white,
                                           borderRadius: BorderRadius.circular(8),
                                         ),
                                         child: Icon(
@@ -874,7 +874,7 @@ class _CreateBranchPageState extends State<CreateBranchPage> {
                                                 gradient: const LinearGradient(
                                                   begin: Alignment.topCenter,
                                                   end: Alignment.bottomCenter,
-                                                  colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
+                                                  colors: [Colors.white, Colors.white70],
                                                 ),
                                                 borderRadius: BorderRadius.circular(8),
                                               ),
@@ -928,7 +928,7 @@ class _CreateBranchPageState extends State<CreateBranchPage> {
                                                   width: 40,
                                                   height: 40,
                                                   decoration: BoxDecoration(
-                                                    color: const Color(0xFFF8BB0C),
+                                                    color: Colors.white,
                                                     borderRadius: BorderRadius.circular(20),
                                                   ),
                                                   child: hasImage
@@ -996,7 +996,7 @@ class _CreateBranchPageState extends State<CreateBranchPage> {
                                                       decoration: BoxDecoration(
                                                         color: hasImage 
                                                             ? Colors.green.withOpacity(0.3)
-                                                            : const Color(0xFFF8BB0C),
+                                                            : Colors.white,
                                                         borderRadius: BorderRadius.circular(6),
                                                       ),
                                                       child: Icon(
@@ -1086,7 +1086,7 @@ class _CreateBranchPageState extends State<CreateBranchPage> {
                                         gradient: const LinearGradient(
                                           begin: Alignment.topCenter,
                                           end: Alignment.bottomCenter,
-                                          colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
+                                          colors: [Colors.white, Colors.white70],
                                         ),
                                         borderRadius: BorderRadius.circular(28),
                                       ),
@@ -1104,7 +1104,7 @@ class _CreateBranchPageState extends State<CreateBranchPage> {
                                         gradient: const LinearGradient(
                                           begin: Alignment.topCenter,
                                           end: Alignment.bottomCenter,
-                                          colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
+                                          colors: [Colors.white, Colors.white70],
                                         ),
                                         borderRadius: BorderRadius.circular(28),
                                         boxShadow: [
@@ -1169,7 +1169,7 @@ class _CreateBranchPageState extends State<CreateBranchPage> {
       decoration: BoxDecoration(
         border: Border(
           bottom: BorderSide(
-            color: const Color(0xFFF8BB0C),
+            color: Colors.white,
             width: 2,
           ),
         ),
@@ -1181,7 +1181,7 @@ class _CreateBranchPageState extends State<CreateBranchPage> {
               gradient: const LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
+                colors: [Colors.white, Colors.white70],
               ),
               borderRadius: BorderRadius.circular(12),
             ),
@@ -1228,35 +1228,35 @@ class _CreateBranchPageState extends State<CreateBranchPage> {
         _confirmPasswordController.text.isEmpty ||
         _phoneNumberController.text.isEmpty ||
         _locationController.text.isEmpty) {
-      _showSnackBar('Please fill in all fields');
+      _showSnackBar('Please fill in all fields', isError: true);
       return;
     }
 
     if (_passwordController.text != _confirmPasswordController.text) {
-      _showSnackBar('Passwords do not match');
+      _showSnackBar('Passwords do not match', isError: true);
       return;
     }
 
     if (_passwordController.text.length < 8) {
-      _showSnackBar('Password must be at least 8 characters');
+      _showSnackBar('Password must be at least 8 characters', isError: true);
       return;
     }
 
     // Basic email validation
     if (!_emailController.text.contains('@')) {
-      _showSnackBar('Please enter a valid email address');
+      _showSnackBar('Please enter a valid email address', isError: true);
       return;
     }
 
     // Branch ID validation
     if (_branchIdController.text.length < 3) {
-      _showSnackBar('Branch ID must be at least 3 characters');
+      _showSnackBar('Branch ID must be at least 3 characters', isError: true);
       return;
     }
 
     // Check if Branch ID contains only alphanumeric characters
     if (!RegExp(r'^[a-zA-Z0-9]+$').hasMatch(_branchIdController.text)) {
-      _showSnackBar('Branch ID can only contain letters and numbers');
+      _showSnackBar('Branch ID can only contain letters and numbers', isError: true);
       return;
     }
 
@@ -1376,11 +1376,11 @@ class _CreateBranchPageState extends State<CreateBranchPage> {
         // Navigate back with success indicator
         Navigator.pop(context, true);
       } else {
-        _showSnackBar(result['message'] ?? 'Failed to create branch');
+        _showSnackBar(result['message'] ?? 'Failed to create branch', isError: true);
         print('Branch creation error: ${result['error']}');
       }
     } catch (e) {
-      _showSnackBar('An error occurred: $e');
+      _showSnackBar('An error occurred: $e', isError: true);
       print('Exception during branch creation: $e');
     } finally {
       // Reset loading state
@@ -1390,11 +1390,11 @@ class _CreateBranchPageState extends State<CreateBranchPage> {
     }
   }
 
-  void _showSnackBar(String message) {
+  void _showSnackBar(String message, {bool isError = false}) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message),
-        backgroundColor: const Color(0xFFF8BB0C),
+        content: Text(message, style: TextStyle(color: isError ? Colors.black : Colors.black)),
+        backgroundColor: isError ? Colors.red : Colors.white,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),
@@ -1416,7 +1416,7 @@ class _CreateBranchPageState extends State<CreateBranchPage> {
       decoration: BoxDecoration(
         border: Border(
           bottom: BorderSide(
-            color: const Color(0xFFF8BB0C),
+            color: Colors.white,
             width: 2,
           ),
         ),
@@ -1428,7 +1428,7 @@ class _CreateBranchPageState extends State<CreateBranchPage> {
               gradient: const LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
+                colors: [Colors.white, Colors.white70],
               ),
               borderRadius: BorderRadius.circular(8),
             ),
@@ -1483,7 +1483,7 @@ class _CreateBranchPageState extends State<CreateBranchPage> {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: const Color(0xFFF8BB0C),
+              color: Colors.white,
               width: 1.5,
             ),
             color: Colors.black.withOpacity(0.2),
@@ -1548,32 +1548,32 @@ class _CreateBranchPageState extends State<CreateBranchPage> {
         _teamMemberPasswordController.text.isEmpty ||
         _teamMemberConfirmPasswordController.text.isEmpty ||
         _selectedTeamMemberRole.isEmpty) {
-      _showSnackBar('Please fill in all team member fields');
+      _showSnackBar('Please fill in all team member fields', isError: true);
       return;
     }
 
     // Basic email validation
     if (!_teamMemberEmailController.text.contains('@')) {
-      _showSnackBar('Please enter a valid email address');
+      _showSnackBar('Please enter a valid email address', isError: true);
       return;
     }
 
     // Password validation
     if (_teamMemberPasswordController.text.length < 8) {
-      _showSnackBar('Password must be at least 8 characters');
+      _showSnackBar('Password must be at least 8 characters', isError: true);
       return;
     }
 
     // Password confirmation validation
     if (_teamMemberPasswordController.text != _teamMemberConfirmPasswordController.text) {
-      _showSnackBar('Passwords do not match');
+      _showSnackBar('Passwords do not match', isError: true);
       return;
     }
 
     // Validate password is not empty (double check)
     final password = _teamMemberPasswordController.text.trim();
     if (password.isEmpty) {
-      _showSnackBar('Password cannot be empty');
+      _showSnackBar('Password cannot be empty', isError: true);
       return;
     }
 
@@ -1684,7 +1684,7 @@ class _CreateBranchPageState extends State<CreateBranchPage> {
 
       _showSnackBar('Branch image selected successfully!');
     } catch (e) {
-      _showSnackBar('An error occurred: $e');
+      _showSnackBar('An error occurred: $e', isError: true);
     }
   }
 
@@ -1732,7 +1732,7 @@ class _CreateBranchPageState extends State<CreateBranchPage> {
 
       _showSnackBar('Team member image selected successfully!');
     } catch (e) {
-      _showSnackBar('An error occurred: $e');
+      _showSnackBar('An error occurred: $e', isError: true);
     }
   }
 
@@ -1753,10 +1753,10 @@ class _CreateBranchPageState extends State<CreateBranchPage> {
       if (result['success']) {
         _showSnackBar('Branch image uploaded successfully!');
       } else {
-        _showSnackBar(result['message'] ?? 'Failed to upload branch image');
+        _showSnackBar(result['message'] ?? 'Failed to upload branch image', isError: true);
       }
     } catch (e) {
-      _showSnackBar('An error occurred: $e');
+      _showSnackBar('An error occurred: $e', isError: true);
     } finally {
       if (mounted) {
         setState(() {
@@ -1785,10 +1785,10 @@ class _CreateBranchPageState extends State<CreateBranchPage> {
       if (result['success']) {
         _showSnackBar('Team member image uploaded successfully!');
       } else {
-        _showSnackBar(result['message'] ?? 'Failed to upload team member image');
+        _showSnackBar(result['message'] ?? 'Failed to upload team member image', isError: true);
       }
     } catch (e) {
-      _showSnackBar('An error occurred: $e');
+      _showSnackBar('An error occurred: $e', isError: true);
     } finally {
       if (mounted) {
         setState(() {

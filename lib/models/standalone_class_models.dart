@@ -73,33 +73,26 @@ class ClassSchedule {
   });
 
   Map<String, dynamic> toJson() {
-    // For recurring schedules (placeholder date 2024-01-01), use a more appropriate date
-    DateTime scheduleDate;
-    if (date.year == 2024 && date.month == 1 && date.day == 1) {
-      // This is a recurring schedule, use current date as base
-      final now = DateTime.now();
-      scheduleDate = DateTime(now.year, now.month, now.day);
-    } else {
-      // This is a specific date schedule
-      scheduleDate = DateTime(date.year, date.month, date.day);
-    }
+    // Extract date components (normalize to UTC date only, no time)
+    final dateOnly = DateTime.utc(date.year, date.month, date.day);
     
-    // Convert UTC times back to local times for storage
-    final localStartTime = startTime.toLocal();
-    final localEndTime = endTime.toLocal();
+    // Extract time components from the stored UTC times
+    // Since startTime and endTime are already UTC DateTime objects, extract hour and minute directly
+    final startHour = startTime.hour;
+    final startMinute = startTime.minute;
+    final endHour = endTime.hour;
+    final endMinute = endTime.minute;
     
-    // Create local DateTime objects with the correct date and time
-    final startDateTime = DateTime(scheduleDate.year, scheduleDate.month, scheduleDate.day, localStartTime.hour, localStartTime.minute);
-    final endDateTime = DateTime(scheduleDate.year, scheduleDate.month, scheduleDate.day, localEndTime.hour, localEndTime.minute);
-    
-    // Create date-only DateTime for the date field (no time component)
-    final dateOnly = DateTime.utc(scheduleDate.year, scheduleDate.month, scheduleDate.day);
+    // Create UTC DateTime objects with the correct date and time
+    // This ensures the times are sent as UTC without timezone conversion issues
+    final startDateTime = DateTime.utc(date.year, date.month, date.day, startHour, startMinute);
+    final endDateTime = DateTime.utc(date.year, date.month, date.day, endHour, endMinute);
     
     return {
       'day_of_week': dayOfWeek,
       'date': dateOnly.toIso8601String(),
-      'start_time': startDateTime.toUtc().toIso8601String(),
-      'end_time': endDateTime.toUtc().toIso8601String(),
+      'start_time': startDateTime.toIso8601String(),
+      'end_time': endDateTime.toIso8601String(),
     };
   }
 
@@ -172,6 +165,28 @@ class StandaloneClassResponse {
   int get hashCode => id.hashCode;
 
   factory StandaloneClassResponse.fromJson(Map<String, dynamic> json) {
+    // Construct full image URLs
+    List<String> imageUrls = [];
+    if (json['images'] != null && json['images'] is List) {
+      final imageList = json['images'] as List<dynamic>;
+      for (final image in imageList) {
+        final imagePath = image.toString();
+        if (imagePath.isNotEmpty) {
+          // If already a full URL, use it as is
+          if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+            imageUrls.add(imagePath);
+          } else {
+            // Construct full URL by prepending base URL and uploads path
+            // Remove leading slash if present
+            final cleanPath = imagePath.startsWith('/') ? imagePath.substring(1) : imagePath;
+            // If path already includes 'uploads/', use it as is, otherwise prepend 'uploads/'
+            final fullPath = cleanPath.startsWith('uploads/') ? cleanPath : 'uploads/$cleanPath';
+            imageUrls.add('https://e8gym.online/$fullPath');
+          }
+        }
+      }
+    }
+    
     return StandaloneClassResponse(
       id: json['id'] ?? '',
       name: json['name'] ?? '',
@@ -182,9 +197,7 @@ class StandaloneClassResponse {
       schedule: (json['schedule'] as List<dynamic>?)
           ?.map((s) => ClassSchedule.fromJson(s))
           .toList() ?? [],
-      images: (json['images'] as List<dynamic>?)
-          ?.map((image) => image.toString())
-          .toList() ?? [],
+      images: imageUrls,
       isActive: json['is_active'] ?? false,
       isVisible: json['is_visible'] ?? json['IsVisible'] ?? true,
       expiresAt: json['expires_at'] != null ? DateTime.parse(json['expires_at']) : null,

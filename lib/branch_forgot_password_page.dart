@@ -28,7 +28,7 @@ class _BranchForgotPasswordPageState extends State<BranchForgotPasswordPage> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
+            colors: [Colors.white, Colors.white70],
           ),
         ),
         child: Container(
@@ -61,7 +61,7 @@ class _BranchForgotPasswordPageState extends State<BranchForgotPasswordPage> {
                           gradient: const LinearGradient(
                             begin: Alignment.topCenter,
                             end: Alignment.bottomCenter,
-                            colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
+                            colors: [Colors.white, Colors.white70],
                           ),
                           shape: BoxShape.circle,
                         ),
@@ -107,7 +107,7 @@ class _BranchForgotPasswordPageState extends State<BranchForgotPasswordPage> {
                     decoration: BoxDecoration(
                       border: Border(
                         bottom: BorderSide(
-                          color: const Color(0xFFF8BB0C),
+                          color: Colors.white,
                           width: 2,
                         ),
                       ),
@@ -119,7 +119,7 @@ class _BranchForgotPasswordPageState extends State<BranchForgotPasswordPage> {
                             gradient: const LinearGradient(
                               begin: Alignment.topCenter,
                               end: Alignment.bottomCenter,
-                              colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
+                              colors: [Colors.white, Colors.white70],
                             ),
                             borderRadius: BorderRadius.circular(12),
                           ),
@@ -165,7 +165,7 @@ class _BranchForgotPasswordPageState extends State<BranchForgotPasswordPage> {
                                 gradient: const LinearGradient(
                                   begin: Alignment.topCenter,
                                   end: Alignment.bottomCenter,
-                                  colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
+                                  colors: [Colors.white, Colors.white70],
                                 ),
                                 borderRadius: BorderRadius.circular(20),
                               ),
@@ -183,7 +183,7 @@ class _BranchForgotPasswordPageState extends State<BranchForgotPasswordPage> {
                                 gradient: const LinearGradient(
                                   begin: Alignment.topCenter,
                                   end: Alignment.bottomCenter,
-                                  colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
+                                  colors: [Colors.white, Colors.white70],
                                 ),
                                 borderRadius: BorderRadius.circular(20),
                                 boxShadow: [
@@ -325,7 +325,7 @@ class _BranchForgotPasswordPageState extends State<BranchForgotPasswordPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: const Color(0xFFF8BB0C),
+        backgroundColor: Colors.white,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),

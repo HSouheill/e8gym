@@ -112,7 +112,7 @@ class _BranchDetailPageState extends State<BranchDetailPage> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(message),
+              content: Text(message, style: const TextStyle(color: Colors.black)),
               backgroundColor: Colors.red,
             ),
           );
@@ -122,7 +122,7 @@ class _BranchDetailPageState extends State<BranchDetailPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error loading branch details: $e'),
+            content: Text('Error loading branch details: $e', style: const TextStyle(color: Colors.black)),
             backgroundColor: Colors.red,
           ),
         );
@@ -254,7 +254,7 @@ class _BranchDetailPageState extends State<BranchDetailPage> {
         
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(errorMessage),
+            content: Text(errorMessage, style: const TextStyle(color: Colors.black)),
             backgroundColor: Colors.red,
             duration: const Duration(seconds: 4),
           ),
@@ -267,7 +267,7 @@ class _BranchDetailPageState extends State<BranchDetailPage> {
       });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error: $e'),
+          content: Text('Error: $e', style: const TextStyle(color: Colors.black)),
           backgroundColor: Colors.red,
           duration: const Duration(seconds: 3),
         ),
@@ -291,7 +291,7 @@ class _BranchDetailPageState extends State<BranchDetailPage> {
       child: Scaffold(
       appBar: AppBar(
         title: Text('Branch: ${_branch.branchName}'),
-        backgroundColor: const Color(0xFFF8BB0C),
+        backgroundColor: Colors.white,
         foregroundColor: Colors.black,
         actions: [
           IconButton(
@@ -314,7 +314,7 @@ class _BranchDetailPageState extends State<BranchDetailPage> {
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
+                colors: [Colors.white, Colors.white70],
               ),
             ),
           ),
@@ -410,7 +410,7 @@ class _BranchDetailPageState extends State<BranchDetailPage> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF8BB0C),
+                    color: Colors.white,
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: const Icon(
@@ -449,7 +449,7 @@ class _BranchDetailPageState extends State<BranchDetailPage> {
                children: [
                  _buildStatusChip(
                    'Branch',
-                   const Color(0xFFF8BB0C),
+                   Colors.white,
                    Icons.business,
                  ),
                  const SizedBox(width: 12),
@@ -526,7 +526,7 @@ class _BranchDetailPageState extends State<BranchDetailPage> {
   Widget _buildDetailRow(IconData icon, String label, String value) {
     return Row(
       children: [
-        Icon(icon, color: const Color(0xFFF8BB0C), size: 20),
+        Icon(icon, color: Colors.white, size: 20),
         const SizedBox(width: 12),
         Expanded(
           child: Column(
@@ -566,7 +566,7 @@ class _BranchDetailPageState extends State<BranchDetailPage> {
           children: [
             Row(
               children: [
-                const Icon(Icons.fitness_center, color: Color(0xFFF8BB0C)),
+                const Icon(Icons.fitness_center, color: Colors.white),
                 const SizedBox(width: 8),
                 const Text(
                   'Classes',
@@ -722,7 +722,7 @@ class _BranchDetailPageState extends State<BranchDetailPage> {
           children: [
             Row(
               children: [
-                const Icon(Icons.people, color: Color(0xFFF8BB0C)),
+                const Icon(Icons.people, color: Colors.white),
                 const SizedBox(width: 8),
                 const Text(
                   'Team Members',
@@ -775,7 +775,7 @@ class _BranchDetailPageState extends State<BranchDetailPage> {
                       children: [
                                                  CircleAvatar(
                            radius: 20,
-                           backgroundColor: const Color(0xFFF8BB0C),
+                           backgroundColor: Colors.white,
                            child: Text(
                              member.fullName[0].toUpperCase(),
                              style: const TextStyle(

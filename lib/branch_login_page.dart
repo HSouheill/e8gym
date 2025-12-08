@@ -31,7 +31,7 @@ class _BranchLoginPageState extends State<BranchLoginPage> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
+            colors: [Colors.white, Colors.white70],
           ),
         ),
         child: Container(
@@ -64,7 +64,7 @@ class _BranchLoginPageState extends State<BranchLoginPage> {
                           gradient: const LinearGradient(
                             begin: Alignment.topCenter,
                             end: Alignment.bottomCenter,
-                            colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
+                            colors: [Colors.white, Colors.white70],
                           ),
                           shape: BoxShape.circle,
                         ),
@@ -110,7 +110,7 @@ class _BranchLoginPageState extends State<BranchLoginPage> {
                     decoration: BoxDecoration(
                       border: Border(
                         bottom: BorderSide(
-                          color: const Color(0xFFF8BB0C),
+                          color: Colors.white,
                           width: 2,
                         ),
                       ),
@@ -122,7 +122,7 @@ class _BranchLoginPageState extends State<BranchLoginPage> {
                             gradient: const LinearGradient(
                               begin: Alignment.topCenter,
                               end: Alignment.bottomCenter,
-                              colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
+                              colors: [Colors.white, Colors.white70],
                             ),
                             borderRadius: BorderRadius.circular(12),
                           ),
@@ -157,7 +157,7 @@ class _BranchLoginPageState extends State<BranchLoginPage> {
                     decoration: BoxDecoration(
                       border: Border(
                         bottom: BorderSide(
-                          color: const Color(0xFFF8BB0C),
+                          color: Colors.white,
                           width: 2,
                         ),
                       ),
@@ -169,7 +169,7 @@ class _BranchLoginPageState extends State<BranchLoginPage> {
                             gradient: const LinearGradient(
                               begin: Alignment.topCenter,
                               end: Alignment.bottomCenter,
-                              colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
+                              colors: [Colors.white, Colors.white70],
                             ),
                             borderRadius: BorderRadius.circular(12),
                           ),
@@ -251,7 +251,7 @@ class _BranchLoginPageState extends State<BranchLoginPage> {
                                 gradient: const LinearGradient(
                                   begin: Alignment.topCenter,
                                   end: Alignment.bottomCenter,
-                                  colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
+                                  colors: [Colors.white, Colors.white70],
                                 ),
                                 borderRadius: BorderRadius.circular(20),
                               ),
@@ -269,7 +269,7 @@ class _BranchLoginPageState extends State<BranchLoginPage> {
                                 gradient: const LinearGradient(
                                   begin: Alignment.topCenter,
                                   end: Alignment.bottomCenter,
-                                  colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
+                                  colors: [Colors.white, Colors.white70],
                                 ),
                                 borderRadius: BorderRadius.circular(20),
                                 boxShadow: [
@@ -418,7 +418,7 @@ class _BranchLoginPageState extends State<BranchLoginPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: const Color(0xFFF8BB0C),
+        backgroundColor: Colors.white,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),

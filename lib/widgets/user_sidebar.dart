@@ -20,7 +20,7 @@ class UserSidebar extends StatelessWidget {
         color: Color(0xFF1A1A1A),
         border: Border(
           right: BorderSide(
-            color: Color(0xFFF8BB0C),
+            color: Colors.white,
             width: 1,
           ),
         ),
@@ -33,7 +33,7 @@ class UserSidebar extends StatelessWidget {
             decoration: const BoxDecoration(
               border: Border(
                 bottom: BorderSide(
-                  color: Color(0xFFF8BB0C),
+                  color: Colors.white,
                   width: 1,
                 ),
               ),
@@ -44,7 +44,7 @@ class UserSidebar extends StatelessWidget {
                   width: 40,
                   height: 40,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF8BB0C),
+                    color: Colors.white,
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: const Icon(
@@ -113,7 +113,7 @@ class UserSidebar extends StatelessWidget {
             decoration: const BoxDecoration(
               border: Border(
                 top: BorderSide(
-                  color: Color(0xFFF8BB0C),
+                  color: Colors.white,
                   width: 1,
                 ),
               ),
@@ -131,7 +131,7 @@ class UserSidebar extends StatelessWidget {
                   ),
                 ),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFF8BB0C),
+                  backgroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 12),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
@@ -154,7 +154,7 @@ class UserSidebar extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       child: Material(
-        color: isSelected ? const Color(0xFFF8BB0C).withOpacity(0.2) : Colors.transparent,
+        color: isSelected ? Colors.white.withOpacity(0.2) : Colors.transparent,
         borderRadius: BorderRadius.circular(8),
         child: InkWell(
           onTap: () => onPageChanged(page),
@@ -165,7 +165,7 @@ class UserSidebar extends StatelessWidget {
               children: [
                 Icon(
                   icon,
-                  color: isSelected ? const Color(0xFFF8BB0C) : Colors.white70,
+                  color: isSelected ? Colors.white : Colors.white70,
                   size: 20,
                 ),
                 const SizedBox(width: 12),
@@ -173,7 +173,7 @@ class UserSidebar extends StatelessWidget {
                   child: Text(
                     title,
                     style: TextStyle(
-                      color: isSelected ? const Color(0xFFF8BB0C) : Colors.white70,
+                      color: isSelected ? Colors.white : Colors.white70,
                       fontSize: 16,
                       fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
                     ),
@@ -184,7 +184,7 @@ class UserSidebar extends StatelessWidget {
                     width: 6,
                     height: 6,
                     decoration: const BoxDecoration(
-                      color: Color(0xFFF8BB0C),
+                      color: Colors.white,
                       shape: BoxShape.circle,
                     ),
                   ),

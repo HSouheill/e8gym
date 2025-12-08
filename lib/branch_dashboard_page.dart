@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'dart:convert';
 import 'services/api_service.dart';
 import 'models/branch_class_models.dart';
 import 'models/standalone_class_models.dart';
@@ -22,7 +21,6 @@ class BranchDashboardPage extends StatefulWidget {
 }
 
 class _BranchDashboardPageState extends State<BranchDashboardPage> {
-  bool _isLoading = false;
   bool _isLoadingClasses = false;
   late final String accessToken;
   List<BranchClassResponse> _classes = [];
@@ -114,7 +112,7 @@ class _BranchDashboardPageState extends State<BranchDashboardPage> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
+            colors: [Colors.white, Colors.white70],
           ),
         ),
         child: Container(
@@ -149,7 +147,7 @@ class _BranchDashboardPageState extends State<BranchDashboardPage> {
                             gradient: const LinearGradient(
                               begin: Alignment.topCenter,
                               end: Alignment.bottomCenter,
-                              colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
+                              colors: [Colors.white, Colors.white70],
                             ),
                             shape: BoxShape.circle,
                           ),
@@ -230,7 +228,7 @@ class _BranchDashboardPageState extends State<BranchDashboardPage> {
                       const SizedBox(width: 16),
                       Expanded(
                         child: _buildTabButton(
-                          title: 'Classes (${_classes.length})',
+                          title: 'Classes (${_getFilteredClasses().length})',
                           isSelected: _currentTab == 1,
                           onTap: () => setState(() => _currentTab = 1),
                         ),
@@ -356,7 +354,7 @@ class _BranchDashboardPageState extends State<BranchDashboardPage> {
                 child: _buildActionCard(
                   icon: Icons.fitness_center,
                   title: 'Classes',
-                  subtitle: '${_classes.length} classes',
+                  subtitle: '${_getFilteredClasses().length} classes',
                   onTap: () {
                     setState(() => _currentTab = 1);
                   },
@@ -507,7 +505,19 @@ class _BranchDashboardPageState extends State<BranchDashboardPage> {
     );
   }
 
+  List<BranchClassResponse> _getFilteredClasses() {
+    // Filter out classes where isVisible is false
+    return _classes.where((classData) {
+      // Hide if visibility is explicitly set to false
+      if (classData.isVisible == false) return false;
+      // Show if visible is true or null (default to visible)
+      return true;
+    }).toList();
+  }
+
   Widget _buildClassesContent() {
+    final filteredClasses = _getFilteredClasses();
+    
     return Column(
       children: [
         // Classes header with refresh button
@@ -586,7 +596,7 @@ class _BranchDashboardPageState extends State<BranchDashboardPage> {
                         ],
                       ),
                     )
-                  : _classes.isEmpty
+                  : filteredClasses.isEmpty
                       ? const Center(
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
@@ -618,9 +628,9 @@ class _BranchDashboardPageState extends State<BranchDashboardPage> {
                           ),
                         )
                       : ListView.builder(
-                          itemCount: _classes.length,
+                          itemCount: filteredClasses.length,
                           itemBuilder: (context, index) {
-                            return _buildClassCard(_classes[index]);
+                            return _buildClassCard(filteredClasses[index]);
                           },
                         ),
         ),
@@ -684,7 +694,7 @@ class _BranchDashboardPageState extends State<BranchDashboardPage> {
             const SizedBox(height: 16),
             
             _buildInfoRow('Instructor', classData.instructor),
-            _buildInfoRow('Capacity', '${classData.capacity} students'),
+            _buildInfoRow('Capacity', '${classData.capacity} members'),
             _buildInfoRow('Duration', '${classData.duration} minutes'),
             
             const SizedBox(height: 16),
@@ -699,7 +709,7 @@ class _BranchDashboardPageState extends State<BranchDashboardPage> {
                 ),
               ),
               const SizedBox(height: 8),
-              ..._getSortedSchedules(classData.schedule).map((schedule) => _buildScheduleItem(schedule)),
+              _buildGroupedSchedule(classData.schedule),
               const SizedBox(height: 16),
             ],
             
@@ -725,7 +735,7 @@ class _BranchDashboardPageState extends State<BranchDashboardPage> {
                     child: ElevatedButton(
                       onPressed: () => _editSchedule(classData),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFF8BB0C),
+                        backgroundColor: Colors.white,
                         foregroundColor: Colors.black,
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         shape: RoundedRectangleBorder(
@@ -753,6 +763,25 @@ class _BranchDashboardPageState extends State<BranchDashboardPage> {
                 ],
               ],
             ),
+            
+            if (widget.canEdit) ...[
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => _editCapacity(classData),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green.withOpacity(0.8),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: const Text('Edit Capacity'),
+                ),
+              ),
+            ],
           ],
         ),
       ),
@@ -789,10 +818,10 @@ class _BranchDashboardPageState extends State<BranchDashboardPage> {
     final recurringSchedules = <ClassSchedule>[];
     final specificDateSchedules = <ClassSchedule>[];
     
+    // Recurring schedules use dates in 2099 as marker dates
+    // The exact date depends on the day of week (each day uses a date that falls on that day)
     for (final schedule in schedules) {
-      final isRecurring = schedule.date.year == 2024 && 
-                         schedule.date.month == 1 && 
-                         schedule.date.day == 1;
+      final isRecurring = schedule.date.year >= 2099;
       if (isRecurring) {
         recurringSchedules.add(schedule);
       } else {
@@ -820,6 +849,184 @@ class _BranchDashboardPageState extends State<BranchDashboardPage> {
     return [...specificDateSchedules, ...recurringSchedules];
   }
 
+  Widget _buildGroupedSchedule(List<ClassSchedule> schedules) {
+    final days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    
+    // Group schedules by day of week
+    Map<int, List<ClassSchedule>> groupedByDay = {};
+    Map<int, List<ClassSchedule>> specificDatesByDay = {};
+    
+    for (final schedule in schedules) {
+      final isRecurring = schedule.date.year >= 2099;
+      
+      if (isRecurring) {
+        // Recurring schedule - group by day of week
+        if (!groupedByDay.containsKey(schedule.dayOfWeek)) {
+          groupedByDay[schedule.dayOfWeek] = [];
+        }
+        groupedByDay[schedule.dayOfWeek]!.add(schedule);
+      } else {
+        // Specific date schedule - group by day name
+        if (!specificDatesByDay.containsKey(schedule.dayOfWeek)) {
+          specificDatesByDay[schedule.dayOfWeek] = [];
+        }
+        specificDatesByDay[schedule.dayOfWeek]!.add(schedule);
+      }
+    }
+    
+    // Sort days
+    final sortedDays = <int>[];
+    for (int i = 0; i < 7; i++) {
+      if (groupedByDay.containsKey(i) || specificDatesByDay.containsKey(i)) {
+        sortedDays.add(i);
+      }
+    }
+    
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: sortedDays.map((dayOfWeek) {
+        final recurringSchedules = groupedByDay[dayOfWeek] ?? [];
+        final specificSchedules = specificDatesByDay[dayOfWeek] ?? [];
+        final allSchedules = [...recurringSchedules, ...specificSchedules];
+        
+        // Sort schedules by start time
+        allSchedules.sort((a, b) => a.startTime.compareTo(b.startTime));
+        
+        return GestureDetector(
+          onTap: () => _showDayScheduleDialog(days[dayOfWeek], allSchedules),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.white.withOpacity(0.3)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  days[dayOfWeek],
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '${allSchedules.length}',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 4),
+                const Icon(
+                  Icons.chevron_right,
+                  color: Colors.white70,
+                  size: 16,
+                ),
+              ],
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  void _showDayScheduleDialog(String dayName, List<ClassSchedule> schedules) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
+        title: Text('$dayName Schedule'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: schedules.isEmpty
+              ? const Text('No schedules for this day')
+              : ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: schedules.length,
+                  itemBuilder: (context, index) {
+                    final schedule = schedules[index];
+                    final isRecurring = schedule.date.year >= 2099;
+                    final startTime = '${schedule.startTime.hour.toString().padLeft(2, '0')}:${schedule.startTime.minute.toString().padLeft(2, '0')}';
+                    final endTime = '${schedule.endTime.hour.toString().padLeft(2, '0')}:${schedule.endTime.minute.toString().padLeft(2, '0')}';
+                    
+                    String scheduleText;
+                    if (isRecurring) {
+                      scheduleText = '$startTime - $endTime';
+                    } else {
+                      final date = schedule.date;
+                      scheduleText = '${date.day}/${date.month}/${date.year}: $startTime - $endTime';
+                    }
+                    
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: isRecurring ? Colors.blue[50] : Colors.orange[50],
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: isRecurring ? Colors.blue[200]! : Colors.orange[300]!,
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            isRecurring ? Icons.repeat : Icons.event,
+                            color: isRecurring ? Colors.blue : Colors.orange,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  scheduleText,
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    color: isRecurring ? Colors.blue[900] : Colors.orange[900],
+                                  ),
+                                ),
+                                if (isRecurring)
+                                  Text(
+                                    'Recurring weekly',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.blue[700],
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildScheduleItem(ClassSchedule schedule) {
     final days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     final dayName = days[schedule.dayOfWeek];
@@ -827,8 +1034,8 @@ class _BranchDashboardPageState extends State<BranchDashboardPage> {
     final startTime = '${schedule.startTime.hour.toString().padLeft(2, '0')}:${schedule.startTime.minute.toString().padLeft(2, '0')}';
     final endTime = '${schedule.endTime.hour.toString().padLeft(2, '0')}:${schedule.endTime.minute.toString().padLeft(2, '0')}';
     
-    // Check if this is a next week schedule (recurring schedules have date == DateTime(2024, 1, 1))
-    final isRecurring = schedule.date.year == 2024 && schedule.date.month == 1 && schedule.date.day == 1;
+    // Check if this is a recurring schedule (recurring schedules use dates in 2099 as markers)
+    final isRecurring = schedule.date.year >= 2099;
     final isNextWeekSchedule = !isRecurring;
     
     String scheduleText;
@@ -844,24 +1051,24 @@ class _BranchDashboardPageState extends State<BranchDashboardPage> {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
         color: isNextWeekSchedule 
-            ? const Color(0xFFF8BB0C).withOpacity(0.2) // Different color for next week schedules
+            ? Colors.white.withOpacity(0.2) // Different color for next week schedules
             : Colors.white.withOpacity(0.1),
         borderRadius: BorderRadius.circular(6),
         border: isNextWeekSchedule 
-            ? Border.all(color: const Color(0xFFF8BB0C), width: 1)
+            ? Border.all(color: Colors.white, width: 1)
             : null,
       ),
       child: Row(
         children: [
           if (isNextWeekSchedule) 
-            const Icon(Icons.event, color: Color(0xFFF8BB0C), size: 12),
+            const Icon(Icons.event, color: Colors.white, size: 12),
           if (isNextWeekSchedule) 
             const SizedBox(width: 4),
           Expanded(
             child: Text(
               scheduleText,
               style: TextStyle(
-                color: isNextWeekSchedule ? const Color(0xFFF8BB0C) : Colors.white,
+                color: isNextWeekSchedule ? Colors.white : Colors.white,
                 fontSize: 12,
                 fontWeight: isNextWeekSchedule ? FontWeight.w600 : FontWeight.normal,
               ),
@@ -954,7 +1161,7 @@ class _BranchDashboardPageState extends State<BranchDashboardPage> {
               const SizedBox(height: 8),
               Text('Instructor: ${classData.instructor}'),
               const SizedBox(height: 8),
-              Text('Capacity: ${classData.capacity} students'),
+              Text('Capacity: ${classData.capacity} members'),
               const SizedBox(height: 8),
               Text('Duration: ${classData.duration} minutes'),
               const SizedBox(height: 8),
@@ -974,8 +1181,8 @@ class _BranchDashboardPageState extends State<BranchDashboardPage> {
                   final startTime = '${schedule.startTime.hour.toString().padLeft(2, '0')}:${schedule.startTime.minute.toString().padLeft(2, '0')}';
                   final endTime = '${schedule.endTime.hour.toString().padLeft(2, '0')}:${schedule.endTime.minute.toString().padLeft(2, '0')}';
                   
-                  // Check if this is a next week schedule (recurring schedules have date == DateTime(2024, 1, 1))
-                  final isRecurring = schedule.date.year == 2024 && schedule.date.month == 1 && schedule.date.day == 1;
+                  // Check if this is a recurring schedule (recurring schedules use dates in 2099 as markers)
+                  final isRecurring = schedule.date.year >= 2099;
                   final isNextWeekSchedule = !isRecurring;
                   
                   if (isNextWeekSchedule) {
@@ -1000,7 +1207,7 @@ class _BranchDashboardPageState extends State<BranchDashboardPage> {
   }
 
   void _showEditScheduleDialog(BranchClassResponse classData) {
-    List<ClassSchedule> schedules = List.from(classData.schedule);
+    List<ClassSchedule> schedules = _getSortedSchedules(List<ClassSchedule>.from(classData.schedule));
     final List<String> days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
     showDialog(
@@ -1031,8 +1238,8 @@ class _BranchDashboardPageState extends State<BranchDashboardPage> {
                     final startTime = '${schedule.startTime.hour.toString().padLeft(2, '0')}:${schedule.startTime.minute.toString().padLeft(2, '0')}';
                     final endTime = '${schedule.endTime.hour.toString().padLeft(2, '0')}:${schedule.endTime.minute.toString().padLeft(2, '0')}';
                     
-                    // Check if this is a next week schedule (recurring schedules have date == DateTime(2024, 1, 1))
-                    final isRecurring = schedule.date.year == 2024 && schedule.date.month == 1 && schedule.date.day == 1;
+                    // Check if this is a recurring schedule (recurring schedules use dates in 2099 as markers)
+                    final isRecurring = schedule.date.year >= 2099;
                     final isNextWeekSchedule = !isRecurring;
                     
                     String scheduleText;
@@ -1087,6 +1294,22 @@ class _BranchDashboardPageState extends State<BranchDashboardPage> {
                   }),
                   const SizedBox(height: 16),
                 ],
+                
+                  // Add Time Slot button (only if user can edit)
+                  if (widget.canEdit) ...[
+                    ElevatedButton.icon(
+                      onPressed: () {
+                        _addTimeSlotFromScheduleDialog(setDialogState, schedules, classData);
+                      },
+                      icon: const Icon(Icons.add),
+                      label: const Text('Add Time Slot'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.purple,
+                        foregroundColor: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                  ],
                 
                   // Edit All Schedule button (only if user can edit)
                   if (widget.canEdit)
@@ -1182,10 +1405,6 @@ class _BranchDashboardPageState extends State<BranchDashboardPage> {
   }
 
   Future<void> _updateInstructor(String classId, String instructor) async {
-    setState(() {
-      _isLoading = true;
-    });
-
     try {
       final instructorData = UpdateClassInstructorRequest(instructor: instructor);
       final result = await ApiService.updateBranchClassInstructor(
@@ -1202,10 +1421,112 @@ class _BranchDashboardPageState extends State<BranchDashboardPage> {
       }
     } catch (e) {
       _showSnackBar('An error occurred: $e');
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
+    }
+  }
+
+  void _editCapacity(BranchClassResponse classData) {
+    if (!widget.canEdit) {
+      _showSnackBar('You do not have permission to edit capacity');
+      return;
+    }
+    _showEditCapacityDialog(classData);
+  }
+
+  void _showEditCapacityDialog(BranchClassResponse classData) {
+    final TextEditingController capacityController = TextEditingController(text: classData.capacity.toString());
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
+        title: Text('Edit Capacity - ${classData.name}'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: capacityController,
+              enabled: widget.canEdit,
+              decoration: InputDecoration(
+                labelText: 'Capacity',
+                hintText: widget.canEdit ? 'Enter number of members' : 'View only',
+                border: const OutlineInputBorder(),
+              ),
+              keyboardType: TextInputType.number,
+              maxLength: 3,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Current capacity: ${classData.capacity} members',
+              style: const TextStyle(
+                fontSize: 14,
+                color: Colors.grey,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          if (widget.canEdit)
+            TextButton(
+              onPressed: () async {
+                final capacityText = capacityController.text.trim();
+                if (capacityText.isEmpty) {
+                  _showSnackBar('Please enter a capacity');
+                  return;
+                }
+                
+                final newCapacity = int.tryParse(capacityText);
+                if (newCapacity == null || newCapacity < 1) {
+                  _showSnackBar('Please enter a valid capacity (minimum 1)');
+                  return;
+                }
+                
+                if (newCapacity == classData.capacity) {
+                  _showSnackBar('No changes made');
+                  Navigator.pop(context);
+                  return;
+                }
+                
+                await _updateCapacity(classData.id, newCapacity);
+                Navigator.pop(context);
+              },
+              child: const Text('Update'),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _updateCapacity(String classId, int capacity) async {
+    try {
+      // Get branch ID from branchData
+      final branchData = widget.branchData['branch'] ?? {};
+      final branchId = branchData['id'] ?? branchData['_id'] ?? '';
+      
+      if (branchId.isEmpty) {
+        _showSnackBar('Branch ID not found');
+        return;
+      }
+
+      final updateData = UpdateClassRequest(capacity: capacity);
+      final result = await ApiService.updateBranchClass(
+        branchId,
+        classId,
+        updateData,
+        accessToken,
+      );
+
+      if (result['success']) {
+        _showSnackBar('Capacity updated successfully');
+        _loadClasses(); // Refresh the classes list
+      } else {
+        _showSnackBar(result['message'] ?? 'Failed to update capacity');
+      }
+    } catch (e) {
+      _showSnackBar('An error occurred: $e');
     }
   }
 
@@ -1213,8 +1534,158 @@ class _BranchDashboardPageState extends State<BranchDashboardPage> {
     _showScheduleItemDialog(setDialogState, schedules, editingIndex: index);
   }
 
+  void _addTimeSlotFromScheduleDialog(
+    StateSetter setDialogState,
+    List<ClassSchedule> schedules,
+    BranchClassResponse classData,
+  ) {
+    TimeOfDay startTime = const TimeOfDay(hour: 9, minute: 0);
+    TimeOfDay endTime = const TimeOfDay(hour: 10, minute: 0);
+    DateTime selectedDate = DateTime.now();
+    final List<String> days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setTimeDialogState) => AlertDialog(
+          backgroundColor: Colors.white,
+          title: const Text('Add Time Slot'),
+          content: Container(
+            width: double.maxFinite,
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Date selection
+                ListTile(
+                  title: const Text('Date'),
+                  subtitle: Text('${selectedDate.day}/${selectedDate.month}/${selectedDate.year} (${days[selectedDate.weekday % 7]})'),
+                  trailing: const Icon(Icons.calendar_today),
+                  onTap: () async {
+                    final date = await showDatePicker(
+                      context: context,
+                      initialDate: selectedDate,
+                      firstDate: DateTime.now(),
+                      lastDate: DateTime.now().add(const Duration(days: 365)),
+                    );
+                    if (date != null) {
+                      setTimeDialogState(() {
+                        selectedDate = date;
+                      });
+                    }
+                  },
+                ),
+                const SizedBox(height: 16),
+                
+                // Time selection
+                Row(
+                  children: [
+                    Expanded(
+                      child: ListTile(
+                        title: const Text('Start Time'),
+                        subtitle: Text('${startTime.hour.toString().padLeft(2, '0')}:${startTime.minute.toString().padLeft(2, '0')}'),
+                        onTap: () async {
+                          final time = await showTimePicker(
+                            context: context,
+                            initialTime: startTime,
+                          );
+                          if (time != null) {
+                            setTimeDialogState(() {
+                              startTime = time;
+                            });
+                          }
+                        },
+                      ),
+                    ),
+                    Expanded(
+                      child: ListTile(
+                        title: const Text('End Time'),
+                        subtitle: Text('${endTime.hour.toString().padLeft(2, '0')}:${endTime.minute.toString().padLeft(2, '0')}'),
+                        onTap: () async {
+                          final time = await showTimePicker(
+                            context: context,
+                            initialTime: endTime,
+                          );
+                          if (time != null) {
+                            setTimeDialogState(() {
+                              endTime = time;
+                            });
+                          }
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                // Validate times
+                if (startTime.hour > endTime.hour || 
+                    (startTime.hour == endTime.hour && startTime.minute >= endTime.minute)) {
+                  _showSnackBar('End time must be after start time');
+                  return;
+                }
+
+                // Check for overlapping schedules on the same date
+                for (final existingSchedule in schedules) {
+                  // Check if existing schedule is recurring (skip conflict check for recurring)
+                  final existingIsRecurring = existingSchedule.date.year >= 2099;
+                  
+                  if (!existingIsRecurring) {
+                    // Check if it's the same date
+                    if (existingSchedule.date.year == selectedDate.year &&
+                        existingSchedule.date.month == selectedDate.month &&
+                        existingSchedule.date.day == selectedDate.day) {
+                      final existingStart = TimeOfDay.fromDateTime(existingSchedule.startTime);
+                      final existingEnd = TimeOfDay.fromDateTime(existingSchedule.endTime);
+                      
+                      if ((startTime.hour < existingEnd.hour || 
+                           (startTime.hour == existingEnd.hour && startTime.minute < existingEnd.minute)) &&
+                          (endTime.hour > existingStart.hour || 
+                           (endTime.hour == existingStart.hour && endTime.minute > existingStart.minute))) {
+                        _showSnackBar('Schedule times overlap with existing schedule on this date');
+                        return;
+                      }
+                    }
+                  }
+                }
+
+                // Create schedule for specific date
+                final scheduleDate = selectedDate;
+                // Create UTC DateTime directly (treat entered times as UTC)
+                final utcStartTime = DateTime.utc(scheduleDate.year, scheduleDate.month, scheduleDate.day, startTime.hour, startTime.minute);
+                final utcEndTime = DateTime.utc(scheduleDate.year, scheduleDate.month, scheduleDate.day, endTime.hour, endTime.minute);
+                final newSchedule = ClassSchedule(
+                  dayOfWeek: scheduleDate.weekday % 7, // Convert to 0-6 format (Sunday = 0)
+                  date: scheduleDate,
+                  startTime: utcStartTime,
+                  endTime: utcEndTime,
+                );
+
+                // Add to schedules list and update dialog state
+                setDialogState(() {
+                  schedules.add(newSchedule);
+                });
+
+                Navigator.pop(context);
+              },
+              child: const Text('Add'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _showEditAllScheduleDialog(BranchClassResponse classData) {
-    List<ClassSchedule> allSchedules = List.from(classData.schedule);
+    List<ClassSchedule> allSchedules = _getSortedSchedules(List<ClassSchedule>.from(classData.schedule));
     final List<String> days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     
     // Extract recurring schedules by grouping schedules with same day of week
@@ -1355,13 +1826,8 @@ class _BranchDashboardPageState extends State<BranchDashboardPage> {
                                   onPressed: () {
                                     setDialogState(() {
                                       recurringSchedules.remove(dayOfWeek);
-                                      // Remove from all schedules
-                                      allSchedules.removeWhere((s) => 
-                                        s.dayOfWeek == dayOfWeek &&
-                                        s.date.year == 2024 && 
-                                        s.date.month == 1 && 
-                                        s.date.day == 1
-                                      );
+                                      // Remove all schedules for this day of week
+                                      allSchedules.removeWhere((s) => s.dayOfWeek == dayOfWeek);
                                     });
                                   },
                                 ),
@@ -1407,23 +1873,7 @@ class _BranchDashboardPageState extends State<BranchDashboardPage> {
             ),
             TextButton(
               onPressed: () async {
-                // Merge recurring schedules with existing specific date schedules
-                final finalSchedules = <ClassSchedule>[];
-                
-                // Add all recurring schedules
-                finalSchedules.addAll(recurringSchedules.values);
-                
-                // Add all non-recurring schedules from original list
-                for (final schedule in classData.schedule) {
-                  final isRecurring = schedule.date.year == 2024 && 
-                                     schedule.date.month == 1 && 
-                                     schedule.date.day == 1;
-                  if (!isRecurring) {
-                    finalSchedules.add(schedule);
-                  }
-                }
-                
-                await _saveSchedule(classData.id, finalSchedules);
+                await _saveSchedule(classData.id, allSchedules);
                 Navigator.pop(context);
               },
               child: const Text('Save'),
@@ -1432,6 +1882,26 @@ class _BranchDashboardPageState extends State<BranchDashboardPage> {
         ),
       ),
     );
+  }
+
+  // Helper function to get a future date that falls on the specified day of week
+  // dayOfWeek: 0=Sunday, 1=Monday, ..., 6=Saturday (backend format)
+  DateTime _getRecurringDateMarker(int dayOfWeek) {
+    // Use a date in 2099 that falls on the correct day of week
+    // We'll use 2099-01-01 as a base and calculate from there
+    final baseDate = DateTime.utc(2099, 1, 1);
+    
+    // Convert Dart weekday (1=Monday, 7=Sunday) to backend format (0=Sunday, 1=Monday, ..., 6=Saturday)
+    final baseDartWeekday = baseDate.weekday; // 1-7
+    final baseBackendWeekday = baseDartWeekday == 7 ? 0 : baseDartWeekday; // Convert to 0-6
+    
+    // Calculate the offset needed to get to the desired day of week
+    int offset = dayOfWeek - baseBackendWeekday;
+    if (offset < 0) {
+      offset += 7; // Wrap around if negative
+    }
+    
+    return baseDate.add(Duration(days: offset));
   }
 
   void _addRecurringSchedule(
@@ -1531,11 +2001,14 @@ class _BranchDashboardPageState extends State<BranchDashboardPage> {
                 }
 
                 // Create recurring schedule
-                final utcStartTime = DateTime.utc(2024, 1, 1, startTime.hour, startTime.minute);
-                final utcEndTime = DateTime.utc(2024, 1, 1, endTime.hour, endTime.minute);
+                // Use a future date that falls on the correct day of week as marker
+                // This ensures the backend calculates the correct weekday from the date
+                final recurringDateMarker = _getRecurringDateMarker(selectedDay);
+                final utcStartTime = DateTime.utc(recurringDateMarker.year, recurringDateMarker.month, recurringDateMarker.day, startTime.hour, startTime.minute);
+                final utcEndTime = DateTime.utc(recurringDateMarker.year, recurringDateMarker.month, recurringDateMarker.day, endTime.hour, endTime.minute);
                 final newSchedule = ClassSchedule(
                   dayOfWeek: selectedDay,
-                  date: DateTime(2024, 1, 1),
+                  date: recurringDateMarker,
                   startTime: utcStartTime,
                   endTime: utcEndTime,
                 );
@@ -1561,7 +2034,7 @@ class _BranchDashboardPageState extends State<BranchDashboardPage> {
     List<ClassSchedule> allSchedules,
     int dayOfWeek,
     ClassSchedule schedule,
-    String classId, // Not used for bulk update, but kept for compatibility
+    String classId, // The specific class ID to update
   ) async {
     TimeOfDay startTime = TimeOfDay.fromDateTime(schedule.startTime);
     TimeOfDay endTime = TimeOfDay.fromDateTime(schedule.endTime);
@@ -1629,80 +2102,35 @@ class _BranchDashboardPageState extends State<BranchDashboardPage> {
                   return;
                 }
 
-                // Format times as ISO 8601 datetime strings for the API
-                // The backend expects time.Time which requires full datetime in ISO 8601 format
-                // We use today's date with the specified time, in UTC
-                final now = DateTime.now().toUtc();
-                final startDateTime = DateTime.utc(now.year, now.month, now.day, startTime.hour, startTime.minute, 0);
-                final endDateTime = DateTime.utc(now.year, now.month, now.day, endTime.hour, endTime.minute, 0);
-                final startTimeStr = startDateTime.toIso8601String();
-                final endTimeStr = endDateTime.toIso8601String();
-
-                // Ensure day_of_week matches backend format (0=Sunday, 1=Monday, ..., 6=Saturday)
-                print('=== Bulk Update Class Time Debug ===');
-                print('Day of Week: $dayOfWeek (${days[dayOfWeek]})');
-                print('Start Time: $startTimeStr');
-                print('End Time: $endTimeStr');
-                print('Full URL will be: /api/branch/classes/bulk-update-time');
-
-                // Create bulk update request
-                // Note: The backend uses authenticated branch context for BranchAdmin,
-                // so we don't need to pass branchId
-                final bulkUpdateRequest = BulkUpdateClassTimeRequest(
-                  dayOfWeek: dayOfWeek,
-                  newStartTime: startTimeStr,
-                  newEndTime: endTimeStr,
-                );
-                
-                print('Request JSON: ${jsonEncode(bulkUpdateRequest.toJson())}');
-
-                // Show loading
-                setTimeDialogState(() {
-                  // Close the dialog first
-                });
-                Navigator.pop(context);
-
-                // Call API to bulk update class times for all classes in the branch
-                setState(() {
-                  _isLoading = true;
-                });
-
-                try {
-                  final result = await ApiService.bulkUpdateClassTime(
-                    bulkUpdateRequest,
-                    accessToken,
-                  );
-
-                  if (result['success']) {
-                    final responseData = result['data'];
-                    if (responseData != null) {
-                      final response = BulkUpdateClassTimeResponse.fromJson(responseData);
-                      final message = 'Updated ${response.updatedClassesCount} classes, ${response.updatedSchedulesCount} schedules for ${response.dayOfWeek}';
-                      _showSnackBar(message);
-                      print('Bulk update successful: $message');
-                      print('Updated dates: ${response.updatedDates}');
-                    } else {
-                      _showSnackBar('Recurring schedule updated successfully');
+                bool updated = false;
+                setDialogState(() {
+                  ClassSchedule? template;
+                  for (int i = 0; i < allSchedules.length; i++) {
+                    final scheduleEntry = allSchedules[i];
+                    if (scheduleEntry.dayOfWeek == dayOfWeek) {
+                      final date = scheduleEntry.date;
+                      final updatedSchedule = ClassSchedule(
+                        dayOfWeek: scheduleEntry.dayOfWeek,
+                        date: date,
+                        startTime: DateTime.utc(date.year, date.month, date.day, startTime.hour, startTime.minute),
+                        endTime: DateTime.utc(date.year, date.month, date.day, endTime.hour, endTime.minute),
+                      );
+                      allSchedules[i] = updatedSchedule;
+                      template ??= updatedSchedule;
+                      updated = true;
                     }
-                    // Reload classes to get updated schedule
-                    await _loadClasses();
-                  } else {
-                    final errorMsg = result['message'] ?? 'Failed to update recurring schedule';
-                    final errorDetails = result['error'];
-                    print('Bulk update failed: $errorMsg');
-                    if (errorDetails != null) {
-                      print('Error details: $errorDetails');
-                    }
-                    _showSnackBar(errorMsg);
                   }
-                } catch (e) {
-                  print('Exception during bulk update: $e');
-                  _showSnackBar('An error occurred: $e');
-                } finally {
-                  setState(() {
-                    _isLoading = false;
-                  });
+                  if (template != null) {
+                    recurringSchedules[dayOfWeek] = template;
+                  }
+                });
+
+                if (!updated) {
+                  _showSnackBar('No schedules found for ${days[dayOfWeek]}');
+                  return;
                 }
+
+                Navigator.pop(context);
               },
               child: const Text('Update'),
             ),
@@ -1720,10 +2148,8 @@ class _BranchDashboardPageState extends State<BranchDashboardPage> {
     }
     
     final existingSchedule = schedules[editingIndex];
-    // Check if this is a recurring schedule
-    final isRecurring = existingSchedule.date.year == 2024 && 
-                       existingSchedule.date.month == 1 && 
-                       existingSchedule.date.day == 1;
+    // Check if this is a recurring schedule (recurring schedules use dates in 2099 as markers)
+    final isRecurring = existingSchedule.date.year >= 2099;
     
     if (isRecurring) {
       _showSnackBar('Please use "Edit All Schedule" to edit recurring schedules');
@@ -1840,9 +2266,7 @@ class _BranchDashboardPageState extends State<BranchDashboardPage> {
                   
                   final existingSchedule = schedules[i];
                   // Check if existing schedule is recurring (skip conflict check for recurring)
-                  final existingIsRecurring = existingSchedule.date.year == 2024 && 
-                                             existingSchedule.date.month == 1 && 
-                                             existingSchedule.date.day == 1;
+                  final existingIsRecurring = existingSchedule.date.year >= 2099;
                   
                   if (!existingIsRecurring) {
                     // Check if it's the same date
@@ -1890,10 +2314,6 @@ class _BranchDashboardPageState extends State<BranchDashboardPage> {
   }
 
   Future<void> _saveSchedule(String classId, List<ClassSchedule> schedules) async {
-    setState(() {
-      _isLoading = true;
-    });
-
     try {
       final scheduleData = UpdateClassScheduleRequest(schedule: schedules);
       final result = await ApiService.updateBranchClassSchedule(
@@ -1910,10 +2330,6 @@ class _BranchDashboardPageState extends State<BranchDashboardPage> {
       }
     } catch (e) {
       _showSnackBar('An error occurred: $e');
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
     }
   }
 
@@ -1922,10 +2338,6 @@ class _BranchDashboardPageState extends State<BranchDashboardPage> {
   }
 
   Future<void> _handleLogout() async {
-    setState(() {
-      _isLoading = true;
-    });
-
     try {
       // Try to call logout API, but don't fail if it doesn't work
       try {
@@ -1947,10 +2359,6 @@ class _BranchDashboardPageState extends State<BranchDashboardPage> {
       // Even if there's an error, try to navigate back
       _showSnackBar('Logged out successfully');
       Navigator.pop(context);
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
     }
   }
 
@@ -1958,7 +2366,7 @@ class _BranchDashboardPageState extends State<BranchDashboardPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: const Color(0xFFF8BB0C),
+        backgroundColor: Colors.white,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),
@@ -2026,7 +2434,7 @@ class _BranchDashboardPageState extends State<BranchDashboardPage> {
                           Row(
                             children: [
                               CircleAvatar(
-                                backgroundColor: const Color(0xFFF8BB0C),
+                                backgroundColor: Colors.white,
                                 child: Text(
                                   (member['full_name'] as String?)?.substring(0, 1).toUpperCase() ?? '?',
                                   style: const TextStyle(

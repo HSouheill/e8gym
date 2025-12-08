@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'services/api_service.dart';
 
@@ -178,7 +177,7 @@ class _SuperAdminBookingsPageState extends State<SuperAdminBookingsPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Bookings Management'),
-        backgroundColor: const Color(0xFFF8BB0C),
+        backgroundColor: Colors.white,
         foregroundColor: Colors.black,
         actions: [
           if (_isLoading)
@@ -203,7 +202,7 @@ class _SuperAdminBookingsPageState extends State<SuperAdminBookingsPage> {
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
+                colors: [Colors.white, Colors.white70],
               ),
             ),
           ),
@@ -212,7 +211,7 @@ class _SuperAdminBookingsPageState extends State<SuperAdminBookingsPage> {
           Container(
             decoration: const BoxDecoration(
               image: DecorationImage(
-                image: AssetImage('assets/background/background.png'),
+                image: AssetImage('assets/E8Logos/admin_dashboard_background.jpeg'),
                 fit: BoxFit.cover,
               ),
             ),
@@ -257,7 +256,7 @@ class _SuperAdminBookingsPageState extends State<SuperAdminBookingsPage> {
                       padding: const EdgeInsets.all(16.0),
                       child: Row(
                         children: [
-                          const Icon(Icons.book_online, color: Color(0xFFF8BB0C)),
+                          const Icon(Icons.book_online, color: Colors.white),
                           const SizedBox(width: 8),
                           Text(
                             'Classes with Bookings (${_totalClasses})',
@@ -273,7 +272,7 @@ class _SuperAdminBookingsPageState extends State<SuperAdminBookingsPage> {
                               height: 20,
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
-                                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFF8BB0C)),
+                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                               ),
                             ),
                         ],
@@ -285,7 +284,7 @@ class _SuperAdminBookingsPageState extends State<SuperAdminBookingsPage> {
                       child: _isLoading && _classes.isEmpty
                           ? const Center(
                               child: CircularProgressIndicator(
-                                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFF8BB0C)),
+                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                               ),
                             )
                           : _classes.isEmpty
@@ -311,7 +310,7 @@ class _SuperAdminBookingsPageState extends State<SuperAdminBookingsPage> {
                                             padding: EdgeInsets.all(16.0),
                                             child: Center(
                                               child: CircularProgressIndicator(
-                                                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFF8BB0C)),
+                                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                                               ),
                                             ),
                                           );
@@ -354,7 +353,7 @@ class _SuperAdminBookingsPageState extends State<SuperAdminBookingsPage> {
       child: ExpansionTile(
         leading: CircleAvatar(
           radius: 25,
-          backgroundColor: const Color(0xFFF8BB0C),
+          backgroundColor: Colors.white,
           child: Icon(
             Icons.fitness_center,
             color: Colors.black,
@@ -470,7 +469,7 @@ class _SuperAdminBookingsPageState extends State<SuperAdminBookingsPage> {
             children: [
               CircleAvatar(
                 radius: 20,
-                backgroundColor: const Color(0xFFF8BB0C),
+                backgroundColor: Colors.white,
                 child: Text(
                   userName[0].toUpperCase(),
                   style: const TextStyle(
@@ -607,7 +606,7 @@ class _SuperAdminBookingsPageState extends State<SuperAdminBookingsPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: const Color(0xFFF8BB0C),
+        backgroundColor: Colors.white,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),

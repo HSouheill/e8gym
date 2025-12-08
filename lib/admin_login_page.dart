@@ -124,14 +124,6 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
                 ? screenWidth * 0.03  // 3% for large devices
                 : screenWidth * 0.04; // 4% for medium devices
     
-    final topPadding = isIPad13Inch
-        ? screenHeight * 0.01  // 1% for iPad 13-inch (reduced)
-        : isSmallDevice 
-            ? screenHeight * 0.02  // 2% for small devices
-            : isLargeDevice 
-                ? screenHeight * 0.03  // 3% for large devices
-                : screenHeight * 0.025; // 2.5% for medium devices
-    
     final spacingSmall = isIPad13Inch
         ? screenHeight * 0.005  // 0.5% for iPad 13-inch (extremely reduced)
         : isSmallDevice 
@@ -222,7 +214,7 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
+            colors: [Colors.white, Colors.white70],
           ),
         ),
         child: Stack(
@@ -230,7 +222,7 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
             // Static background fallback
             Positioned.fill(
               child: Image.asset(
-                'assets/background/background.png',
+                'assets/E8Logos/admin_login_background.jpeg',
                 fit: BoxFit.cover,
                 errorBuilder: (context, error, stackTrace) {
                   // Return a dark container with gradient if image fails to load
@@ -273,7 +265,7 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
                 padding: EdgeInsets.only(
                   left: horizontalPadding,
                   right: horizontalPadding,
-                  top: topPadding,
+                  top: 0,
                   bottom: MediaQuery.of(context).viewInsets.bottom + 50,
                 ),
                 child: ConstrainedBox(
@@ -301,7 +293,7 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
                             gradient: const LinearGradient(
                               begin: Alignment.topCenter,
                               end: Alignment.bottomCenter,
-                              colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
+                              colors: [Colors.white, Colors.white70],
                             ),
                             shape: BoxShape.circle,
                           ),
@@ -314,7 +306,31 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
                       ),
                     ),
                     
-                    SizedBox(height: spacingLarge),
+                    // E8 Logo
+                    Center(
+                      child: Image.asset(
+                        'assets/E8Logos/E8_Short_Logo.png',
+                        width: screenWidth * (isIPad13Inch ? 0.25 : isSmallDevice ? 0.35 : isLargeDevice ? 0.25 : 0.3),
+                        // height: screenWidth * (isIPad13Inch ? 0.25 : isSmallDevice ? 0.35 : isLargeDevice ? 0.25 : 0.3),
+                        fit: BoxFit.contain,
+                        errorBuilder: (context, error, stackTrace) {
+                          // Show a placeholder if image fails to load
+                          final logoSize = screenWidth * (isIPad13Inch ? 0.25 : isSmallDevice ? 0.35 : isLargeDevice ? 0.25 : 0.3);
+                          return Container(
+                            width: logoSize,
+                            height: logoSize,
+                            color: Colors.transparent,
+                            child: Icon(
+                              Icons.image_not_supported,
+                              color: Colors.white70,
+                              size: logoSize * 0.3,
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    
+                    // SizedBox(height: spacingMedium),
                     
                     // Admin Login title
                     Text(
@@ -329,24 +345,24 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
                     
                     SizedBox(height: spacingSmall),
                     
-                    // Subtitle
-                    Text(
-                      'Access administrative controls',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: fontSizeMedium,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
+                    // // Subtitle
+                    // Text(
+                    //   'Access administrative controls',
+                    //   style: TextStyle(
+                    //     color: Colors.white,
+                    //     fontSize: fontSizeMedium,
+                    //     fontWeight: FontWeight.w500,
+                    //   ),
+                    // ),
                     
                     SizedBox(height: isIPad13Inch ? spacingMedium : spacingLarge),
-                    SizedBox(height: 100),
+                    // SizedBox(height: 100),
                     // Admin type selection - Responsive sizing
                     Container(
                       decoration: BoxDecoration(
                         border: Border(
                           bottom: BorderSide(
-                            color: const Color(0xFFF8BB0C),
+                            color: Colors.white,
                             width: 2,
                           ),
                         ),
@@ -358,7 +374,7 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
                               gradient: const LinearGradient(
                                 begin: Alignment.topCenter,
                                 end: Alignment.bottomCenter,
-                                colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
+                                colors: [Colors.white, Colors.white70],
                               ),
                               borderRadius: BorderRadius.circular(8),
                             ),
@@ -420,7 +436,7 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
                       decoration: BoxDecoration(
                         border: Border(
                           bottom: BorderSide(
-                            color: const Color(0xFFF8BB0C),
+                            color: Colors.white,
                             width: 2,
                           ),
                         ),
@@ -432,7 +448,7 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
                               gradient: const LinearGradient(
                                 begin: Alignment.topCenter,
                                 end: Alignment.bottomCenter,
-                                colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
+                                colors: [Colors.white, Colors.white70],
                               ),
                               borderRadius: BorderRadius.circular(8),
                             ),
@@ -491,7 +507,7 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
                       decoration: BoxDecoration(
                         border: Border(
                           bottom: BorderSide(
-                            color: const Color(0xFFF8BB0C),
+                            color: Colors.white,
                             width: 2,
                           ),
                         ),
@@ -503,7 +519,7 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
                               gradient: const LinearGradient(
                                 begin: Alignment.topCenter,
                                 end: Alignment.bottomCenter,
-                                colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
+                                colors: [Colors.white, Colors.white70],
                               ),
                               borderRadius: BorderRadius.circular(8),
                             ),
@@ -594,7 +610,7 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
                                     gradient: const LinearGradient(
                                       begin: Alignment.topCenter,
                                       end: Alignment.bottomCenter,
-                                      colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
+                                      colors: [Colors.white, Colors.white70],
                                     ),
                                     borderRadius: BorderRadius.circular(20),
                                   ),
@@ -849,7 +865,7 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: const Color(0xFFF8BB0C),
+        backgroundColor: Colors.white,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),

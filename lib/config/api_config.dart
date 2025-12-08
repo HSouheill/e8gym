@@ -77,12 +77,13 @@ class ApiConfig {
   static const String getBranchClass = '/api/branch/classes'; // Will be appended with /:id
   static const String updateBranchClassSchedule = '/api/branch/classes'; // Will be appended with /:id/schedule
   static const String updateBranchClassInstructor = '/api/branch/classes'; // Will be appended with /:id/instructor
-  static const String updateBranchClass = '/api/branches'; // Will be appended with /:branchId/classes/:classId
+  static const String updateBranchClass = '/api/branch/classes'; // Will be appended with /:branchId/:classId
   static const String bulkUpdateClassTime = '/api/branch/classes/bulk-update-time';
   
   // User Booking Endpoints
   static const String createBooking = '/api/bookings';
   static const String getBooking = '/api/bookings'; // Will be appended with /:id
+  static const String updateBooking = '/api/bookings'; // Will be appended with /:id
   static const String cancelBooking = '/api/bookings'; // Will be appended with /:id
   static const String getClassSchedules = '/api/classes'; // Will be appended with /:classId/schedules
   

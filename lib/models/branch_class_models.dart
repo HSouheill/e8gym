@@ -191,11 +191,13 @@ class UpdateClassRecurringRequest {
 
 /// Bulk Update Class Time Request Model
 class BulkUpdateClassTimeRequest {
+  final String classID; // ID of the specific class to update
   final int dayOfWeek; // 0-6 (Sunday=0, Monday=1, ..., Saturday=6)
-  final String newStartTime; // Format: "HH:MM:SS" or ISO time format
-  final String newEndTime; // Format: "HH:MM:SS" or ISO time format
+  final String newStartTime; // Format: ISO 8601 datetime string
+  final String newEndTime; // Format: ISO 8601 datetime string
 
   BulkUpdateClassTimeRequest({
+    required this.classID,
     required this.dayOfWeek,
     required this.newStartTime,
     required this.newEndTime,
@@ -203,6 +205,7 @@ class BulkUpdateClassTimeRequest {
 
   Map<String, dynamic> toJson() {
     return {
+      'class_id': classID,
       'day_of_week': dayOfWeek,
       'new_start_time': newStartTime,
       'new_end_time': newEndTime,
@@ -233,5 +236,60 @@ class BulkUpdateClassTimeResponse {
           .toList() ?? [],
       dayOfWeek: json['day_of_week']?.toString() ?? '',
     );
+  }
+}
+
+/// Update Class Request Model (for updating capacity, schedule, etc.)
+class UpdateClassRequest {
+  final int? capacity;
+  final List<ClassSchedule>? schedule;
+  final String? name;
+  final String? description;
+  final int? duration;
+  final String? instructor;
+  final bool? isActive;
+
+  UpdateClassRequest({
+    this.capacity,
+    this.schedule,
+    this.name,
+    this.description,
+    this.duration,
+    this.instructor,
+    this.isActive,
+  });
+
+  Map<String, dynamic> toJson() {
+    final json = <String, dynamic>{};
+    
+    if (capacity != null) {
+      json['capacity'] = capacity;
+    }
+    
+    if (schedule != null) {
+      json['schedule'] = schedule!.map((s) => s.toJson()).toList();
+    }
+    
+    if (name != null) {
+      json['name'] = name;
+    }
+    
+    if (description != null) {
+      json['description'] = description;
+    }
+    
+    if (duration != null) {
+      json['duration'] = duration;
+    }
+    
+    if (instructor != null) {
+      json['instructor'] = instructor;
+    }
+    
+    if (isActive != null) {
+      json['is_active'] = isActive;
+    }
+    
+    return json;
   }
 }

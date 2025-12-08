@@ -295,7 +295,7 @@ class _SuperAdminDashboardPageState extends State<SuperAdminDashboardPage> {
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            style: TextButton.styleFrom(foregroundColor: const Color(0xFFF8BB0C)),
+            style: TextButton.styleFrom(foregroundColor: Colors.white),
             child: const Text('Logout'),
           ),
         ],
@@ -385,7 +385,7 @@ class _SuperAdminDashboardPageState extends State<SuperAdminDashboardPage> {
     
     return Container(
       decoration: BoxDecoration(
-        color: isSelected ? const Color(0xFFF8BB0C).withValues(alpha: 0.2) : Colors.transparent,
+        color: isSelected ? Colors.white.withValues(alpha: 0.2) : Colors.transparent,
         borderRadius: BorderRadius.circular(10),
       ),
       child: ListTile(
@@ -430,7 +430,7 @@ class _SuperAdminDashboardPageState extends State<SuperAdminDashboardPage> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
+            colors: [Colors.white, Colors.white70],
           ),
         ),
         child: Stack(
@@ -439,7 +439,7 @@ class _SuperAdminDashboardPageState extends State<SuperAdminDashboardPage> {
             Container(
               decoration: const BoxDecoration(
                 image: DecorationImage(
-                  image: AssetImage('assets/background/background.png'),
+                  image: AssetImage('assets/E8Logos/admin_dashboard_background.jpeg'),
                   fit: BoxFit.cover,
                   colorFilter: ColorFilter.mode(
                     Color(0x50000000),
@@ -525,7 +525,7 @@ class _SuperAdminDashboardPageState extends State<SuperAdminDashboardPage> {
                                 gradient: LinearGradient(
                                   begin: Alignment.topCenter,
                                   end: Alignment.bottomCenter,
-                                  colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
+                                  colors: [Colors.white, Colors.white70],
                                 ),
                                 shape: BoxShape.circle,
                               ),
@@ -552,7 +552,7 @@ class _SuperAdminDashboardPageState extends State<SuperAdminDashboardPage> {
                                 gradient: LinearGradient(
                                   begin: Alignment.topCenter,
                                   end: Alignment.bottomCenter,
-                                  colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
+                                  colors: [Colors.white, Colors.white70],
                                 ),
                                 shape: BoxShape.circle,
                               ),
@@ -785,7 +785,7 @@ class _SuperAdminDashboardPageState extends State<SuperAdminDashboardPage> {
                               gradient: LinearGradient(
                                 begin: Alignment.topCenter,
                                 end: Alignment.bottomCenter,
-                                colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
+                                colors: [Colors.white, Colors.white70],
                               ),
                               borderRadius: BorderRadius.only(
                                 topLeft: Radius.circular(20),
@@ -942,7 +942,7 @@ class _SuperAdminDashboardPageState extends State<SuperAdminDashboardPage> {
                                       // User Avatar
                                       CircleAvatar(
                                         radius: 25,
-                                        backgroundColor: const Color(0xFFF8BB0C),
+                                        backgroundColor: Colors.white,
                                         child: Text(
                                           widget.userEmail[0].toUpperCase(),
                                           style: const TextStyle(
@@ -1058,6 +1058,52 @@ class _SuperAdminDashboardPageState extends State<SuperAdminDashboardPage> {
     );
   }
 
+  String _normalizeImageUrl(String? url) {
+    if (url == null || url.isEmpty) return '';
+    
+    // Trim whitespace
+    String cleanUrl = url.trim();
+    
+    // If already a full URL, return as-is (it's already normalized correctly)
+    if (cleanUrl.startsWith('http://') || cleanUrl.startsWith('https://')) {
+      // If it already contains /uploads/branch/, it's correct - return as-is
+      if (cleanUrl.contains('/uploads/branch/')) {
+        return cleanUrl;
+      }
+      // If it's a full URL without /uploads/, check if it needs it
+      if (cleanUrl.contains('/branch/') && !cleanUrl.contains('/uploads/')) {
+        return cleanUrl.replaceAll('/branch/', '/uploads/branch/');
+      }
+      return cleanUrl;
+    }
+    
+    // Remove leading slash if present for easier processing
+    cleanUrl = cleanUrl.startsWith('/') ? cleanUrl.substring(1) : cleanUrl;
+    
+    // Handle branch/ paths from API image_url field
+    // The API returns "branch/1765219735.jpg" which should be accessed from uploads/
+    if (cleanUrl.startsWith('branch/')) {
+      return 'https://e8gym.online/uploads/$cleanUrl';
+    }
+    
+    // Handle different path formats
+    if (cleanUrl.startsWith('app/')) {
+      return 'https://e8gym.online/uploads/$cleanUrl';
+    } else if (cleanUrl.startsWith('uploads/')) {
+      return 'https://e8gym.online/$cleanUrl';
+    } else if (cleanUrl.contains('/')) {
+      // If it contains a slash, it might already be a path
+      // Check if it looks like it needs uploads/ prefix
+      if (!cleanUrl.startsWith('uploads/') && !cleanUrl.startsWith('app/')) {
+        return 'https://e8gym.online/uploads/$cleanUrl';
+      }
+      return 'https://e8gym.online/$cleanUrl';
+    }
+    
+    // Default: prepend uploads/ if not already present
+    return 'https://e8gym.online/uploads/$cleanUrl';
+  }
+
   Widget _buildBranchCard(BranchResponse branch) {
     // Debug: Print branch image information
     print('=== Branch Image Debug ===');
@@ -1068,6 +1114,11 @@ class _SuperAdminDashboardPageState extends State<SuperAdminDashboardPage> {
     print('Image is empty: ${branch.image?.isEmpty ?? true}');
     print('Image length: ${branch.image?.length ?? 0}');
     print('========================');
+    
+    // Normalize image URL
+    final normalizedImageUrl = branch.image != null && branch.image!.isNotEmpty
+        ? _normalizeImageUrl(branch.image)
+        : null;
     
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -1092,19 +1143,35 @@ class _SuperAdminDashboardPageState extends State<SuperAdminDashboardPage> {
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(8),
-                  child: branch.image != null && branch.image!.isNotEmpty
+                  child: normalizedImageUrl != null && normalizedImageUrl.isNotEmpty
                       ? Image.network(
-                          branch.image!,
+                          normalizedImageUrl,
                           fit: BoxFit.cover,
+                          headers: const {
+                            'Accept': 'image/*',
+                          },
+                          cacheWidth: 120,
+                          cacheHeight: 120,
+                          frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+                            if (wasSynchronouslyLoaded) {
+                              return child;
+                            }
+                            return AnimatedOpacity(
+                              opacity: frame == null ? 0 : 1,
+                              duration: const Duration(milliseconds: 300),
+                              child: child,
+                            );
+                          },
                           errorBuilder: (context, error, stackTrace) {
                             print('=== Image Error Debug ===');
                             print('Branch: ${branch.branchName}');
-                            print('Image URL: ${branch.image}');
+                            print('Original Image URL: ${branch.image}');
+                            print('Normalized Image URL: $normalizedImageUrl');
                             print('Error: $error');
                             print('Stack Trace: $stackTrace');
                             print('========================');
                             return Container(
-                              color: const Color(0xFFF8BB0C).withValues(alpha: 0.3),
+                              color: Colors.white.withValues(alpha: 0.3),
                               child: const Icon(
                                 Icons.business,
                                 color: Colors.white,
@@ -1116,13 +1183,13 @@ class _SuperAdminDashboardPageState extends State<SuperAdminDashboardPage> {
                             if (loadingProgress == null) {
                               print('=== Image Loaded Successfully ===');
                               print('Branch: ${branch.branchName}');
-                              print('Image URL: ${branch.image}');
+                              print('Normalized Image URL: $normalizedImageUrl');
                               print('================================');
                               return child;
                             }
                             print('=== Image Loading ===');
                             print('Branch: ${branch.branchName}');
-                            print('Image URL: ${branch.image}');
+                            print('Normalized Image URL: $normalizedImageUrl');
                             print('Progress: ${loadingProgress.cumulativeBytesLoaded}/${loadingProgress.expectedTotalBytes}');
                             print('====================');
                             return Container(
@@ -1141,7 +1208,7 @@ class _SuperAdminDashboardPageState extends State<SuperAdminDashboardPage> {
                           },
                         )
                       : Container(
-                          color: const Color(0xFFF8BB0C).withValues(alpha: 0.3),
+                          color: Colors.white.withValues(alpha: 0.3),
                           child: const Icon(
                             Icons.business,
                             color: Colors.white,
@@ -1334,7 +1401,7 @@ class _SuperAdminDashboardPageState extends State<SuperAdminDashboardPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: const Color(0xFFF8BB0C),
+        backgroundColor: Colors.white,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),

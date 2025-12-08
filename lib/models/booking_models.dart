@@ -54,6 +54,33 @@ class CreateBookingRequest {
   }
 }
 
+class UpdateBookingRequest {
+  final String? status;
+  final String? notes;
+
+  UpdateBookingRequest({
+    this.status,
+    this.notes,
+  });
+
+  Map<String, dynamic> toJson() {
+    final Map<String, dynamic> data = {};
+
+    if (status != null && status!.trim().isNotEmpty) {
+      data['status'] = status!.trim();
+    }
+
+    if (notes != null) {
+      final sanitizedNotes = notes!.trim();
+      if (sanitizedNotes.isNotEmpty) {
+        data['notes'] = sanitizedNotes;
+      }
+    }
+
+    return data;
+  }
+}
+
 class BookingResponse {
   final String id;
   final String userId;

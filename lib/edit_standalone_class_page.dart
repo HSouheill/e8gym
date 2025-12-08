@@ -41,7 +41,6 @@ class _EditStandaloneClassPageState extends State<EditStandaloneClassPage> {
   final ImagePicker _imagePicker = ImagePicker();
   List<File> _selectedImages = [];
   List<String> _existingImages = [];
-  bool _isUploadingImages = false;
   
 
   @override
@@ -128,12 +127,6 @@ class _EditStandaloneClassPageState extends State<EditStandaloneClassPage> {
         endTime: endTime,
       ));
     }
-  }
-
-  void _updateDefaultTimes() {
-    setState(() {
-      _generateSchedulesFromSelectedDates();
-    });
   }
 
   void _updateScheduleTime(DateTime date, TimeOfDay? startTime, TimeOfDay? endTime) {
@@ -328,7 +321,7 @@ class _EditStandaloneClassPageState extends State<EditStandaloneClassPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: const Color(0xFFF8BB0C),
+        backgroundColor: Colors.white,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),
@@ -366,7 +359,7 @@ class _EditStandaloneClassPageState extends State<EditStandaloneClassPage> {
     if (_selectedDates.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please select at least one date for the class schedule'),
+          content: const Text('Please select at least one date for the class schedule', style: TextStyle(color: Colors.black)),
           backgroundColor: Colors.red,
           behavior: SnackBarBehavior.floating,
         ),
@@ -382,7 +375,7 @@ class _EditStandaloneClassPageState extends State<EditStandaloneClassPage> {
       if (schedule.date.isBefore(DateTime.now().subtract(const Duration(days: 1)))) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Schedule ${i + 1}: Class date cannot be in the past'),
+            content: Text('Schedule ${i + 1}: Class date cannot be in the past', style: const TextStyle(color: Colors.black)),
             backgroundColor: Colors.red,
             behavior: SnackBarBehavior.floating,
           ),
@@ -394,7 +387,7 @@ class _EditStandaloneClassPageState extends State<EditStandaloneClassPage> {
       if (schedule.endTime.isBefore(schedule.startTime) || schedule.endTime.isAtSameMomentAs(schedule.startTime)) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Schedule ${i + 1}: End time must be after start time'),
+            content: Text('Schedule ${i + 1}: End time must be after start time', style: const TextStyle(color: Colors.black)),
             backgroundColor: Colors.red,
             behavior: SnackBarBehavior.floating,
           ),
@@ -409,7 +402,7 @@ class _EditStandaloneClassPageState extends State<EditStandaloneClassPage> {
       if (!startDate.isAtSameMomentAs(scheduleDate) || !endDate.isAtSameMomentAs(scheduleDate)) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Schedule ${i + 1}: Start and end times must be on the same date as the schedule date'),
+            content: Text('Schedule ${i + 1}: Start and end times must be on the same date as the schedule date', style: const TextStyle(color: Colors.black)),
             backgroundColor: Colors.red,
             behavior: SnackBarBehavior.floating,
           ),
@@ -488,36 +481,17 @@ class _EditStandaloneClassPageState extends State<EditStandaloneClassPage> {
       }
       
       print('Full request JSON: ${request.toJson()}');
+      print('Selected images: ${_selectedImages.length}');
 
+      // Call API to update class with image files if provided
       final result = await ApiService.updateStandaloneClass(
         widget.classData.id,
         request,
         widget.accessToken,
+        imageFiles: _selectedImages.isNotEmpty ? _selectedImages : null,
       );
 
       if (result['success']) {
-        // Upload new images if any are selected
-        if (_selectedImages.isNotEmpty) {
-          setState(() {
-            _isUploadingImages = true;
-          });
-
-          for (final imageFile in _selectedImages) {
-            try {
-              final uploadResult = await ApiService.uploadStandaloneClassImage(
-                imageFile,
-                widget.classData.id,
-                widget.accessToken,
-              );
-              if (!uploadResult['success']) {
-                print('Failed to upload image: ${uploadResult['message']}');
-              }
-            } catch (e) {
-              print('Error uploading image: $e');
-            }
-          }
-        }
-
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -532,7 +506,7 @@ class _EditStandaloneClassPageState extends State<EditStandaloneClassPage> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(result['message'] ?? 'Failed to update class'),
+              content: Text(result['message'] ?? 'Failed to update class', style: const TextStyle(color: Colors.black)),
               backgroundColor: Colors.red,
               behavior: SnackBarBehavior.floating,
             ),
@@ -543,7 +517,7 @@ class _EditStandaloneClassPageState extends State<EditStandaloneClassPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('An error occurred: $e'),
+            content: Text('An error occurred: $e', style: const TextStyle(color: Colors.black)),
             backgroundColor: Colors.red,
             behavior: SnackBarBehavior.floating,
           ),
@@ -553,7 +527,6 @@ class _EditStandaloneClassPageState extends State<EditStandaloneClassPage> {
       if (mounted) {
         setState(() {
           _isLoading = false;
-          _isUploadingImages = false;
         });
       }
     }
@@ -567,13 +540,13 @@ class _EditStandaloneClassPageState extends State<EditStandaloneClassPage> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
+            colors: [Colors.white, Colors.white70],
           ),
         ),
         child: Container(
           decoration: const BoxDecoration(
             image: DecorationImage(
-              image: AssetImage('assets/background/background.png'),
+              image: AssetImage('assets/E8Logos/admin_dashboard_background.jpeg'),
               fit: BoxFit.cover,
               colorFilter: ColorFilter.mode(
                 Color(0x50000000),
@@ -598,7 +571,7 @@ class _EditStandaloneClassPageState extends State<EditStandaloneClassPage> {
                             gradient: const LinearGradient(
                               begin: Alignment.topCenter,
                               end: Alignment.bottomCenter,
-                              colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
+                              colors: [Colors.white, Colors.white70],
                             ),
                             shape: BoxShape.circle,
                           ),
@@ -755,7 +728,7 @@ class _EditStandaloneClassPageState extends State<EditStandaloneClassPage> {
                                       _isActive = value;
                                     });
                                   },
-                                  activeColor: const Color(0xFFF8BB0C),
+                                  activeColor: Colors.white,
                                 ),
                                 const SizedBox(width: 8),
                                 Text(
@@ -797,7 +770,7 @@ class _EditStandaloneClassPageState extends State<EditStandaloneClassPage> {
                                     icon: const Icon(Icons.photo_library, size: 18),
                                     label: const Text('Add Images'),
                                     style: ElevatedButton.styleFrom(
-                                      backgroundColor: const Color(0xFFF8BB0C),
+                                      backgroundColor: Colors.white,
                                       foregroundColor: Colors.black,
                                       padding: const EdgeInsets.symmetric(vertical: 12),
                                       shape: RoundedRectangleBorder(
@@ -916,9 +889,9 @@ class _EditStandaloneClassPageState extends State<EditStandaloneClassPage> {
                               Container(
                                 padding: const EdgeInsets.all(16),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFFF8BB0C).withOpacity(0.1),
+                                  color: Colors.white.withOpacity(0.1),
                                   borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: const Color(0xFFF8BB0C)),
+                                  border: Border.all(color: Colors.white),
                                 ),
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -928,7 +901,7 @@ class _EditStandaloneClassPageState extends State<EditStandaloneClassPage> {
                                       style: const TextStyle(
                                         fontSize: 14,
                                         fontWeight: FontWeight.w600,
-                                        color: Color(0xFFF8BB0C),
+                                        color: Colors.white,
                                       ),
                                     ),
                                     const SizedBox(height: 12),
@@ -948,7 +921,7 @@ class _EditStandaloneClassPageState extends State<EditStandaloneClassPage> {
                                             Container(
                                               decoration: BoxDecoration(
                                                 borderRadius: BorderRadius.circular(8),
-                                                border: Border.all(color: const Color(0xFFF8BB0C)),
+                                                border: Border.all(color: Colors.white),
                                               ),
                                               child: ClipRRect(
                                                 borderRadius: BorderRadius.circular(8),
@@ -1007,85 +980,6 @@ class _EditStandaloneClassPageState extends State<EditStandaloneClassPage> {
                             ),
                             const SizedBox(height: 16),
 
-                            // Default Time Settings
-                            Container(
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                color: Colors.grey[50],
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: Colors.grey[300]!),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text(
-                                    'Default Times (applied to all selected dates)',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 12),
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: TextFormField(
-                                          readOnly: true,
-                                          decoration: InputDecoration(
-                                            labelText: 'Start Time',
-                                            border: const OutlineInputBorder(),
-                                            suffixIcon: IconButton(
-                                              onPressed: () async {
-                                                final time = await showTimePicker(
-                                                  context: context,
-                                                  initialTime: _defaultStartTime,
-                                                );
-                                                if (time != null) {
-                                                  setState(() {
-                                                    _defaultStartTime = time;
-                                                    _updateDefaultTimes();
-                                                  });
-                                                }
-                                              },
-                                              icon: const Icon(Icons.access_time),
-                                            ),
-                                          ),
-                                          initialValue: '${_defaultStartTime.hour.toString().padLeft(2, '0')}:${_defaultStartTime.minute.toString().padLeft(2, '0')}',
-                                        ),
-                                      ),
-                                      const SizedBox(width: 16),
-                                      Expanded(
-                                        child: TextFormField(
-                                          readOnly: true,
-                                          decoration: InputDecoration(
-                                            labelText: 'End Time',
-                                            border: const OutlineInputBorder(),
-                                            suffixIcon: IconButton(
-                                              onPressed: () async {
-                                                final time = await showTimePicker(
-                                                  context: context,
-                                                  initialTime: _defaultEndTime,
-                                                );
-                                                if (time != null) {
-                                                  setState(() {
-                                                    _defaultEndTime = time;
-                                                    _updateDefaultTimes();
-                                                  });
-                                                }
-                                              },
-                                              icon: const Icon(Icons.access_time),
-                                            ),
-                                          ),
-                                          initialValue: '${_defaultEndTime.hour.toString().padLeft(2, '0')}:${_defaultEndTime.minute.toString().padLeft(2, '0')}',
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-
                             // Multi-Date Calendar
                             Container(
                               padding: const EdgeInsets.all(16),
@@ -1120,23 +1014,23 @@ class _EditStandaloneClassPageState extends State<EditStandaloneClassPage> {
                               Container(
                                 padding: const EdgeInsets.all(16),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFFF8BB0C).withOpacity(0.1),
+                                  color: Colors.white.withOpacity(0.1),
                                   borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: const Color(0xFFF8BB0C)),
+                                  border: Border.all(color: Colors.white),
                                 ),
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Row(
                                       children: [
-                                        const Icon(Icons.calendar_today, color: Color(0xFFF8BB0C)),
+                                        const Icon(Icons.calendar_today, color: Colors.white),
                                         const SizedBox(width: 8),
                                         Text(
                                           'Selected Dates & Times (${_selectedDates.length})',
                                           style: const TextStyle(
                                             fontSize: 16,
                                             fontWeight: FontWeight.w600,
-                                            color: Color(0xFFF8BB0C),
+                                            color: Colors.white,
                                           ),
                                         ),
                                       ],
@@ -1181,7 +1075,7 @@ class _EditStandaloneClassPageState extends State<EditStandaloneClassPage> {
                                                         const Icon(
                                                           Icons.calendar_today,
                                                           size: 16,
-                                                          color: Color(0xFFF8BB0C),
+                                                          color: Colors.white,
                                                         ),
                                                         const SizedBox(width: 8),
                                                         Expanded(
@@ -1190,7 +1084,7 @@ class _EditStandaloneClassPageState extends State<EditStandaloneClassPage> {
                                                             style: const TextStyle(
                                                               fontSize: 14,
                                                               fontWeight: FontWeight.w600,
-                                                              color: Color(0xFFF8BB0C),
+                                                              color: Colors.white,
                                                             ),
                                                           ),
                                                         ),
@@ -1239,14 +1133,14 @@ class _EditStandaloneClassPageState extends State<EditStandaloneClassPage> {
                                                     child: Container(
                                                       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
                                                       decoration: BoxDecoration(
-                                                        border: Border.all(color: const Color(0xFFF8BB0C), width: 1.5),
+                                                        border: Border.all(color: Colors.white, width: 1.5),
                                                         borderRadius: BorderRadius.circular(8),
                                                         color: Colors.white,
                                                       ),
                                                       child: Row(
                                                         mainAxisAlignment: MainAxisAlignment.center,
                                                         children: [
-                                                          const Icon(Icons.access_time, size: 18, color: Color(0xFFF8BB0C)),
+                                                          const Icon(Icons.access_time, size: 18, color: Colors.white),
                                                           const SizedBox(width: 8),
                                                           Text(
                                                             '${startTime.hour.toString().padLeft(2, '0')}:${startTime.minute.toString().padLeft(2, '0')}',
@@ -1283,14 +1177,14 @@ class _EditStandaloneClassPageState extends State<EditStandaloneClassPage> {
                                                     child: Container(
                                                       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
                                                       decoration: BoxDecoration(
-                                                        border: Border.all(color: const Color(0xFFF8BB0C), width: 1.5),
+                                                        border: Border.all(color: Colors.white, width: 1.5),
                                                         borderRadius: BorderRadius.circular(8),
                                                         color: Colors.white,
                                                       ),
                                                       child: Row(
                                                         mainAxisAlignment: MainAxisAlignment.center,
                                                         children: [
-                                                          const Icon(Icons.access_time, size: 18, color: Color(0xFFF8BB0C)),
+                                                          const Icon(Icons.access_time, size: 18, color: Colors.white),
                                                           const SizedBox(width: 8),
                                                           Text(
                                                             '${endTime.hour.toString().padLeft(2, '0')}:${endTime.minute.toString().padLeft(2, '0')}',
@@ -1328,13 +1222,13 @@ class _EditStandaloneClassPageState extends State<EditStandaloneClassPage> {
                               child: ElevatedButton(
                                 onPressed: _isLoading ? null : _submitForm,
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFFF8BB0C),
+                                  backgroundColor: Colors.white,
                                   foregroundColor: Colors.black,
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(12),
                                   ),
                                 ),
-                                child: _isLoading || _isUploadingImages
+                                child: _isLoading
                                     ? Row(
                                         mainAxisAlignment: MainAxisAlignment.center,
                                         children: [
@@ -1347,9 +1241,9 @@ class _EditStandaloneClassPageState extends State<EditStandaloneClassPage> {
                                             ),
                                           ),
                                           const SizedBox(width: 12),
-                                          Text(
-                                            _isUploadingImages ? 'Uploading Images...' : 'Updating Class...',
-                                            style: const TextStyle(
+                                          const Text(
+                                            'Updating Class...',
+                                            style: TextStyle(
                                               fontSize: 16,
                                               fontWeight: FontWeight.w600,
                                             ),
@@ -1483,7 +1377,7 @@ class _EditStandaloneClassPageState extends State<EditStandaloneClassPage> {
                   margin: const EdgeInsets.all(2),
                   decoration: BoxDecoration(
                     color: isSelected 
-                        ? const Color(0xFFF8BB0C) 
+                        ? Colors.white 
                         : isToday 
                             ? Colors.blue[50] 
                             : Colors.transparent,

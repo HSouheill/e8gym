@@ -884,8 +884,10 @@ class ApiService {
   static Future<Map<String, dynamic>> updateBranch(
     String branchId,
     Map<String, dynamic> updateData,
-    String accessToken,
-  ) async {
+    String accessToken, {
+    File? imageFile,
+    List<File>? imageFiles,
+  }) async {
     try {
       // Validate input
       if (!SecurityService.validateInput(branchId) || !SecurityService.validateInput(accessToken)) {
@@ -907,13 +909,156 @@ class ApiService {
         };
       }
       
-      print('=== API Service Update Branch Debug ===');
-      print('URL: ${ApiConfig.baseUrl}${ApiConfig.updateBranch}/$branchId');
-      print('Request data: ${jsonEncode(updateData)}');
-      
       final deviceId = await SecurityService.getDeviceId();
       final headers = SecurityService.getSecurityHeaders(accessToken);
       headers['X-Device-ID'] = deviceId;
+      
+      // If images are provided, use multipart form data
+      if ((imageFile != null || (imageFiles != null && imageFiles.isNotEmpty))) {
+        // Validate image files
+        if (imageFile != null) {
+          if (!await imageFile.exists()) {
+            return {
+              'success': false,
+              'message': 'Image file not found',
+              'error': 'File does not exist',
+            };
+          }
+          
+          // Validate file size (max 5MB)
+          final fileSize = await imageFile.length();
+          if (fileSize > 5 * 1024 * 1024) {
+            return {
+              'success': false,
+              'message': 'Image file too large. Maximum size is 5MB.',
+              'error': 'File size exceeds limit',
+            };
+          }
+        }
+        
+        if (imageFiles != null) {
+          for (final file in imageFiles) {
+            if (!await file.exists()) {
+              return {
+                'success': false,
+                'message': 'One or more image files not found',
+                'error': 'File does not exist',
+              };
+            }
+            
+            // Validate file size (max 5MB per image)
+            final fileSize = await file.length();
+            if (fileSize > 5 * 1024 * 1024) {
+              return {
+                'success': false,
+                'message': 'Image file too large. Maximum size is 5MB per image.',
+                'error': 'File size exceeds limit',
+              };
+            }
+          }
+        }
+        
+        // Remove Content-Type header to let multipart/form-data be set automatically
+        headers.remove('Content-Type');
+        
+        // Create multipart request
+        final request = http.MultipartRequest(
+          'PUT',
+          Uri.parse('${ApiConfig.baseUrl}${ApiConfig.updateBranch}/$branchId'),
+        );
+        
+        // Add headers
+        request.headers.addAll(headers);
+        
+        // Add form fields (only non-null values)
+        if (updateData['branch_id'] != null) {
+          request.fields['branch_id'] = updateData['branch_id'].toString();
+        }
+        if (updateData['branch_name'] != null) {
+          request.fields['branch_name'] = updateData['branch_name'].toString();
+        }
+        if (updateData['admin_name'] != null) {
+          request.fields['admin_name'] = updateData['admin_name'].toString();
+        }
+        if (updateData['email'] != null) {
+          request.fields['email'] = updateData['email'].toString();
+        }
+        if (updateData['phone_number'] != null) {
+          request.fields['phone_number'] = updateData['phone_number'].toString();
+        }
+        if (updateData['location'] != null) {
+          request.fields['location'] = updateData['location'].toString();
+        }
+        
+        // Add existing image URL if provided (not a file path)
+        if (updateData['image'] != null && imageFile == null) {
+          final imageValue = updateData['image'].toString();
+          // Only add if it's a URL, not a file path
+          if (imageValue.startsWith('http://') || imageValue.startsWith('https://') || imageValue.startsWith('/')) {
+            request.fields['image_url'] = imageValue;
+          }
+        }
+        
+        // Add classes as JSON string if provided
+        if (updateData['classes'] != null) {
+          request.fields['classes'] = jsonEncode(updateData['classes']);
+        }
+        
+        // Add single image file if provided
+        if (imageFile != null) {
+          final multipartFile = await http.MultipartFile.fromPath(
+            'image',
+            imageFile.path,
+            filename: 'branch_image_${DateTime.now().millisecondsSinceEpoch}.jpg',
+          );
+          request.files.add(multipartFile);
+        }
+        
+        // Add multiple image files if provided
+        if (imageFiles != null && imageFiles.isNotEmpty) {
+          for (final file in imageFiles) {
+            final multipartFile = await http.MultipartFile.fromPath(
+              'images',
+              file.path,
+              filename: 'branch_image_${DateTime.now().millisecondsSinceEpoch}_${imageFiles.indexOf(file)}.jpg',
+            );
+            request.files.add(multipartFile);
+          }
+        }
+        
+        print('=== API Service Update Branch Debug (Multipart) ===');
+        print('URL: ${request.url}');
+        print('Branch ID: $branchId');
+        print('Form fields: ${request.fields}');
+        print('Image files: ${imageFile != null ? 1 : 0} single, ${imageFiles?.length ?? 0} multiple');
+        
+        // Send request
+        final streamedResponse = await request.send();
+        final response = await http.Response.fromStream(streamedResponse);
+        
+        print('Response status: ${response.statusCode}');
+        print('Response body: ${response.body}');
+        
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body);
+          return {
+            'success': true,
+            'data': data['data'],
+            'message': data['message'],
+          };
+        } else {
+          final errorData = jsonDecode(response.body);
+          return {
+            'success': false,
+            'message': errorData['message'] ?? 'Branch update failed',
+            'error': errorData['error'],
+          };
+        }
+      } else {
+        // Use JSON request (no images)
+        print('=== API Service Update Branch Debug (JSON) ===');
+        print('URL: ${ApiConfig.baseUrl}${ApiConfig.updateBranch}/$branchId');
+        print('Request data: ${jsonEncode(updateData)}');
       
       final response = await http.put(
         Uri.parse('${ApiConfig.baseUrl}${ApiConfig.updateBranch}/$branchId'),
@@ -935,9 +1080,10 @@ class ApiService {
         final errorData = jsonDecode(response.body);
         return {
           'success': false,
-          'message': errorData['message'] ?? 'Failed to update branch',
+            'message': errorData['message'] ?? 'Branch update failed',
           'error': errorData['error'],
         };
+        }
       }
     } catch (e) {
       return {
@@ -1007,11 +1153,239 @@ class ApiService {
     }
   }
 
+  // Add Team Member to Branch
+  static Future<Map<String, dynamic>> addTeamMember(
+    String branchId,
+    Map<String, dynamic> teamMemberData,
+    String accessToken,
+  ) async {
+    try {
+      // Validate input
+      if (!SecurityService.validateInput(branchId) || 
+          !SecurityService.validateInput(accessToken)) {
+        SecurityService.logSecurityEvent('invalid_team_member_add_input', details: {
+          'branch_id_length': branchId.length,
+          'token_length': accessToken.length
+        });
+        return {
+          'success': false,
+          'message': 'Invalid input data',
+          'error': 'Input validation failed',
+        };
+      }
+      
+      // Validate SSL certificate
+      final url = '${ApiConfig.baseUrl}/api/branches/$branchId/team-members';
+      if (!SecurityService.validateSSLCertificate(url)) {
+        SecurityService.logSecurityEvent('invalid_ssl_certificate', details: {'url': url});
+        return {
+          'success': false,
+          'message': 'Security validation failed',
+          'error': 'Invalid SSL certificate',
+        };
+      }
+      
+      final deviceId = await SecurityService.getDeviceId();
+      final headers = SecurityService.getSecurityHeaders(accessToken);
+      headers['X-Device-ID'] = deviceId;
+      
+      print('=== API Service Add Team Member Debug ===');
+      print('URL: $url');
+      print('Branch ID: $branchId');
+      print('Request data: ${jsonEncode(teamMemberData)}');
+      
+      final response = await http.post(
+        Uri.parse(url),
+        headers: headers,
+        body: jsonEncode(teamMemberData),
+      );
+      
+      print('Response status: ${response.statusCode}');
+      print('Response body: ${response.body}');
+
+      if (response.statusCode == 201) {
+        final data = jsonDecode(response.body);
+        return {
+          'success': true,
+          'data': data['data'],
+          'message': data['message'] ?? 'Team member added successfully',
+        };
+      } else {
+        final errorData = jsonDecode(response.body);
+        return {
+          'success': false,
+          'message': errorData['message'] ?? 'Failed to add team member',
+          'error': errorData['error'],
+        };
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Network error: $e',
+        'error': e.toString(),
+      };
+    }
+  }
+
+  // Update Team Member in Branch
+  static Future<Map<String, dynamic>> updateTeamMember(
+    String branchId,
+    String teamMemberId,
+    Map<String, dynamic> updateData,
+    String accessToken,
+  ) async {
+    try {
+      // Validate input
+      if (!SecurityService.validateInput(branchId) || 
+          !SecurityService.validateInput(teamMemberId) || 
+          !SecurityService.validateInput(accessToken)) {
+        SecurityService.logSecurityEvent('invalid_team_member_update_input', details: {
+          'branch_id_length': branchId.length,
+          'team_member_id_length': teamMemberId.length,
+          'token_length': accessToken.length
+        });
+        return {
+          'success': false,
+          'message': 'Invalid input data',
+          'error': 'Input validation failed',
+        };
+      }
+      
+      // Validate SSL certificate
+      final url = '${ApiConfig.baseUrl}/api/branches/$branchId/team-members/$teamMemberId';
+      if (!SecurityService.validateSSLCertificate(url)) {
+        SecurityService.logSecurityEvent('invalid_ssl_certificate', details: {'url': url});
+        return {
+          'success': false,
+          'message': 'Security validation failed',
+          'error': 'Invalid SSL certificate',
+        };
+      }
+      
+      final deviceId = await SecurityService.getDeviceId();
+      final headers = SecurityService.getSecurityHeaders(accessToken);
+      headers['X-Device-ID'] = deviceId;
+      
+      print('=== API Service Update Team Member Debug ===');
+      print('URL: $url');
+      print('Branch ID: $branchId');
+      print('Team Member ID: $teamMemberId');
+      print('Request data: ${jsonEncode(updateData)}');
+      
+      final response = await http.put(
+        Uri.parse(url),
+        headers: headers,
+        body: jsonEncode(updateData),
+      );
+      
+      print('Response status: ${response.statusCode}');
+      print('Response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return {
+          'success': true,
+          'data': data['data'],
+          'message': data['message'] ?? 'Team member updated successfully',
+        };
+      } else {
+        final errorData = jsonDecode(response.body);
+        return {
+          'success': false,
+          'message': errorData['message'] ?? 'Failed to update team member',
+          'error': errorData['error'],
+        };
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Network error: $e',
+        'error': e.toString(),
+      };
+    }
+  }
+
+  // Delete Team Member from Branch
+  static Future<Map<String, dynamic>> deleteTeamMember(
+    String branchId,
+    String teamMemberId,
+    String accessToken,
+  ) async {
+    try {
+      // Validate input
+      if (!SecurityService.validateInput(branchId) || 
+          !SecurityService.validateInput(teamMemberId) || 
+          !SecurityService.validateInput(accessToken)) {
+        SecurityService.logSecurityEvent('invalid_team_member_delete_input', details: {
+          'branch_id_length': branchId.length,
+          'team_member_id_length': teamMemberId.length,
+          'token_length': accessToken.length
+        });
+        return {
+          'success': false,
+          'message': 'Invalid input data',
+          'error': 'Input validation failed',
+        };
+      }
+      
+      // Validate SSL certificate
+      final url = '${ApiConfig.baseUrl}/api/branches/$branchId/team-members/$teamMemberId';
+      if (!SecurityService.validateSSLCertificate(url)) {
+        SecurityService.logSecurityEvent('invalid_ssl_certificate', details: {'url': url});
+        return {
+          'success': false,
+          'message': 'Security validation failed',
+          'error': 'Invalid SSL certificate',
+        };
+      }
+      
+      final deviceId = await SecurityService.getDeviceId();
+      final headers = SecurityService.getSecurityHeaders(accessToken);
+      headers['X-Device-ID'] = deviceId;
+      
+      print('=== API Service Delete Team Member Debug ===');
+      print('URL: $url');
+      print('Branch ID: $branchId');
+      print('Team Member ID: $teamMemberId');
+      
+      final response = await http.delete(
+        Uri.parse(url),
+        headers: headers,
+      );
+      
+      print('Response status: ${response.statusCode}');
+      print('Response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return {
+          'success': true,
+          'data': data['data'],
+          'message': data['message'] ?? 'Team member deleted successfully',
+        };
+      } else {
+        final errorData = jsonDecode(response.body);
+        return {
+          'success': false,
+          'message': errorData['message'] ?? 'Failed to delete team member',
+          'error': errorData['error'],
+        };
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Network error: $e',
+        'error': e.toString(),
+      };
+    }
+  }
+
   // Create Standalone Class (SuperAdmin only)
   static Future<Map<String, dynamic>> createStandaloneClass(
     CreateStandaloneClassRequest classData,
-    String accessToken,
-  ) async {
+    String accessToken, {
+    List<File>? imageFiles,
+  }) async {
     try {
       // Validate input
       if (!SecurityService.validateInput(accessToken)) {
@@ -1033,13 +1407,111 @@ class ApiService {
         };
       }
       
-      final requestBody = classData.toJson();
-      print('=== CreateStandaloneClass Debug ===');
-      print('Request body: ${jsonEncode(requestBody)}');
-      
       final deviceId = await SecurityService.getDeviceId();
       final headers = SecurityService.getSecurityHeaders(accessToken);
       headers['X-Device-ID'] = deviceId;
+      
+      // If images are provided, use multipart form data
+      if (imageFiles != null && imageFiles.isNotEmpty) {
+        // Validate image files
+        for (final imageFile in imageFiles) {
+          if (!await imageFile.exists()) {
+            return {
+              'success': false,
+              'message': 'One or more image files not found',
+              'error': 'File does not exist',
+            };
+          }
+          
+          // Validate file size (max 5MB per image)
+          final fileSize = await imageFile.length();
+          if (fileSize > 5 * 1024 * 1024) {
+            return {
+              'success': false,
+              'message': 'Image file too large. Maximum size is 5MB per image.',
+              'error': 'File size exceeds limit',
+            };
+          }
+        }
+        
+        // Remove Content-Type header to let multipart/form-data be set automatically
+        headers.remove('Content-Type');
+        
+        // Create multipart request
+        final request = http.MultipartRequest(
+          'POST',
+          Uri.parse('${ApiConfig.baseUrl}${ApiConfig.createStandaloneClass}'),
+        );
+        
+        // Add headers
+        request.headers.addAll(headers);
+        
+        // Add form fields
+        request.fields['name'] = classData.name;
+        request.fields['description'] = classData.description;
+        request.fields['instructor'] = classData.instructor;
+        request.fields['capacity'] = classData.capacity.toString();
+        
+        if (classData.duration != null) {
+          request.fields['duration'] = classData.duration.toString();
+        }
+        
+        // Add schedule as JSON string
+        request.fields['schedule'] = jsonEncode(
+          classData.schedule.map((s) => s.toJson()).toList()
+        );
+        
+        // Add existing image URLs if provided (comma-separated)
+        if (classData.images != null && classData.images!.isNotEmpty) {
+          request.fields['image_urls'] = classData.images!.join(',');
+        }
+        
+        // Add image files
+        for (final imageFile in imageFiles) {
+          final multipartFile = await http.MultipartFile.fromPath(
+            'images',
+            imageFile.path,
+            filename: 'class_image_${DateTime.now().millisecondsSinceEpoch}_${imageFiles.indexOf(imageFile)}.jpg',
+          );
+          request.files.add(multipartFile);
+        }
+        
+        print('=== CreateStandaloneClass Debug (Multipart) ===');
+        print('Name: ${classData.name}');
+        print('Description: ${classData.description}');
+        print('Instructor: ${classData.instructor}');
+        print('Capacity: ${classData.capacity}');
+        print('Duration: ${classData.duration}');
+        print('Schedule: ${request.fields['schedule']}');
+        print('Image files: ${imageFiles.length}');
+        
+        // Send request
+        final streamedResponse = await request.send();
+        final response = await http.Response.fromStream(streamedResponse);
+        
+        print('Response status: ${response.statusCode}');
+        print('Response body: ${response.body}');
+        
+        if (response.statusCode == 201) {
+          final data = jsonDecode(response.body);
+          return {
+            'success': true,
+            'data': data['data'],
+            'message': data['message'],
+          };
+        } else {
+          final errorData = jsonDecode(response.body);
+          return {
+            'success': false,
+            'message': errorData['message'] ?? 'Class creation failed',
+            'error': errorData['error'],
+          };
+        }
+      } else {
+        // Use JSON request (no images)
+        final requestBody = classData.toJson();
+        print('=== CreateStandaloneClass Debug (JSON) ===');
+        print('Request body: ${jsonEncode(requestBody)}');
       
       final response = await http.post(
         Uri.parse('${ApiConfig.baseUrl}${ApiConfig.createStandaloneClass}'),
@@ -1064,6 +1536,7 @@ class ApiService {
           'message': errorData['message'] ?? 'Class creation failed',
           'error': errorData['error'],
         };
+        }
       }
     } catch (e) {
       return {
@@ -1273,8 +1746,9 @@ class ApiService {
   static Future<Map<String, dynamic>> updateStandaloneClass(
     String classId,
     UpdateStandaloneClassRequest updateData,
-    String accessToken,
-  ) async {
+    String accessToken, {
+    List<File>? imageFiles,
+  }) async {
     try {
       // Validate input
       if (!SecurityService.validateInput(classId) || !SecurityService.validateInput(accessToken)) {
@@ -1300,36 +1774,149 @@ class ApiService {
       final headers = SecurityService.getSecurityHeaders(accessToken);
       headers['X-Device-ID'] = deviceId;
       
-      final requestBody = jsonEncode(updateData.toJson());
-      print('=== API Request Debug ===');
-      print('URL: ${ApiConfig.baseUrl}${ApiConfig.updateStandaloneClass}/$classId');
-      print('Headers: $headers');
-      print('Request Body: $requestBody');
-      
-      final response = await http.put(
-        Uri.parse('${ApiConfig.baseUrl}${ApiConfig.updateStandaloneClass}/$classId'),
-        headers: headers,
-        body: requestBody,
-      );
-
-      print('=== API Response Debug ===');
-      print('Status Code: ${response.statusCode}');
-      print('Response Body: ${response.body}');
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        return {
-          'success': true,
-          'data': data['data'],
-          'message': data['message'],
-        };
+      // If images are provided, use multipart form data
+      if (imageFiles != null && imageFiles.isNotEmpty) {
+        // Validate image files
+        for (final file in imageFiles) {
+          if (!await file.exists()) {
+            return {
+              'success': false,
+              'message': 'One or more image files not found',
+              'error': 'File does not exist',
+            };
+          }
+          
+          // Validate file size (max 5MB per image)
+          final fileSize = await file.length();
+          if (fileSize > 5 * 1024 * 1024) {
+            return {
+              'success': false,
+              'message': 'Image file too large. Maximum size is 5MB per image.',
+              'error': 'File size exceeds limit',
+            };
+          }
+        }
+        
+        // Remove Content-Type header to let multipart/form-data be set automatically
+        headers.remove('Content-Type');
+        
+        // Create multipart request
+        final request = http.MultipartRequest(
+          'PUT',
+          Uri.parse('${ApiConfig.baseUrl}${ApiConfig.updateStandaloneClass}/$classId'),
+        );
+        
+        // Add headers
+        request.headers.addAll(headers);
+        
+        // Add form fields (only non-null values)
+        final updateJson = updateData.toJson();
+        if (updateJson['name'] != null) {
+          request.fields['name'] = updateJson['name'].toString();
+        }
+        if (updateJson['description'] != null) {
+          request.fields['description'] = updateJson['description'].toString();
+        }
+        if (updateJson['instructor'] != null) {
+          request.fields['instructor'] = updateJson['instructor'].toString();
+        }
+        if (updateJson['duration'] != null) {
+          request.fields['duration'] = updateJson['duration'].toString();
+        }
+        if (updateJson['capacity'] != null) {
+          request.fields['capacity'] = updateJson['capacity'].toString();
+        }
+        if (updateJson['is_active'] != null) {
+          request.fields['is_active'] = updateJson['is_active'].toString();
+        }
+        
+        // Add schedule as JSON string if provided
+        if (updateJson['schedule'] != null) {
+          request.fields['schedule'] = jsonEncode(updateJson['schedule']);
+        }
+        
+        // Add existing image URLs as comma-separated string if provided
+        if (updateJson['images'] != null && updateJson['images'] is List) {
+          final imageList = updateJson['images'] as List;
+          final imageUrls = imageList.map((img) => img.toString()).where((url) => 
+            url.startsWith('http://') || url.startsWith('https://') || url.startsWith('/')
+          ).join(',');
+          if (imageUrls.isNotEmpty) {
+            request.fields['image_urls'] = imageUrls;
+          }
+        }
+        
+        // Add image files
+        for (final file in imageFiles) {
+          final multipartFile = await http.MultipartFile.fromPath(
+            'images',
+            file.path,
+            filename: 'class_image_${DateTime.now().millisecondsSinceEpoch}_${imageFiles.indexOf(file)}.jpg',
+          );
+          request.files.add(multipartFile);
+        }
+        
+        print('=== API Service Update Standalone Class Debug (Multipart) ===');
+        print('URL: ${request.url}');
+        print('Class ID: $classId');
+        print('Form fields: ${request.fields}');
+        print('Image files: ${imageFiles.length}');
+        
+        // Send request
+        final streamedResponse = await request.send();
+        final response = await http.Response.fromStream(streamedResponse);
+        
+        print('Response status: ${response.statusCode}');
+        print('Response body: ${response.body}');
+        
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body);
+          return {
+            'success': true,
+            'data': data['data'],
+            'message': data['message'],
+          };
+        } else {
+          final errorData = jsonDecode(response.body);
+          return {
+            'success': false,
+            'message': errorData['message'] ?? 'Class update failed',
+            'error': errorData['error'],
+          };
+        }
       } else {
-        final errorData = jsonDecode(response.body);
-        return {
-          'success': false,
-          'message': errorData['message'] ?? 'Failed to update class',
-          'error': errorData['error'],
-        };
+        // Use JSON request (no images)
+        final requestBody = jsonEncode(updateData.toJson());
+        print('=== API Request Debug (JSON) ===');
+        print('URL: ${ApiConfig.baseUrl}${ApiConfig.updateStandaloneClass}/$classId');
+        print('Headers: $headers');
+        print('Request Body: $requestBody');
+        
+        final response = await http.put(
+          Uri.parse('${ApiConfig.baseUrl}${ApiConfig.updateStandaloneClass}/$classId'),
+          headers: headers,
+          body: requestBody,
+        );
+        
+        print('=== API Response Debug ===');
+        print('Status Code: ${response.statusCode}');
+        print('Response Body: ${response.body}');
+
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body);
+          return {
+            'success': true,
+            'data': data['data'],
+            'message': data['message'],
+          };
+        } else {
+          final errorData = jsonDecode(response.body);
+          return {
+            'success': false,
+            'message': errorData['message'] ?? 'Failed to update class',
+            'error': errorData['error'],
+          };
+        }
       }
     } catch (e) {
       return {
@@ -2318,6 +2905,95 @@ class ApiService {
     }
   }
 
+  // Update Branch Class (Branch Admin only) - for updating capacity, schedule, etc.
+  static Future<Map<String, dynamic>> updateBranchClass(
+    String branchId,
+    String classId,
+    UpdateClassRequest updateData,
+    String accessToken,
+  ) async {
+    try {
+      // Validate input
+      if (!SecurityService.validateInput(branchId) || 
+          !SecurityService.validateInput(classId) || 
+          !SecurityService.validateInput(accessToken)) {
+        SecurityService.logSecurityEvent('invalid_class_update_input', 
+          details: {
+            'branch_id_length': branchId.length, 
+            'class_id_length': classId.length, 
+            'token_length': accessToken.length
+          });
+        return {
+          'success': false,
+          'message': 'Invalid input data',
+          'error': 'Input validation failed',
+        };
+      }
+      
+      // Validate SSL certificate
+      // Backend route: /api/branch/classes/:branchId/:classId
+      final url = '${ApiConfig.baseUrl}${ApiConfig.updateBranchClass}/$branchId/$classId';
+      if (!SecurityService.validateSSLCertificate(url)) {
+        SecurityService.logSecurityEvent('invalid_ssl_certificate', details: {'url': url});
+        return {
+          'success': false,
+          'message': 'Security validation failed',
+          'error': 'Invalid SSL certificate',
+        };
+      }
+      
+      print('=== Update Branch Class Debug ===');
+      print('URL: $url');
+      print('Request body: ${jsonEncode(updateData.toJson())}');
+      
+      final deviceId = await SecurityService.getDeviceId();
+      final headers = SecurityService.getSecurityHeaders(accessToken);
+      headers['X-Device-ID'] = deviceId;
+      
+      final response = await http.put(
+        Uri.parse(url),
+        headers: headers,
+        body: jsonEncode(updateData.toJson()),
+      );
+      
+      print('Response status: ${response.statusCode}');
+      print('Response body: ${response.body}');
+      
+      if (response.statusCode != 200) {
+        print('=== Error Details ===');
+        try {
+          final errorData = jsonDecode(response.body);
+          print('Error message: ${errorData['message']}');
+          print('Error details: ${errorData['error']}');
+        } catch (e) {
+          print('Failed to parse error response: $e');
+        }
+      }
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return {
+          'success': true,
+          'data': data['data'],
+          'message': data['message'],
+        };
+      } else {
+        final errorData = jsonDecode(response.body);
+        return {
+          'success': false,
+          'message': errorData['message'] ?? 'Failed to update class',
+          'error': errorData['error'],
+        };
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Network error: $e',
+        'error': e.toString(),
+      };
+    }
+  }
+
   // Update Branch Class with Recurring Schedule (Branch Admin only)
   static Future<Map<String, dynamic>> updateBranchClassRecurring(
     String branchId,
@@ -2344,8 +3020,8 @@ class ApiService {
       }
       
       // Validate SSL certificate
-      // Backend route: /api/branches/:branchId/classes/:classId
-      final url = '${ApiConfig.baseUrl}${ApiConfig.updateBranchClass}/$branchId/classes/$classId';
+      // Backend route: /api/branch/classes/:branchId/:classId
+      final url = '${ApiConfig.baseUrl}${ApiConfig.updateBranchClass}/$branchId/$classId';
       if (!SecurityService.validateSSLCertificate(url)) {
         SecurityService.logSecurityEvent('invalid_ssl_certificate', details: {'url': url});
         return {
@@ -2965,39 +3641,94 @@ class ApiService {
     }
   }
 
-  // Cancel Booking (User)
-  static Future<Map<String, dynamic>> cancelBooking(
+  // Update Booking (User/Admin)
+  static Future<Map<String, dynamic>> updateBooking(
     String bookingId,
+    UpdateBookingRequest request,
     String accessToken,
   ) async {
     try {
-      // Validate input
+      // Validate identifiers
       if (!SecurityService.validateInput(bookingId) || !SecurityService.validateInput(accessToken)) {
-        SecurityService.logSecurityEvent('invalid_booking_cancel_input', details: {'booking_id_length': bookingId.length, 'token_length': accessToken.length});
+        SecurityService.logSecurityEvent('invalid_booking_update_input', details: {'booking_id_length': bookingId.length, 'token_length': accessToken.length});
         return {
           'success': false,
           'message': 'Invalid input data',
           'error': 'Input validation failed',
         };
       }
-      
+
+      final rawStatus = request.status?.trim();
+      final rawNotes = request.notes?.trim();
+
+      if ((rawStatus == null || rawStatus.isEmpty) && (rawNotes == null || rawNotes.isEmpty)) {
+        return {
+          'success': false,
+          'message': 'No update data provided',
+          'error': 'empty_update_request',
+        };
+      }
+
+      String? normalizedStatus;
+      if (rawStatus != null && rawStatus.isNotEmpty) {
+        if (!SecurityService.validateInput(rawStatus)) {
+          SecurityService.logSecurityEvent('invalid_booking_status_input', details: {'status_length': rawStatus.length});
+          return {
+            'success': false,
+            'message': 'Invalid status data',
+            'error': 'Input validation failed',
+          };
+        }
+        normalizedStatus = rawStatus.toLowerCase();
+      }
+
+      String? normalizedNotes;
+      if (rawNotes != null && rawNotes.isNotEmpty) {
+        if (!SecurityService.validateInput(rawNotes)) {
+          SecurityService.logSecurityEvent('invalid_booking_notes_input', details: {'notes_length': rawNotes.length});
+          return {
+            'success': false,
+            'message': 'Invalid notes data',
+            'error': 'Input validation failed',
+          };
+        }
+        normalizedNotes = rawNotes;
+      }
+
       // Validate SSL certificate
-      if (!SecurityService.validateSSLCertificate('${ApiConfig.baseUrl}${ApiConfig.cancelBooking}/$bookingId')) {
-        SecurityService.logSecurityEvent('invalid_ssl_certificate', details: {'url': '${ApiConfig.baseUrl}${ApiConfig.cancelBooking}/$bookingId'});
+      if (!SecurityService.validateSSLCertificate('${ApiConfig.baseUrl}${ApiConfig.updateBooking}/$bookingId')) {
+        SecurityService.logSecurityEvent('invalid_ssl_certificate', details: {'url': '${ApiConfig.baseUrl}${ApiConfig.updateBooking}/$bookingId'});
         return {
           'success': false,
           'message': 'Security validation failed',
           'error': 'Invalid SSL certificate',
         };
       }
-      
+
+      final payload = <String, dynamic>{};
+      if (normalizedStatus != null) {
+        payload['status'] = normalizedStatus;
+      }
+      if (normalizedNotes != null) {
+        payload['notes'] = normalizedNotes;
+      }
+
+      if (payload.isEmpty) {
+        return {
+          'success': false,
+          'message': 'No update data provided',
+          'error': 'empty_update_request',
+        };
+      }
+
       final deviceId = await SecurityService.getDeviceId();
       final headers = SecurityService.getSecurityHeaders(accessToken);
       headers['X-Device-ID'] = deviceId;
-      
-      final response = await http.delete(
-        Uri.parse('${ApiConfig.baseUrl}${ApiConfig.cancelBooking}/$bookingId'),
+
+      final response = await http.put(
+        Uri.parse('${ApiConfig.baseUrl}${ApiConfig.updateBooking}/$bookingId'),
         headers: headers,
+        body: jsonEncode(payload),
       );
 
       if (response.statusCode == 200) {
@@ -3005,13 +3736,13 @@ class ApiService {
         return {
           'success': true,
           'data': data['data'],
-          'message': data['message'],
+          'message': data['message'] ?? 'Booking updated successfully',
         };
       } else {
         final errorData = jsonDecode(response.body);
         return {
           'success': false,
-          'message': errorData['message'] ?? 'Failed to cancel booking',
+          'message': errorData['message'] ?? 'Failed to update booking',
           'error': errorData['error'],
         };
       }
@@ -3022,6 +3753,18 @@ class ApiService {
         'error': e.toString(),
       };
     }
+  }
+
+  // Cancel Booking (User)
+  static Future<Map<String, dynamic>> cancelBooking(
+    String bookingId,
+    String accessToken,
+  ) {
+    return updateBooking(
+      bookingId,
+      UpdateBookingRequest(status: 'cancelled'),
+      accessToken,
+    );
   }
 
   // ===== BRANCH USER ENDPOINTS =====
@@ -3442,8 +4185,8 @@ class ApiService {
       }
       
       // Validate SSL certificate
-      if (!SecurityService.validateSSLCertificate('${ApiConfig.baseUrl}/api/branches/$branchId/upload-image')) {
-        SecurityService.logSecurityEvent('invalid_ssl_certificate', details: {'url': '${ApiConfig.baseUrl}/api/branches/$branchId/upload-image'});
+      if (!SecurityService.validateSSLCertificate('${ApiConfig.baseUrl}/api/branches/$branchId/upload-images')) {
+        SecurityService.logSecurityEvent('invalid_ssl_certificate', details: {'url': '${ApiConfig.baseUrl}/api/branches/$branchId/upload-images'});
         return {
           'success': false,
           'message': 'Security validation failed',
@@ -3481,11 +4224,13 @@ class ApiService {
       final deviceId = await SecurityService.getDeviceId();
       final headers = SecurityService.getSecurityHeaders(accessToken);
       headers['X-Device-ID'] = deviceId;
+      // Remove Content-Type header to let multipart/form-data be set automatically
+      headers.remove('Content-Type');
       
       // Create multipart request
       final request = http.MultipartRequest(
         'POST',
-        Uri.parse('${ApiConfig.baseUrl}/api/branches/$branchId/upload-image'),
+        Uri.parse('${ApiConfig.baseUrl}/api/branches/$branchId/upload-images'),
       );
       
       // Add headers
@@ -3660,6 +4405,15 @@ class ApiService {
     String classId,
     String accessToken,
   ) async {
+    // Support single file for backward compatibility
+    return uploadStandaloneClassImages([imageFile], classId, accessToken);
+  }
+
+  static Future<Map<String, dynamic>> uploadStandaloneClassImages(
+    List<File> imageFiles,
+    String classId,
+    String accessToken,
+  ) async {
     try {
       // Validate input
       if (!SecurityService.validateInput(classId) || !SecurityService.validateInput(accessToken)) {
@@ -3668,6 +4422,14 @@ class ApiService {
           'success': false,
           'message': 'Invalid input data',
           'error': 'Input validation failed',
+        };
+      }
+
+      if (imageFiles.isEmpty) {
+        return {
+          'success': false,
+          'message': 'No images provided',
+          'error': 'At least one image is required',
         };
       }
 
@@ -3681,10 +4443,30 @@ class ApiService {
         };
       }
 
-      print('=== Upload Standalone Class Image Debug ===');
+      // Validate image files
+      for (final file in imageFiles) {
+        if (!await file.exists()) {
+          return {
+            'success': false,
+            'message': 'One or more image files not found',
+            'error': 'File does not exist',
+          };
+        }
+        
+        // Validate file size (max 5MB per image)
+        final fileSize = await file.length();
+        if (fileSize > 5 * 1024 * 1024) {
+          return {
+            'success': false,
+            'message': 'Image file too large. Maximum size is 5MB per image.',
+            'error': 'File size exceeds limit',
+          };
+        }
+      }
+
+      print('=== Upload Standalone Class Images Debug ===');
       print('Class ID: $classId');
-      print('Image file: ${imageFile.path}');
-      print('File size: ${await imageFile.length()} bytes');
+      print('Number of images: ${imageFiles.length}');
 
       final deviceId = await SecurityService.getDeviceId();
       final headers = SecurityService.getSecurityHeaders(accessToken);
@@ -3701,13 +4483,15 @@ class ApiService {
       // Add headers
       request.headers.addAll(headers);
 
-      // Add image file
-      final multipartFile = await http.MultipartFile.fromPath(
-        'image',
-        imageFile.path,
-        filename: 'class_image_${DateTime.now().millisecondsSinceEpoch}.jpg',
-      );
-      request.files.add(multipartFile);
+      // Add image files (using "images" field to match backend HandleMultipleImageUpload)
+      for (final file in imageFiles) {
+        final multipartFile = await http.MultipartFile.fromPath(
+          'images',
+          file.path,
+          filename: 'class_image_${DateTime.now().millisecondsSinceEpoch}_${imageFiles.indexOf(file)}.jpg',
+        );
+        request.files.add(multipartFile);
+      }
 
       print('=== Sending Request ===');
       print('URL: ${request.url}');
@@ -3727,18 +4511,18 @@ class ApiService {
         return {
           'success': true,
           'data': data['data'],
-          'message': data['message'] ?? 'Image uploaded successfully',
+          'message': data['message'] ?? 'Images uploaded successfully',
         };
       } else {
         final errorData = jsonDecode(response.body);
         return {
           'success': false,
-          'message': errorData['message'] ?? 'Failed to upload class image',
+          'message': errorData['message'] ?? 'Failed to upload class images',
           'error': errorData['error'],
         };
       }
     } catch (e) {
-      print('Exception in uploadStandaloneClassImage: $e');
+      print('Exception in uploadStandaloneClassImages: $e');
       return {
         'success': false,
         'message': 'Network error: $e',

@@ -38,7 +38,7 @@ class _BranchResetPasswordPageState extends State<BranchResetPasswordPage> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
+            colors: [Colors.white, Colors.white70],
           ),
         ),
         child: Container(
@@ -72,7 +72,7 @@ class _BranchResetPasswordPageState extends State<BranchResetPasswordPage> {
                             gradient: const LinearGradient(
                               begin: Alignment.topCenter,
                               end: Alignment.bottomCenter,
-                              colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
+                              colors: [Colors.white, Colors.white70],
                             ),
                             shape: BoxShape.circle,
                           ),
@@ -118,7 +118,7 @@ class _BranchResetPasswordPageState extends State<BranchResetPasswordPage> {
                       decoration: BoxDecoration(
                         border: Border(
                           bottom: BorderSide(
-                            color: const Color(0xFFF8BB0C),
+                            color: Colors.white,
                             width: 2,
                           ),
                         ),
@@ -130,7 +130,7 @@ class _BranchResetPasswordPageState extends State<BranchResetPasswordPage> {
                               gradient: const LinearGradient(
                                 begin: Alignment.topCenter,
                                 end: Alignment.bottomCenter,
-                                colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
+                                colors: [Colors.white, Colors.white70],
                               ),
                               borderRadius: BorderRadius.circular(12),
                             ),
@@ -167,7 +167,7 @@ class _BranchResetPasswordPageState extends State<BranchResetPasswordPage> {
                       decoration: BoxDecoration(
                         border: Border(
                           bottom: BorderSide(
-                            color: const Color(0xFFF8BB0C),
+                            color: Colors.white,
                             width: 2,
                           ),
                         ),
@@ -179,7 +179,7 @@ class _BranchResetPasswordPageState extends State<BranchResetPasswordPage> {
                               gradient: const LinearGradient(
                                 begin: Alignment.topCenter,
                                 end: Alignment.bottomCenter,
-                                colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
+                                colors: [Colors.white, Colors.white70],
                               ),
                               borderRadius: BorderRadius.circular(12),
                             ),
@@ -225,7 +225,7 @@ class _BranchResetPasswordPageState extends State<BranchResetPasswordPage> {
                       decoration: BoxDecoration(
                         border: Border(
                           bottom: BorderSide(
-                            color: const Color(0xFFF8BB0C),
+                            color: Colors.white,
                             width: 2,
                           ),
                         ),
@@ -237,7 +237,7 @@ class _BranchResetPasswordPageState extends State<BranchResetPasswordPage> {
                               gradient: const LinearGradient(
                                 begin: Alignment.topCenter,
                                 end: Alignment.bottomCenter,
-                                colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
+                                colors: [Colors.white, Colors.white70],
                               ),
                               borderRadius: BorderRadius.circular(12),
                             ),
@@ -294,7 +294,7 @@ class _BranchResetPasswordPageState extends State<BranchResetPasswordPage> {
                                   gradient: const LinearGradient(
                                     begin: Alignment.topCenter,
                                     end: Alignment.bottomCenter,
-                                    colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
+                                    colors: [Colors.white, Colors.white70],
                                   ),
                                   borderRadius: BorderRadius.circular(20),
                                 ),
@@ -312,7 +312,7 @@ class _BranchResetPasswordPageState extends State<BranchResetPasswordPage> {
                                   gradient: const LinearGradient(
                                     begin: Alignment.topCenter,
                                     end: Alignment.bottomCenter,
-                                    colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
+                                    colors: [Colors.white, Colors.white70],
                                   ),
                                   borderRadius: BorderRadius.circular(20),
                                   boxShadow: [
@@ -450,7 +450,7 @@ class _BranchResetPasswordPageState extends State<BranchResetPasswordPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: const Color(0xFFF8BB0C),
+        backgroundColor: Colors.white,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),

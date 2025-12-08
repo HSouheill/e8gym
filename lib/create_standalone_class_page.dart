@@ -105,8 +105,8 @@ class _CreateStandaloneClassPageState extends State<CreateStandaloneClassPage> {
       final isCurrentlySelected = _isDateInWeekdayGroup(date) || _dateOverrides.containsKey(normalizedDate);
       
       if (isCurrentlySelected) {
-        // Remove this single date from the weekday group
-        if (_weekdayDates.containsKey(weekday)) {
+        // Remove this single date from the weekday group if it's in one
+        if (_weekdayDates.containsKey(weekday) && _weekdayDates[weekday]!.contains(normalizedDate)) {
           _weekdayDates[weekday]!.remove(normalizedDate);
           if (_weekdayDates[weekday]!.isEmpty) {
             _weekdayDates.remove(weekday);
@@ -117,16 +117,10 @@ class _CreateStandaloneClassPageState extends State<CreateStandaloneClassPage> {
         // Remove override if exists
         _dateOverrides.remove(normalizedDate);
       } else {
-        // Initialize weekday group if it doesn't exist
-        if (!_weekdayDates.containsKey(weekday)) {
-          _weekdayDates[weekday] = {};
-          _weekdayTimeSlots[weekday] = [
-            {'start': _defaultStartTime, 'end': _defaultEndTime}
-          ];
-        }
-        
-        // Add only this specific date to the weekday group
-        _weekdayDates[weekday]!.add(normalizedDate);
+        // Create a date override for just this single date (not a weekday group)
+        _dateOverrides[normalizedDate] = [
+          {'start': _defaultStartTime, 'end': _defaultEndTime}
+        ];
       }
       _generateSchedulesFromSelectedDates();
     });
@@ -200,16 +194,30 @@ class _CreateStandaloneClassPageState extends State<CreateStandaloneClassPage> {
           'end': _defaultEndTime
         });
       } else {
-        // Create override for this specific date
+        // Check if date is in a weekday group
         final weekday = date.weekday;
-        final weekdaySlots = _weekdayTimeSlots[weekday] ?? [
-          {'start': _defaultStartTime, 'end': _defaultEndTime}
-        ];
-        _dateOverrides[normalizedDate] = [
-          for (final slot in weekdaySlots)
-            {'start': (slot['start'] as TimeOfDay), 'end': (slot['end'] as TimeOfDay)},
-          {'start': _defaultStartTime, 'end': _defaultEndTime}
-        ];
+        if (_weekdayDates.containsKey(weekday) && _weekdayDates[weekday]!.contains(normalizedDate)) {
+          // Add time slot to weekday group (applies to all dates in that weekday group)
+          if (!_weekdayTimeSlots.containsKey(weekday)) {
+            _weekdayTimeSlots[weekday] = [
+              {'start': _defaultStartTime, 'end': _defaultEndTime}
+            ];
+          }
+          _weekdayTimeSlots[weekday]!.add({
+            'start': _defaultStartTime,
+            'end': _defaultEndTime
+          });
+        } else {
+          // Create override for this specific date (not in any weekday group)
+          final weekdaySlots = _weekdayTimeSlots[weekday] ?? [
+            {'start': _defaultStartTime, 'end': _defaultEndTime}
+          ];
+          _dateOverrides[normalizedDate] = [
+            for (final slot in weekdaySlots)
+              {'start': (slot['start'] as TimeOfDay), 'end': (slot['end'] as TimeOfDay)},
+            {'start': _defaultStartTime, 'end': _defaultEndTime}
+          ];
+        }
       }
       _generateSchedulesFromSelectedDates();
     });
@@ -399,7 +407,7 @@ class _CreateStandaloneClassPageState extends State<CreateStandaloneClassPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: const Color(0xFFF8BB0C),
+        backgroundColor: Colors.white,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),
@@ -416,7 +424,7 @@ class _CreateStandaloneClassPageState extends State<CreateStandaloneClassPage> {
     if (_weekdayDates.isEmpty && _dateOverrides.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please select at least one date for the class schedule'),
+          content: const Text('Please select at least one date for the class schedule', style: TextStyle(color: Colors.black)),
           backgroundColor: Colors.red,
           behavior: SnackBarBehavior.floating,
         ),
@@ -429,7 +437,7 @@ class _CreateStandaloneClassPageState extends State<CreateStandaloneClassPage> {
       if (entry.value.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('${_getWeekdayName(entry.key)} must have at least one time slot'),
+            content: Text('${_getWeekdayName(entry.key)} must have at least one time slot', style: const TextStyle(color: Colors.black)),
             backgroundColor: Colors.red,
             behavior: SnackBarBehavior.floating,
           ),
@@ -443,7 +451,7 @@ class _CreateStandaloneClassPageState extends State<CreateStandaloneClassPage> {
       if (entry.value.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Date ${_formatDateWithDay(entry.key)} must have at least one time slot'),
+            content: Text('Date ${_formatDateWithDay(entry.key)} must have at least one time slot', style: const TextStyle(color: Colors.black)),
             backgroundColor: Colors.red,
             behavior: SnackBarBehavior.floating,
           ),
@@ -464,7 +472,7 @@ class _CreateStandaloneClassPageState extends State<CreateStandaloneClassPage> {
       if (scheduleDate.isBefore(todayDate)) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Schedule ${i + 1}: Class date cannot be in the past'),
+            content: Text('Schedule ${i + 1}: Class date cannot be in the past', style: const TextStyle(color: Colors.black)),
             backgroundColor: Colors.red,
             behavior: SnackBarBehavior.floating,
           ),
@@ -476,7 +484,7 @@ class _CreateStandaloneClassPageState extends State<CreateStandaloneClassPage> {
       if (schedule.endTime.isBefore(schedule.startTime) || schedule.endTime.isAtSameMomentAs(schedule.startTime)) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Schedule ${i + 1}: End time must be after start time'),
+            content: Text('Schedule ${i + 1}: End time must be after start time', style: const TextStyle(color: Colors.black)),
             backgroundColor: Colors.red,
             behavior: SnackBarBehavior.floating,
           ),
@@ -491,7 +499,7 @@ class _CreateStandaloneClassPageState extends State<CreateStandaloneClassPage> {
       if (!startDate.isAtSameMomentAs(scheduleDate) || !endDate.isAtSameMomentAs(scheduleDate)) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Schedule ${i + 1}: Start and end times must be on the same date as the schedule date'),
+            content: Text('Schedule ${i + 1}: Start and end times must be on the same date as the schedule date', style: const TextStyle(color: Colors.black)),
             backgroundColor: Colors.red,
             behavior: SnackBarBehavior.floating,
           ),
@@ -506,7 +514,7 @@ class _CreateStandaloneClassPageState extends State<CreateStandaloneClassPage> {
       if (expectedDayOfWeek != schedule.dayOfWeek) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Schedule ${i + 1}: Date does not match selected day of week'),
+            content: Text('Schedule ${i + 1}: Date does not match selected day of week', style: const TextStyle(color: Colors.black)),
             backgroundColor: Colors.red,
             behavior: SnackBarBehavior.floating,
           ),
@@ -533,18 +541,6 @@ class _CreateStandaloneClassPageState extends State<CreateStandaloneClassPage> {
         duration = totalDuration ~/ _schedules.length;
       }
 
-      // Upload images first if any are selected
-      List<String> imageUrls = [];
-      if (_selectedImages.isNotEmpty) {
-        setState(() {
-          _isUploadingImages = true;
-        });
-
-        // For now, we'll create the class first and then upload images
-        // In a real implementation, you might want to upload images first
-        // and get URLs before creating the class
-      }
-
       final request = CreateStandaloneClassRequest(
         name: _nameController.text.trim(),
         description: _descriptionController.text.trim(),
@@ -552,7 +548,7 @@ class _CreateStandaloneClassPageState extends State<CreateStandaloneClassPage> {
         capacity: int.parse(_capacityController.text),
         schedule: _schedules,
         duration: duration,
-        images: imageUrls.isNotEmpty ? imageUrls : null,
+        images: null, // Images will be uploaded as files, not URLs
         isVisible: true,
       );
 
@@ -563,32 +559,22 @@ class _CreateStandaloneClassPageState extends State<CreateStandaloneClassPage> {
         print('Schedule $i: Day ${schedule.dayOfWeek}, Start: ${schedule.startTime}, End: ${schedule.endTime}');
       }
       print('Duration: $duration minutes');
+      print('Selected images: ${_selectedImages.length}');
+
+      // Set uploading state if images are selected
+      if (_selectedImages.isNotEmpty) {
+        setState(() {
+          _isUploadingImages = true;
+        });
+      }
 
       final result = await ApiService.createStandaloneClass(
         request,
         widget.accessToken,
+        imageFiles: _selectedImages.isNotEmpty ? _selectedImages : null,
       );
 
       if (result['success']) {
-        // Upload images if any are selected
-        if (_selectedImages.isNotEmpty) {
-          final classId = result['data']['id'];
-          for (final imageFile in _selectedImages) {
-            try {
-              final uploadResult = await ApiService.uploadStandaloneClassImage(
-                imageFile,
-                classId,
-                widget.accessToken,
-              );
-              if (!uploadResult['success']) {
-                print('Failed to upload image: ${uploadResult['message']}');
-              }
-            } catch (e) {
-              print('Error uploading image: $e');
-            }
-          }
-        }
-
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -603,7 +589,7 @@ class _CreateStandaloneClassPageState extends State<CreateStandaloneClassPage> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(result['message'] ?? 'Failed to create class'),
+              content: Text(result['message'] ?? 'Failed to create class', style: const TextStyle(color: Colors.black)),
               backgroundColor: Colors.red,
               behavior: SnackBarBehavior.floating,
             ),
@@ -614,7 +600,7 @@ class _CreateStandaloneClassPageState extends State<CreateStandaloneClassPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('An error occurred: $e'),
+            content: Text('An error occurred: $e', style: const TextStyle(color: Colors.black)),
             backgroundColor: Colors.red,
             behavior: SnackBarBehavior.floating,
           ),
@@ -638,7 +624,7 @@ class _CreateStandaloneClassPageState extends State<CreateStandaloneClassPage> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
+            colors: [Colors.white, Colors.white70],
           ),
         ),
         child: Container(
@@ -669,7 +655,7 @@ class _CreateStandaloneClassPageState extends State<CreateStandaloneClassPage> {
                             gradient: const LinearGradient(
                               begin: Alignment.topCenter,
                               end: Alignment.bottomCenter,
-                              colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
+                              colors: [Colors.white, Colors.white70],
                             ),
                             shape: BoxShape.circle,
                           ),
@@ -840,7 +826,7 @@ class _CreateStandaloneClassPageState extends State<CreateStandaloneClassPage> {
                                     icon: const Icon(Icons.photo_library, size: 18),
                                     label: const Text('Select Images'),
                                     style: ElevatedButton.styleFrom(
-                                      backgroundColor: const Color(0xFFF8BB0C),
+                                      backgroundColor: Colors.white,
                                       foregroundColor: Colors.black,
                                       padding: const EdgeInsets.symmetric(vertical: 12),
                                       shape: RoundedRectangleBorder(
@@ -1011,16 +997,16 @@ class _CreateStandaloneClassPageState extends State<CreateStandaloneClassPage> {
                                 margin: const EdgeInsets.only(bottom: 16),
                                 padding: const EdgeInsets.all(16),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFFF8BB0C).withOpacity(0.1),
+                                  color: Colors.white.withOpacity(0.1),
                                   borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: const Color(0xFFF8BB0C)),
+                                  border: Border.all(color: Colors.white),
                                 ),
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Row(
                                       children: [
-                                        const Icon(Icons.calendar_today, color: Color(0xFFF8BB0C)),
+                                        const Icon(Icons.calendar_today, color: Colors.white),
                                         const SizedBox(width: 8),
                                         Expanded(
                                           child: Column(
@@ -1031,7 +1017,7 @@ class _CreateStandaloneClassPageState extends State<CreateStandaloneClassPage> {
                                                 style: const TextStyle(
                                                   fontSize: 16,
                                                   fontWeight: FontWeight.w600,
-                                                  color: Color(0xFFF8BB0C),
+                                                  color: Colors.white,
                                                 ),
                                               ),
                                               Text(
@@ -1047,15 +1033,37 @@ class _CreateStandaloneClassPageState extends State<CreateStandaloneClassPage> {
                                         IconButton(
                                           icon: const Icon(Icons.close, color: Colors.red),
                                           onPressed: () {
-                                            // Remove all dates of this weekday
-                                            final firstDate = datesInMonth.first;
-                                            _toggleDateSelection(firstDate);
+                                            // Remove all dates of this weekday by toggling the weekday selection
+                                            _toggleWeekdaySelection(weekday);
                                           },
                                           tooltip: 'Remove all $weekdayName\'s',
                                         ),
                                       ],
                                     ),
                                     const SizedBox(height: 12),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                      margin: const EdgeInsets.only(bottom: 8),
+                                      decoration: BoxDecoration(
+                                        color: Colors.blue[50],
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Icon(Icons.info_outline, size: 14, color: Colors.blue),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            '${timeSlots.length} time slot${timeSlots.length > 1 ? 's' : ''} for all $weekdayName\'s',
+                                            style: const TextStyle(
+                                              fontSize: 11,
+                                              color: Colors.blue,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
                                     ...timeSlots.asMap().entries.map((slotEntry) {
                                       final slotIndex = slotEntry.key;
                                       final slot = slotEntry.value;
@@ -1070,34 +1078,74 @@ class _CreateStandaloneClassPageState extends State<CreateStandaloneClassPage> {
                                           borderRadius: BorderRadius.circular(8),
                                           border: Border.all(color: Colors.grey[300]!),
                                         ),
-                                        child: Row(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
                                           children: [
-                                            Expanded(
-                                              child: _buildSimpleTimePicker(
-                                                time: startTime,
-                                                onTimeChanged: (time) {
-                                                  _updateTimeSlot(datesInMonth.first, slotIndex, time, null);
-                                                },
-                                              ),
+                                            Row(
+                                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                              children: [
+                                                Container(
+                                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.white.withOpacity(0.2),
+                                                    borderRadius: BorderRadius.circular(4),
+                                                  ),
+                                                  child: Text(
+                                                    'Slot ${slotIndex + 1}',
+                                                    style: const TextStyle(
+                                                      fontSize: 11,
+                                                      fontWeight: FontWeight.w600,
+                                                      color: Color(0xFF926E07),
+                                                    ),
+                                                  ),
+                                                ),
+                                                IconButton(
+                                                  icon: const Icon(Icons.delete, color: Colors.red, size: 20),
+                                                  onPressed: timeSlots.length > 1
+                                                      ? () => _removeTimeSlot(datesInMonth.first, slotIndex)
+                                                      : null,
+                                                  tooltip: timeSlots.length > 1
+                                                      ? 'Remove time slot'
+                                                      : 'At least one time slot is required',
+                                                  color: timeSlots.length > 1 ? Colors.red : Colors.grey,
+                                                  padding: EdgeInsets.zero,
+                                                  constraints: const BoxConstraints(),
+                                                ),
+                                              ],
                                             ),
-                                            const SizedBox(width: 8),
-                                            const Text('-', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                                            const SizedBox(width: 8),
-                                            Expanded(
-                                              child: _buildSimpleTimePicker(
-                                                time: endTime,
-                                                onTimeChanged: (time) {
-                                                  _updateTimeSlot(datesInMonth.first, slotIndex, null, time);
-                                                },
-                                              ),
+                                            const SizedBox(height: 8),
+                                            Row(
+                                              children: [
+                                                Expanded(
+                                                  flex: 1,
+                                                  child: _buildSimpleTimePicker(
+                                                    time: startTime,
+                                                    onTimeChanged: (time) {
+                                                      _updateTimeSlot(datesInMonth.first, slotIndex, time, null);
+                                                    },
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 12),
+                                                const Text(
+                                                  '—',
+                                                  style: TextStyle(
+                                                    fontSize: 20,
+                                                    fontWeight: FontWeight.bold,
+                                                    color: Colors.grey,
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 12),
+                                                Expanded(
+                                                  flex: 1,
+                                                  child: _buildSimpleTimePicker(
+                                                    time: endTime,
+                                                    onTimeChanged: (time) {
+                                                      _updateTimeSlot(datesInMonth.first, slotIndex, null, time);
+                                                    },
+                                                  ),
+                                                ),
+                                              ],
                                             ),
-                                            const SizedBox(width: 8),
-                                            if (timeSlots.length > 1)
-                                              IconButton(
-                                                icon: const Icon(Icons.delete, color: Colors.red),
-                                                onPressed: () => _removeTimeSlot(datesInMonth.first, slotIndex),
-                                                tooltip: 'Remove time slot',
-                                              ),
                                           ],
                                         ),
                                       );
@@ -1111,7 +1159,7 @@ class _CreateStandaloneClassPageState extends State<CreateStandaloneClassPage> {
                                             icon: const Icon(Icons.add, size: 18),
                                             label: const Text('Add Time Slot'),
                                             style: ElevatedButton.styleFrom(
-                                              backgroundColor: const Color(0xFFF8BB0C),
+                                              backgroundColor: Colors.white,
                                               foregroundColor: Colors.black,
                                               padding: const EdgeInsets.symmetric(vertical: 8),
                                             ),
@@ -1154,8 +1202,8 @@ class _CreateStandaloneClassPageState extends State<CreateStandaloneClassPage> {
                                           icon: const Icon(Icons.tune, size: 18),
                                           label: const Text('Customize Dates'),
                                           style: OutlinedButton.styleFrom(
-                                            foregroundColor: const Color(0xFFF8BB0C),
-                                            side: const BorderSide(color: Color(0xFFF8BB0C)),
+                                            foregroundColor: Colors.white,
+                                            side: const BorderSide(color: Colors.white),
                                             padding: const EdgeInsets.symmetric(vertical: 8),
                                           ),
                                         ),
@@ -1186,16 +1234,16 @@ class _CreateStandaloneClassPageState extends State<CreateStandaloneClassPage> {
                                   margin: const EdgeInsets.only(bottom: 16),
                                   padding: const EdgeInsets.all(16),
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFFF8BB0C).withOpacity(0.1),
+                                    color: Colors.white.withOpacity(0.1),
                                     borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(color: const Color(0xFFF8BB0C)),
+                                    border: Border.all(color: Colors.white),
                                   ),
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
                                       Row(
                                         children: [
-                                          const Icon(Icons.calendar_today, color: Color(0xFFF8BB0C)),
+                                          const Icon(Icons.calendar_today, color: Colors.white),
                                           const SizedBox(width: 8),
                                           Expanded(
                                             child: Text(
@@ -1203,7 +1251,7 @@ class _CreateStandaloneClassPageState extends State<CreateStandaloneClassPage> {
                                               style: const TextStyle(
                                                 fontSize: 16,
                                                 fontWeight: FontWeight.w600,
-                                                color: Color(0xFFF8BB0C),
+                                                color: Colors.white,
                                               ),
                                             ),
                                           ),
@@ -1237,6 +1285,29 @@ class _CreateStandaloneClassPageState extends State<CreateStandaloneClassPage> {
                                           ],
                                         ),
                                       ),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                        margin: const EdgeInsets.only(bottom: 8),
+                                        decoration: BoxDecoration(
+                                          color: Colors.orange[50],
+                                          borderRadius: BorderRadius.circular(4),
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            const Icon(Icons.info_outline, size: 14, color: Colors.orange),
+                                            const SizedBox(width: 4),
+                                            Text(
+                                              '${timeSlots.length} time slot${timeSlots.length > 1 ? 's' : ''} for this date',
+                                              style: const TextStyle(
+                                                fontSize: 11,
+                                                color: Colors.orange,
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
                                       ...timeSlots.asMap().entries.map((slotEntry) {
                                         final slotIndex = slotEntry.key;
                                         final slot = slotEntry.value;
@@ -1251,34 +1322,74 @@ class _CreateStandaloneClassPageState extends State<CreateStandaloneClassPage> {
                                             borderRadius: BorderRadius.circular(8),
                                             border: Border.all(color: Colors.grey[300]!),
                                           ),
-                                          child: Row(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
                                             children: [
-                                              Expanded(
-                                                child: _buildSimpleTimePicker(
-                                                  time: startTime,
-                                                  onTimeChanged: (time) {
-                                                    _updateTimeSlot(date, slotIndex, time, null);
-                                                  },
-                                                ),
+                                              Row(
+                                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                                children: [
+                                                  Container(
+                                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                                    decoration: BoxDecoration(
+                                                      color: Colors.orange.withOpacity(0.2),
+                                                      borderRadius: BorderRadius.circular(4),
+                                                    ),
+                                                    child: Text(
+                                                      'Slot ${slotIndex + 1}',
+                                                      style: const TextStyle(
+                                                        fontSize: 11,
+                                                        fontWeight: FontWeight.w600,
+                                                        color: Colors.orange,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  IconButton(
+                                                    icon: const Icon(Icons.delete, color: Colors.red, size: 20),
+                                                    onPressed: timeSlots.length > 1
+                                                        ? () => _removeTimeSlot(date, slotIndex)
+                                                        : null,
+                                                    tooltip: timeSlots.length > 1
+                                                        ? 'Remove time slot'
+                                                        : 'At least one time slot is required',
+                                                    color: timeSlots.length > 1 ? Colors.red : Colors.grey,
+                                                    padding: EdgeInsets.zero,
+                                                    constraints: const BoxConstraints(),
+                                                  ),
+                                                ],
                                               ),
-                                              const SizedBox(width: 8),
-                                              const Text('-', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                                              const SizedBox(width: 8),
-                                              Expanded(
-                                                child: _buildSimpleTimePicker(
-                                                  time: endTime,
-                                                  onTimeChanged: (time) {
-                                                    _updateTimeSlot(date, slotIndex, null, time);
-                                                  },
-                                                ),
+                                              const SizedBox(height: 8),
+                                              Row(
+                                                children: [
+                                                  Expanded(
+                                                    flex: 1,
+                                                    child: _buildSimpleTimePicker(
+                                                      time: startTime,
+                                                      onTimeChanged: (time) {
+                                                        _updateTimeSlot(date, slotIndex, time, null);
+                                                      },
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 12),
+                                                  const Text(
+                                                    '—',
+                                                    style: TextStyle(
+                                                      fontSize: 20,
+                                                      fontWeight: FontWeight.bold,
+                                                      color: Colors.grey,
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 12),
+                                                  Expanded(
+                                                    flex: 1,
+                                                    child: _buildSimpleTimePicker(
+                                                      time: endTime,
+                                                      onTimeChanged: (time) {
+                                                        _updateTimeSlot(date, slotIndex, null, time);
+                                                      },
+                                                    ),
+                                                  ),
+                                                ],
                                               ),
-                                              const SizedBox(width: 8),
-                                              if (timeSlots.length > 1)
-                                                IconButton(
-                                                  icon: const Icon(Icons.delete, color: Colors.red),
-                                                  onPressed: () => _removeTimeSlot(date, slotIndex),
-                                                  tooltip: 'Remove time slot',
-                                                ),
                                             ],
                                           ),
                                         );
@@ -1289,7 +1400,7 @@ class _CreateStandaloneClassPageState extends State<CreateStandaloneClassPage> {
                                         icon: const Icon(Icons.add, size: 18),
                                         label: const Text('Add Time Slot'),
                                         style: ElevatedButton.styleFrom(
-                                          backgroundColor: const Color(0xFFF8BB0C),
+                                          backgroundColor: Colors.white,
                                           foregroundColor: Colors.black,
                                           padding: const EdgeInsets.symmetric(vertical: 8),
                                         ),
@@ -1309,7 +1420,7 @@ class _CreateStandaloneClassPageState extends State<CreateStandaloneClassPage> {
                               child: ElevatedButton(
                                 onPressed: _isLoading ? null : _submitForm,
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFFF8BB0C),
+                                  backgroundColor: Colors.white,
                                   foregroundColor: Colors.black,
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(12),
@@ -1446,7 +1557,7 @@ class _CreateStandaloneClassPageState extends State<CreateStandaloneClassPage> {
                   padding: const EdgeInsets.symmetric(vertical: 8),
                   decoration: BoxDecoration(
                     color: allSelected 
-                        ? const Color(0xFFF8BB0C).withOpacity(0.3)
+                        ? Colors.white.withOpacity(0.3)
                         : Colors.transparent,
                     borderRadius: BorderRadius.circular(4),
                   ),
@@ -1501,7 +1612,7 @@ class _CreateStandaloneClassPageState extends State<CreateStandaloneClassPage> {
                   margin: const EdgeInsets.all(2),
                   decoration: BoxDecoration(
                     color: isSelected 
-                        ? const Color(0xFFF8BB0C) 
+                        ? Colors.white 
                         : isToday 
                             ? Colors.blue[50] 
                             : Colors.transparent,
@@ -1565,18 +1676,24 @@ class _CreateStandaloneClassPageState extends State<CreateStandaloneClassPage> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
         decoration: BoxDecoration(
-          border: Border.all(color: Colors.grey[400]!),
-          borderRadius: BorderRadius.circular(4),
+          border: Border.all(color: Colors.grey[400]!, width: 1.5),
+          borderRadius: BorderRadius.circular(8),
+          color: Colors.white,
         ),
         child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Expanded(
-              child: Text(
-                timeString,
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+            const Icon(Icons.access_time, color: Colors.white, size: 18),
+            const SizedBox(width: 8),
+            Text(
+              timeString,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: Colors.black87,
+                letterSpacing: 0.5,
               ),
             ),
-            const Icon(Icons.access_time, color: Colors.grey, size: 20),
           ],
         ),
       ),

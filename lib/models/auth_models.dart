@@ -342,16 +342,22 @@ class BranchResponse {
     print('Image is empty: ${json['image']?.toString().isEmpty ?? true}');
     print('====================================');
     
-    // Construct full image URL
+    // Construct full image URL from image_url field (API response field)
     String? imageUrl;
-    if (json['image_url'] != null && json['image_url'].toString().isNotEmpty) {
-      final imagePath = json['image_url'].toString();
-      imageUrl = 'https://e8gym.online/uploads/$imagePath';
-      print('Constructed image URL: $imageUrl');
-    } else if (json['image'] != null && json['image'].toString().isNotEmpty) {
-      final imagePath = json['image'].toString();
-      imageUrl = 'https://e8gym.online/uploads/$imagePath';
-      print('Constructed image URL from image field: $imageUrl');
+    final imageUrlValue = json['image_url'];
+    
+    // Check if image_url exists and is not empty
+    if (imageUrlValue != null && imageUrlValue.toString().trim().isNotEmpty) {
+      final imagePath = imageUrlValue.toString().trim();
+      imageUrl = _normalizeImageUrl(imagePath);
+      print('=== BranchResponse Image URL ===');
+      print('API image_url field: $imagePath');
+      print('Normalized URL: $imageUrl');
+      print('================================');
+    } else {
+      print('=== BranchResponse Image URL ===');
+      print('No image_url found or empty');
+      print('================================');
     }
     
     // Safely parse classes list
@@ -395,6 +401,48 @@ class BranchResponse {
       updatedAt: DateTime.parse(json['updated_at']),
       createdBy: json['created_by'] ?? '',
     );
+  }
+  
+  // Helper function to normalize image URLs
+  static String _normalizeImageUrl(String url) {
+    // If already a full URL, check if it incorrectly contains /uploads/branch/
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      // Remove /uploads/ from branch paths if present
+      if (url.contains('/uploads/branch/')) {
+        return url.replaceAll('/uploads/branch/', '/branch/');
+      }
+      return url;
+    }
+    
+    // Remove /uploads/ prefix if present for branch paths
+    String cleanUrl = url;
+    if (cleanUrl.contains('/uploads/branch/')) {
+      cleanUrl = cleanUrl.replaceAll('/uploads/branch/', 'branch/');
+    } else if (cleanUrl.contains('uploads/branch/')) {
+      cleanUrl = cleanUrl.replaceAll('uploads/branch/', 'branch/');
+    }
+    
+    // Handle branch/ paths from API image_url field
+    // The API returns "branch/1765219735.jpg" which should be accessed from uploads/
+    if (cleanUrl.startsWith('branch/') || cleanUrl.startsWith('/branch/')) {
+      final path = cleanUrl.startsWith('/') ? cleanUrl.substring(1) : cleanUrl;
+      // Access from uploads directory: uploads/branch/1765219735.jpg
+      return 'https://e8gym.online/uploads/$path';
+    }
+    
+    // Handle relative paths
+    if (cleanUrl.startsWith('/app/')) {
+      return 'https://e8gym.online/uploads${cleanUrl.substring(1)}';
+    } else if (cleanUrl.startsWith('app/')) {
+      return 'https://e8gym.online/uploads/$cleanUrl';
+    } else if (cleanUrl.startsWith('/uploads/')) {
+      return 'https://e8gym.online$cleanUrl';
+    } else if (cleanUrl.startsWith('uploads/')) {
+      return 'https://e8gym.online/$cleanUrl';
+    }
+    
+    // Default: prepend uploads/ if not already present
+    return 'https://e8gym.online/uploads/$cleanUrl';
   }
 }
 
@@ -550,6 +598,7 @@ class ClassModel {
 
 /// Team Member Model for Branch Creation
 class TeamMemberModel {
+  final String? id; // ID from backend (null for new members)
   final String fullName;
   final String email;
   final String phoneNumber;
@@ -558,6 +607,7 @@ class TeamMemberModel {
   final String password; // Required for team member creation
 
   TeamMemberModel({
+    this.id,
     required this.fullName,
     required this.email,
     required this.phoneNumber,
@@ -587,6 +637,7 @@ class TeamMemberModel {
 
   factory TeamMemberModel.fromJson(Map<String, dynamic> json) {
     return TeamMemberModel(
+      id: json['id']?.toString() ?? json['_id']?.toString(),
       fullName: json['full_name'] ?? '',
       email: json['email'] ?? '',
       phoneNumber: json['phone_number'] ?? '',
@@ -594,6 +645,69 @@ class TeamMemberModel {
       role: json['role'] ?? '',
       password: json['password'] ?? '', // Note: password is not returned in responses for security
     );
+  }
+}
+
+/// Team Member Request Model (for adding new team member)
+class TeamMemberRequest {
+  final String fullName;
+  final String email;
+  final String phoneNumber;
+  final String countryCode;
+  final String role;
+  final String password;
+
+  TeamMemberRequest({
+    required this.fullName,
+    required this.email,
+    required this.phoneNumber,
+    required this.countryCode,
+    required this.role,
+    required this.password,
+  });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'full_name': fullName,
+      'email': email,
+      'phone_number': phoneNumber,
+      'country_code': countryCode,
+      'role': role,
+      'password': password,
+    };
+  }
+}
+
+/// Team Member Update Request Model (for updating existing team member)
+class TeamMemberUpdateRequest {
+  final String? fullName;
+  final String? email;
+  final String? phoneNumber;
+  final String? countryCode;
+  final String? role;
+  final String? password;
+  final bool? isActive;
+
+  TeamMemberUpdateRequest({
+    this.fullName,
+    this.email,
+    this.phoneNumber,
+    this.countryCode,
+    this.role,
+    this.password,
+    this.isActive,
+  });
+
+  Map<String, dynamic> toJson() {
+    final Map<String, dynamic> data = {};
+    if (fullName != null) data['full_name'] = fullName;
+    if (email != null) data['email'] = email;
+    if (phoneNumber != null) data['phone_number'] = phoneNumber;
+    if (countryCode != null) data['country_code'] = countryCode;
+    if (role != null) data['role'] = role;
+    if (password != null) data['password'] = password;
+    if (isActive != null) data['is_active'] = isActive;
+    return data;
   }
 }
 

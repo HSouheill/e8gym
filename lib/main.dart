@@ -45,7 +45,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Endurance Eight',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFFF8BB0C)),
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.white),
         useMaterial3: true,
       ),
       initialRoute: '/',
@@ -174,7 +174,7 @@ class _LoginPageState extends State<LoginPage> {
     if (_emailController.text.trim().isEmpty || _passwordController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please enter both email and password'),
+          content: const Text('Please enter both email and password', style: TextStyle(color: Colors.black)),
           backgroundColor: Colors.red,
         ),
       );
@@ -222,7 +222,7 @@ class _LoginPageState extends State<LoginPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(errorMessage),
+            content: Text(errorMessage, style: const TextStyle(color: Colors.black)),
             backgroundColor: Colors.red,
           ),
         );
@@ -238,7 +238,6 @@ class _LoginPageState extends State<LoginPage> {
     
     // Responsive sizing calculations
     final horizontalPadding = screenWidth * 0.05; // 5% of screen width
-    final topPadding = screenHeight * 0.02; // 2% of screen height (reduced)
     final spacingSmall = screenHeight * 0.01; // 1% of screen height (reduced)
     final spacingMedium = screenHeight * 0.015; // 1.5% of screen height (reduced)
     final spacingLarge = screenHeight * 0.02; // 2% of screen height (reduced)
@@ -265,7 +264,7 @@ class _LoginPageState extends State<LoginPage> {
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
+                colors: [Colors.white, Colors.white70],
               ),
             ),
           ),
@@ -281,7 +280,7 @@ class _LoginPageState extends State<LoginPage> {
                     gradient: LinearGradient(
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
-                      colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
+                      colors: [Colors.white, Colors.white70],
                     ),
                   ),
                 );
@@ -322,14 +321,14 @@ class _LoginPageState extends State<LoginPage> {
                         );
                       },
                       child: Container(
-                        margin: EdgeInsets.only(top: topPadding),
+                        // margin: EdgeInsets.only(top: topPadding),
                         width: profileIconSize,
                         height: profileIconSize,
                         decoration: BoxDecoration(
                           gradient: const LinearGradient(
                             begin: Alignment.topCenter,
                             end: Alignment.bottomCenter,
-                            colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
+                            colors: [Colors.white, Colors.white70],
                           ),
                           shape: BoxShape.circle,
                         ),
@@ -342,7 +341,33 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                   ),
                   
-                  SizedBox(height: spacingMedium),
+                  // E8 Logo - positioned directly below profile icon with no spacing
+                  SizedBox(height: 0),
+                  Center(
+                    child: Image.asset(
+                      'assets/E8Logos/E8_Short_Logo.png',
+                      width: screenWidth * 0.3,
+                      // height: screenWidth * 0.3,
+                      fit: BoxFit.contain,
+                      errorBuilder: (context, error, stackTrace) {
+                        // Show a placeholder if image fails to load
+                        return Container(
+                          width: screenWidth * 0.3,
+                          height: screenWidth * 0.3,
+                          color: Colors.transparent,
+                          child: Icon(
+                            Icons.image_not_supported,
+                            color: Colors.white70,
+                            size: screenWidth * 0.1,
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  
+                  // SizedBox(height: spacingMedium),
+                  
+                  // SizedBox(height: spacingMedium),
                   
                   // Welcome text
                   Text(
@@ -403,7 +428,7 @@ class _LoginPageState extends State<LoginPage> {
                           gradient: const LinearGradient(
                             begin: Alignment.topCenter,
                             end: Alignment.bottomCenter,
-                            colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
+                            colors: [Colors.white, Colors.white70],
                           ),
                           borderRadius: BorderRadius.circular(8),
                         ),
@@ -437,7 +462,7 @@ class _LoginPageState extends State<LoginPage> {
                           gradient: const LinearGradient(
                             begin: Alignment.topCenter,
                             end: Alignment.bottomCenter,
-                            colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
+                            colors: [Colors.white, Colors.white70],
                           ),
                           borderRadius: BorderRadius.circular(8),
                         ),
@@ -450,7 +475,7 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                       SizedBox(width: screenWidth * 0.02),
                       Text(
-                        'Products & Services - "Place for Athletes"',
+                        'Products & Services - "Made for Athletes"',
                         style: TextStyle(
                           color: Colors.white,
                           fontSize: fontSizeSmall,
@@ -479,7 +504,7 @@ class _LoginPageState extends State<LoginPage> {
                     decoration: BoxDecoration(
                       border: Border(
                         bottom: BorderSide(
-                          color: const Color(0xFFF8BB0C),
+                          color: Colors.white,
                           width: 2,
                         ),
                       ),
@@ -491,7 +516,7 @@ class _LoginPageState extends State<LoginPage> {
                             gradient: const LinearGradient(
                               begin: Alignment.topCenter,
                               end: Alignment.bottomCenter,
-                              colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
+                              colors: [Colors.white, Colors.white70],
                             ),
                             borderRadius: BorderRadius.circular(8),
                           ),
@@ -525,7 +550,7 @@ class _LoginPageState extends State<LoginPage> {
                     decoration: BoxDecoration(
                       border: Border(
                         bottom: BorderSide(
-                          color: const Color(0xFFF8BB0C),
+                          color: Colors.white,
                           width: 2,
                         ),
                       ),
@@ -537,7 +562,7 @@ class _LoginPageState extends State<LoginPage> {
                             gradient: const LinearGradient(
                               begin: Alignment.topCenter,
                               end: Alignment.bottomCenter,
-                              colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
+                              colors: [Colors.white, Colors.white70],
                             ),
                             borderRadius: BorderRadius.circular(8),
                           ),
@@ -573,7 +598,7 @@ class _LoginPageState extends State<LoginPage> {
                               gradient: const LinearGradient(
                                 begin: Alignment.topCenter,
                                 end: Alignment.bottomCenter,
-                                colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
+                                colors: [Colors.white, Colors.white70],
                               ),
                               borderRadius: BorderRadius.circular(8),
                             ),
@@ -589,7 +614,7 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                   ),
                   
-                  SizedBox(height: 100),
+                  SizedBox(height: 20),
                   
                   // Login button
                   SizedBox(
@@ -600,7 +625,7 @@ class _LoginPageState extends State<LoginPage> {
                       child: _isLoading
                           ? Center(
                               child: CircularProgressIndicator(
-                                valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFF8BB0C)),
+                                valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
                                 strokeWidth: screenWidth * 0.008,
                               ),
                             )
@@ -646,7 +671,7 @@ class _LoginPageState extends State<LoginPage> {
                             decoration: BoxDecoration(
                               border: Border(
                                 bottom: BorderSide(
-                                  color: const Color(0xFFF8BB0C),
+                                  color: Colors.white,
                                   width: 1.5,
                                 ),
                               ),
@@ -654,11 +679,11 @@ class _LoginPageState extends State<LoginPage> {
                             child: Text(
                               'Create new account',
                               style: TextStyle(
-                                color: const Color(0xFFF8BB0C),
+                                color: Colors.white,
                                 fontSize: fontSizeSmall,
                                 fontWeight: FontWeight.w600,
                                 decoration: TextDecoration.underline,
-                                decorationColor: const Color(0xFFF8BB0C),
+                                decorationColor: Colors.white,
                               ),
                             ),
                           ),

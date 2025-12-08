@@ -277,7 +277,7 @@ class _SuperAdminSettingsPageState extends State<SuperAdminSettingsPage> {
           final msg = (resp['message'] ?? 'Upload failed').toString();
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(msg),
+              content: Text(msg, style: const TextStyle(color: Colors.black)),
               backgroundColor: Colors.red,
             ),
           );
@@ -330,7 +330,7 @@ class _SuperAdminSettingsPageState extends State<SuperAdminSettingsPage> {
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(result['message'] ?? 'Failed to change password'),
+              content: Text(result['message'] ?? 'Failed to change password', style: const TextStyle(color: Colors.black)),
               backgroundColor: Colors.red,
             ),
           );
@@ -340,7 +340,7 @@ class _SuperAdminSettingsPageState extends State<SuperAdminSettingsPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error changing password: $e'),
+            content: Text('Error changing password: $e', style: const TextStyle(color: Colors.black)),
             backgroundColor: Colors.red,
           ),
         );
@@ -359,12 +359,28 @@ class _SuperAdminSettingsPageState extends State<SuperAdminSettingsPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('App Settings'),
-        backgroundColor: const Color(0xFFF8BB0C),
+        backgroundColor: Colors.white,
         foregroundColor: Colors.black,
       ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
+      body: Stack(
+        children: [
+          // Background image
+          Container(
+            decoration: const BoxDecoration(
+              image: DecorationImage(
+                image: AssetImage('assets/E8Logos/admin_dashboard_background.jpeg'),
+                fit: BoxFit.cover,
+                colorFilter: ColorFilter.mode(
+                  Color(0x50000000),
+                  BlendMode.darken,
+                ),
+              ),
+            ),
+          ),
+          // Content
+          _loading
+              ? const Center(child: CircularProgressIndicator())
+              : SingleChildScrollView(
               padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -432,7 +448,7 @@ class _SuperAdminSettingsPageState extends State<SuperAdminSettingsPage> {
                         icon: const Icon(Icons.photo_library),
                         label: const Text('Choose Image'),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFF8BB0C),
+                          backgroundColor: Colors.white,
                           foregroundColor: Colors.black,
                         ),
                       ),
@@ -560,7 +576,7 @@ class _SuperAdminSettingsPageState extends State<SuperAdminSettingsPage> {
                         ElevatedButton(
                           onPressed: _changingPassword ? null : _changePassword,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFFF8BB0C),
+                            backgroundColor: Colors.white,
                             foregroundColor: Colors.black,
                             padding: const EdgeInsets.symmetric(vertical: 16),
                           ),
@@ -587,6 +603,8 @@ class _SuperAdminSettingsPageState extends State<SuperAdminSettingsPage> {
                 ],
               ),
             ),
+        ],
+      ),
     );
   }
 }

@@ -198,13 +198,13 @@ class _StandaloneClassesPageState extends State<StandaloneClassesPage> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
+            colors: [Colors.white, Colors.white70],
           ),
         ),
         child: Container(
           decoration: const BoxDecoration(
             image: DecorationImage(
-              image: AssetImage('assets/background/background.png'),
+              image: AssetImage('assets/E8Logos/admin_dashboard_background.jpeg'),
               fit: BoxFit.cover,
               colorFilter: ColorFilter.mode(
                 Color(0x50000000),
@@ -229,7 +229,7 @@ class _StandaloneClassesPageState extends State<StandaloneClassesPage> {
                             gradient: const LinearGradient(
                               begin: Alignment.topCenter,
                               end: Alignment.bottomCenter,
-                              colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
+                              colors: [Colors.white, Colors.white70],
                             ),
                             shape: BoxShape.circle,
                           ),
@@ -263,7 +263,7 @@ class _StandaloneClassesPageState extends State<StandaloneClassesPage> {
                             gradient: const LinearGradient(
                               begin: Alignment.topCenter,
                               end: Alignment.bottomCenter,
-                              colors: [Color(0xFFF8BB0C), Color(0xFF926E07)],
+                              colors: [Colors.white, Colors.white70],
                             ),
                             shape: BoxShape.circle,
                           ),
@@ -510,7 +510,7 @@ class _StandaloneClassesPageState extends State<StandaloneClassesPage> {
                                   icon: const Icon(Icons.add),
                                   label: const Text('Create Class'),
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(0xFFF8BB0C),
+                                    backgroundColor: Colors.white,
                                     foregroundColor: Colors.black,
                                     padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                                   ),
@@ -544,12 +544,12 @@ class _StandaloneClassesPageState extends State<StandaloneClassesPage> {
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
           color: isSelected 
-              ? const Color(0xFFF8BB0C).withOpacity(0.9)
+              ? Colors.white.withOpacity(0.9)
               : Colors.white.withOpacity(0.1),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: isSelected 
-                ? const Color(0xFFF8BB0C)
+                ? Colors.white
                 : Colors.white.withOpacity(0.3),
           ),
         ),
@@ -901,25 +901,16 @@ class _StandaloneClassesPageState extends State<StandaloneClassesPage> {
                 ),
                 if (classData.schedule.isNotEmpty) ...[
                   const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.schedule,
-                        color: Colors.white70,
-                        size: 16,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'Schedule: ${_formatSchedule(classData.schedule)}',
-                          style: const TextStyle(
-                            color: Colors.white70,
-                            fontSize: 14,
-                          ),
-                        ),
-                      ),
-                    ],
+                  const Text(
+                    'Schedule',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
+                  const SizedBox(height: 8),
+                  _buildGroupedSchedule(classData.schedule),
                 ],
                 const SizedBox(height: 8),
                 Text(
@@ -982,30 +973,182 @@ class _StandaloneClassesPageState extends State<StandaloneClassesPage> {
     );
   }
 
-  String _formatSchedule(List<ClassSchedule> schedules) {
-    if (schedules.isEmpty) return 'No schedule';
+  Widget _buildGroupedSchedule(List<ClassSchedule> schedules) {
+    final days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     
-    final daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    // Group schedules by day of week
+    Map<int, List<ClassSchedule>> groupedByDay = {};
+    Map<int, List<ClassSchedule>> specificDatesByDay = {};
     
-    final scheduleStrings = schedules.map((s) {
-      final day = daysOfWeek[s.dayOfWeek];
-      // Format the date in a compact format
-      final scheduleDate = s.date;
-      final now = DateTime.now();
-      final isCurrentYear = scheduleDate.year == now.year;
-      final dateStr = isCurrentYear 
-          ? '${months[scheduleDate.month - 1]} ${scheduleDate.day}'
-          : '${months[scheduleDate.month - 1]} ${scheduleDate.day}, ${scheduleDate.year}';
+    for (final schedule in schedules) {
+      final isRecurring = schedule.date.year >= 2099;
       
-      // Use time directly - times are stored in the correct timezone
-      // Extract hour and minute from the DateTime object
-      final startTime = '${s.startTime.hour.toString().padLeft(2, '0')}:${s.startTime.minute.toString().padLeft(2, '0')}';
-      final endTime = '${s.endTime.hour.toString().padLeft(2, '0')}:${s.endTime.minute.toString().padLeft(2, '0')}';
-      return '$day, $dateStr $startTime-$endTime';
-    }).toList();
+      if (isRecurring) {
+        // Recurring schedule - group by day of week
+        if (!groupedByDay.containsKey(schedule.dayOfWeek)) {
+          groupedByDay[schedule.dayOfWeek] = [];
+        }
+        groupedByDay[schedule.dayOfWeek]!.add(schedule);
+      } else {
+        // Specific date schedule - group by day name
+        if (!specificDatesByDay.containsKey(schedule.dayOfWeek)) {
+          specificDatesByDay[schedule.dayOfWeek] = [];
+        }
+        specificDatesByDay[schedule.dayOfWeek]!.add(schedule);
+      }
+    }
     
-    return scheduleStrings.join(', ');
+    // Sort days
+    final sortedDays = <int>[];
+    for (int i = 0; i < 7; i++) {
+      if (groupedByDay.containsKey(i) || specificDatesByDay.containsKey(i)) {
+        sortedDays.add(i);
+      }
+    }
+    
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: sortedDays.map((dayOfWeek) {
+        final recurringSchedules = groupedByDay[dayOfWeek] ?? [];
+        final specificSchedules = specificDatesByDay[dayOfWeek] ?? [];
+        final allSchedules = [...recurringSchedules, ...specificSchedules];
+        
+        // Sort schedules by start time
+        allSchedules.sort((a, b) => a.startTime.compareTo(b.startTime));
+        
+        return GestureDetector(
+          onTap: () => _showDayScheduleDialog(days[dayOfWeek], allSchedules),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.white.withOpacity(0.3)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  days[dayOfWeek],
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '${allSchedules.length}',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 4),
+                const Icon(
+                  Icons.chevron_right,
+                  color: Colors.white70,
+                  size: 16,
+                ),
+              ],
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  void _showDayScheduleDialog(String dayName, List<ClassSchedule> schedules) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
+        title: Text('$dayName Schedule'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: schedules.isEmpty
+              ? const Text('No schedules for this day')
+              : ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: schedules.length,
+                  itemBuilder: (context, index) {
+                    final schedule = schedules[index];
+                    final isRecurring = schedule.date.year >= 2099;
+                    final startTime = '${schedule.startTime.hour.toString().padLeft(2, '0')}:${schedule.startTime.minute.toString().padLeft(2, '0')}';
+                    final endTime = '${schedule.endTime.hour.toString().padLeft(2, '0')}:${schedule.endTime.minute.toString().padLeft(2, '0')}';
+                    
+                    String scheduleText;
+                    if (isRecurring) {
+                      scheduleText = '$startTime - $endTime';
+                    } else {
+                      final date = schedule.date;
+                      scheduleText = '${date.day}/${date.month}/${date.year}: $startTime - $endTime';
+                    }
+                    
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: isRecurring ? Colors.blue[50] : Colors.orange[50],
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: isRecurring ? Colors.blue[200]! : Colors.orange[300]!,
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            isRecurring ? Icons.repeat : Icons.event,
+                            color: isRecurring ? Colors.blue : Colors.orange,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  scheduleText,
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    color: isRecurring ? Colors.blue[900] : Colors.orange[900],
+                                  ),
+                                ),
+                                if (isRecurring)
+                                  Text(
+                                    'Recurring weekly',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.blue[700],
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
   }
 
   String _formatDate(DateTime date) {
@@ -1016,7 +1159,7 @@ class _StandaloneClassesPageState extends State<StandaloneClassesPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: const Color(0xFFF8BB0C),
+        backgroundColor: Colors.white,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),
@@ -1111,7 +1254,7 @@ class _StandaloneClassesPageState extends State<StandaloneClassesPage> {
               if (weeks == null || weeks < 1 || weeks > 52) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
-                    content: Text('Please enter a valid number of weeks (1-52)'),
+                    content: const Text('Please enter a valid number of weeks (1-52)', style: TextStyle(color: Colors.black)),
                     backgroundColor: Colors.red,
                   ),
                 );
@@ -1185,7 +1328,7 @@ class _StandaloneClassesPageState extends State<StandaloneClassesPage> {
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error: $e'),
+          content: Text('Error: $e', style: const TextStyle(color: Colors.black)),
           backgroundColor: Colors.red,
           duration: const Duration(seconds: 3),
         ),
@@ -1302,7 +1445,7 @@ class _StandaloneClassesPageState extends State<StandaloneClassesPage> {
           print('✓ UI updated and list refreshed');
           print('=========================================');
           
-          _showSnackBar('Class deleted successfully');
+          // _showSnackBar('Class deleted successfully');
         } else {
           final errorMessage = result['message'] ?? 'Failed to delete class';
           final errorDetails = result['error'];
@@ -1313,7 +1456,7 @@ class _StandaloneClassesPageState extends State<StandaloneClassesPage> {
             print('Error Details: $errorDetails');
           }
           
-          _showSnackBar(errorMessage);
+          // _showSnackBar(errorMessage);
         }
       } catch (e, stackTrace) {
         print('EXCEPTION: Error occurred during class deletion');
@@ -1323,7 +1466,7 @@ class _StandaloneClassesPageState extends State<StandaloneClassesPage> {
         print('Class ID: ${classData.id}');
         print('Class Name: ${classData.name}');
         
-        _showSnackBar('An error occurred: $e');
+        // _showSnackBar('An error occurred: $e');
       }
     } else {
       print('Deletion aborted - user cancelled');
