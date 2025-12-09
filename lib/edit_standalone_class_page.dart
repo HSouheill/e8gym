@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import 'services/api_service.dart';
 import 'models/standalone_class_models.dart';
+import 'utils/app_colors.dart';
 
 class EditStandaloneClassPage extends StatefulWidget {
   final String accessToken;
@@ -321,7 +322,7 @@ class _EditStandaloneClassPageState extends State<EditStandaloneClassPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: Colors.white,
+        backgroundColor: AppColors.gold,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),
@@ -360,7 +361,7 @@ class _EditStandaloneClassPageState extends State<EditStandaloneClassPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: const Text('Please select at least one date for the class schedule', style: TextStyle(color: Colors.black)),
-          backgroundColor: Colors.red,
+          backgroundColor: AppColors.gold,
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -376,7 +377,7 @@ class _EditStandaloneClassPageState extends State<EditStandaloneClassPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Schedule ${i + 1}: Class date cannot be in the past', style: const TextStyle(color: Colors.black)),
-            backgroundColor: Colors.red,
+            backgroundColor: AppColors.gold,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -388,7 +389,7 @@ class _EditStandaloneClassPageState extends State<EditStandaloneClassPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Schedule ${i + 1}: End time must be after start time', style: const TextStyle(color: Colors.black)),
-            backgroundColor: Colors.red,
+            backgroundColor: AppColors.gold,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -403,7 +404,7 @@ class _EditStandaloneClassPageState extends State<EditStandaloneClassPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Schedule ${i + 1}: Start and end times must be on the same date as the schedule date', style: const TextStyle(color: Colors.black)),
-            backgroundColor: Colors.red,
+            backgroundColor: AppColors.gold,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -448,7 +449,7 @@ class _EditStandaloneClassPageState extends State<EditStandaloneClassPage> {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('No changes detected. Please modify at least one field before updating.'),
-              backgroundColor: Colors.orange,
+              backgroundColor: AppColors.gold,
               behavior: SnackBarBehavior.floating,
             ),
           );
@@ -496,7 +497,7 @@ class _EditStandaloneClassPageState extends State<EditStandaloneClassPage> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(result['message'] ?? 'Class updated successfully'),
-              backgroundColor: Colors.green,
+              backgroundColor: AppColors.gold,
               behavior: SnackBarBehavior.floating,
             ),
           );
@@ -507,7 +508,7 @@ class _EditStandaloneClassPageState extends State<EditStandaloneClassPage> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(result['message'] ?? 'Failed to update class', style: const TextStyle(color: Colors.black)),
-              backgroundColor: Colors.red,
+              backgroundColor: AppColors.gold,
               behavior: SnackBarBehavior.floating,
             ),
           );
@@ -518,7 +519,7 @@ class _EditStandaloneClassPageState extends State<EditStandaloneClassPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('An error occurred: $e', style: const TextStyle(color: Colors.black)),
-            backgroundColor: Colors.red,
+            backgroundColor: AppColors.gold,
             behavior: SnackBarBehavior.floating,
           ),
         );

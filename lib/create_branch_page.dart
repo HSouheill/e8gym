@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'services/api_service.dart';
 import 'models/auth_models.dart';
 import 'models/standalone_class_models.dart';
+import 'utils/app_colors.dart';
 
 class CreateBranchPage extends StatefulWidget {
   final String accessToken;
@@ -1394,7 +1395,7 @@ class _CreateBranchPageState extends State<CreateBranchPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message, style: TextStyle(color: isError ? Colors.black : Colors.black)),
-        backgroundColor: isError ? Colors.red : Colors.white,
+        backgroundColor: AppColors.gold,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'services/api_service.dart';
+import 'utils/app_colors.dart';
 
 class BranchResetPasswordPage extends StatefulWidget {
   final String email;
@@ -450,7 +451,7 @@ class _BranchResetPasswordPageState extends State<BranchResetPasswordPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: Colors.white,
+        backgroundColor: AppColors.gold,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),

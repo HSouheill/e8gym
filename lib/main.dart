@@ -7,10 +7,9 @@ import 'signup_page.dart';
 import 'admin_login_page.dart';
 import 'services/auth_service.dart';
 import 'services/storage_service.dart';
-import 'services/api_service.dart';
 import 'user_dashboard.dart';
 import 'models/auth_models.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'utils/app_colors.dart';
 
 void main() {
   // Enable better error handling for release builds
@@ -75,93 +74,6 @@ class _LoginPageState extends State<LoginPage> {
   final StorageService _storageService = StorageService();
   bool _isLoading = false;
   bool _obscurePassword = true;
-  String? _backgroundImageUrl;
-
-  @override
-  void initState() {
-    super.initState();
-    // Load background image asynchronously to prevent blocking UI
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadBackgroundImage();
-    });
-  }
-
-  Future<void> _loadBackgroundImage() async {
-    try {
-      // First try to get from API with timeout
-      final resp = await ApiService.getAppSettings('').timeout(
-        const Duration(seconds: 10), // Increased timeout for release builds
-        onTimeout: () => {'success': false, 'message': 'Timeout'},
-      );
-      
-      if (resp['success'] == true && resp['data'] != null) {
-        final data = resp['data'];
-        String? backgroundPath;
-        
-        // Extract background image path from various possible keys
-        if (data is Map) {
-          backgroundPath = data['background_image'] ?? 
-                          data['BackgroundImage'] ?? 
-                          data['backgroundImage'];
-        }
-        
-        if (backgroundPath != null && backgroundPath.isNotEmpty) {
-          // Normalize the URL (convert /app/ to /uploads/app/)
-          String normalizedUrl = backgroundPath;
-          if (backgroundPath.startsWith('app/')) {
-            normalizedUrl = 'uploads/$backgroundPath';
-          } else if (!backgroundPath.startsWith('http')) {
-            normalizedUrl = backgroundPath.startsWith('/') ? backgroundPath : '/$backgroundPath';
-          }
-          
-          final fullUrl = normalizedUrl.startsWith('http') 
-              ? normalizedUrl 
-              : 'https://e8gym.online/$normalizedUrl';
-          
-          if (mounted) {
-            setState(() {
-              _backgroundImageUrl = fullUrl;
-            });
-          }
-          
-          // Cache the URL for future use
-          try {
-            final prefs = await SharedPreferences.getInstance();
-            await prefs.setString('app_background_url', fullUrl);
-          } catch (_) {
-            // Ignore caching errors
-          }
-          return;
-        }
-      }
-      
-      // Fallback to cached value if API didn't return a background
-      try {
-        final prefs = await SharedPreferences.getInstance();
-        final cachedUrl = prefs.getString('app_background_url');
-        if (mounted && cachedUrl != null && cachedUrl.isNotEmpty) {
-          setState(() {
-            _backgroundImageUrl = cachedUrl;
-          });
-        }
-      } catch (_) {
-        // Ignore caching errors
-      }
-    } catch (e) {
-      // Fallback to cached value on error
-      try {
-        final prefs = await SharedPreferences.getInstance();
-        final cachedUrl = prefs.getString('app_background_url');
-        if (mounted && cachedUrl != null && cachedUrl.isNotEmpty) {
-          setState(() {
-            _backgroundImageUrl = cachedUrl;
-          });
-        }
-      } catch (_) {
-        // Ignore errors, fallback to default background
-      }
-    }
-  }
 
   @override
   void dispose() {
@@ -175,7 +87,7 @@ class _LoginPageState extends State<LoginPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: const Text('Please enter both email and password', style: TextStyle(color: Colors.black)),
-          backgroundColor: Colors.red,
+          backgroundColor: AppColors.gold,
         ),
       );
       return;
@@ -223,7 +135,7 @@ class _LoginPageState extends State<LoginPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(errorMessage, style: const TextStyle(color: Colors.black)),
-            backgroundColor: Colors.red,
+            backgroundColor: AppColors.gold,
           ),
         );
       }
@@ -268,7 +180,7 @@ class _LoginPageState extends State<LoginPage> {
               ),
             ),
           ),
-          // Static background fallback
+          // Static background
           Positioned.fill(
             child: Image.asset(
               'assets/background/background.png',
@@ -287,18 +199,6 @@ class _LoginPageState extends State<LoginPage> {
               },
             ),
           ),
-          // Dynamic background overlay
-          if (_backgroundImageUrl != null)
-            Positioned.fill(
-              child: Image.network(
-                _backgroundImageUrl!,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  // If network image fails, show nothing (fallback to static background)
-                  return const SizedBox.shrink();
-                },
-              ),
-            ),
           const Positioned.fill(
             child: ColoredBox(
               color: Color(0x50000000),

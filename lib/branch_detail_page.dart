@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'models/auth_models.dart';
 import 'services/api_service.dart';
 import 'edit_branch_page.dart';
+import 'utils/app_colors.dart';
 
 class BranchDetailPage extends StatefulWidget {
   final String accessToken;
@@ -113,7 +114,7 @@ class _BranchDetailPageState extends State<BranchDetailPage> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(message, style: const TextStyle(color: Colors.black)),
-              backgroundColor: Colors.red,
+              backgroundColor: AppColors.gold,
             ),
           );
         }

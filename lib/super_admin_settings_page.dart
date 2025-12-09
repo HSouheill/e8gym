@@ -3,11 +3,11 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import 'services/api_service.dart';
-import 'config/api_config.dart';
 import 'models/auth_models.dart';
+import 'utils/background_image_service.dart';
+import 'utils/app_colors.dart';
 
 class SuperAdminSettingsPage extends StatefulWidget {
   final String accessToken;
@@ -53,63 +53,16 @@ class _SuperAdminSettingsPageState extends State<SuperAdminSettingsPage> {
     setState(() {
       _loading = true;
     });
-    final resp = await ApiService.getAppSettings(widget.accessToken);
+    
+    // Use centralized service to load background image
+    final backgroundUrl = await BackgroundImageService.loadBackgroundImage(widget.accessToken);
+    
     if (mounted) {
       setState(() {
         _loading = false;
-        if (resp['success'] == true) {
-          final fetched = _normalizeUrl(_extractBackgroundFromData(resp['data']));
-          _currentBackgroundUrl = fetched;
-        }
+        _currentBackgroundUrl = backgroundUrl;
       });
     }
-
-    // Fallback to cached value if server returned empty
-    if ((_currentBackgroundUrl == null || _currentBackgroundUrl!.isEmpty)) {
-      final prefs = await SharedPreferences.getInstance();
-      final cached = prefs.getString('app_background_url');
-      if (cached != null && cached.isNotEmpty && mounted) {
-        setState(() {
-          _currentBackgroundUrl = cached;
-        });
-      }
-    }
-  }
-
-  String? _normalizeUrl(String? path) {
-    if (path == null || path.isEmpty) return null;
-    if (path.startsWith('http://') || path.startsWith('https://')) return path;
-    final base = ApiConfig.baseUrl.replaceAll(RegExp(r'/+$'), '');
-    String p = path;
-    // Ensure it begins with a leading slash
-    if (!p.startsWith('/')) p = '/$p';
-    // If backend returns '/app/...' or 'app/...', route via '/uploads/app/...'
-    if (p.startsWith('/app/')) {
-      p = '/uploads$p'; // becomes '/uploads/app/...'
-    } else if (p.startsWith('/uploads/app/') || p.startsWith('/uploads/app/')) {
-      // already normalized
-    } else if (p.startsWith('/uploads/') == false && p.startsWith('/app/') == false && p.startsWith('/uploads') == false && p.startsWith('/app') == false) {
-      // Leave other custom paths as-is under base
-    }
-    return '$base$p';
-  }
-
-  String? _extractBackgroundFromData(dynamic data) {
-    if (data == null) return null;
-    if (data is String) return data;
-    if (data is Map) {
-      final candidates = [
-        'backgroundImage',
-        'background_image',
-        'BackgroundImage',
-        'backgroundimage',
-      ];
-      for (final key in candidates) {
-        final val = data[key];
-        if (val is String && val.isNotEmpty) return val;
-      }
-    }
-    return null;
   }
 
   Future<File> _compressImage(File imageFile) async {
@@ -195,7 +148,7 @@ class _SuperAdminSettingsPageState extends State<SuperAdminSettingsPage> {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text('Image too large (${(compressedSize / 1024 / 1024).toStringAsFixed(1)}MB). Please choose a smaller image.'),
-                backgroundColor: Colors.orange,
+                backgroundColor: AppColors.gold,
               ),
             );
           }
@@ -258,19 +211,25 @@ class _SuperAdminSettingsPageState extends State<SuperAdminSettingsPage> {
         });
         
         if (resp['success'] == true) {
+          // Extract and normalize the background URL
+          final backgroundPath = BackgroundImageService.extractBackgroundFromData(resp['data']);
+          final normalizedUrl = BackgroundImageService.normalizeUrl(backgroundPath);
+          
+          // Immediately cache the URL so all pages can access it
+          if (normalizedUrl != null && normalizedUrl.isNotEmpty) {
+            await BackgroundImageService.setBackgroundUrl(normalizedUrl);
+          }
+          
           setState(() {
-            _currentBackgroundUrl = _normalizeUrl(_extractBackgroundFromData(resp['data']));
+            _currentBackgroundUrl = normalizedUrl;
             _selectedFile = null;
           });
-          // Cache for future loads
-          final prefs = await SharedPreferences.getInstance();
-          if (_currentBackgroundUrl != null && _currentBackgroundUrl!.isNotEmpty) {
-            await prefs.setString('app_background_url', _currentBackgroundUrl!);
-          }
+          
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Background image updated successfully!'),
-              backgroundColor: Colors.green,
+              content: Text('Background image updated successfully! It will now appear on all pages.'),
+              backgroundColor: AppColors.gold,
+              duration: Duration(seconds: 3),
             ),
           );
         } else {
@@ -278,7 +237,7 @@ class _SuperAdminSettingsPageState extends State<SuperAdminSettingsPage> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(msg, style: const TextStyle(color: Colors.black)),
-              backgroundColor: Colors.red,
+              backgroundColor: AppColors.gold,
             ),
           );
         }
@@ -323,7 +282,7 @@ class _SuperAdminSettingsPageState extends State<SuperAdminSettingsPage> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(result['message'] ?? 'Password changed successfully'),
-              backgroundColor: Colors.green,
+              backgroundColor: AppColors.gold,
               duration: const Duration(seconds: 4),
             ),
           );
@@ -331,7 +290,7 @@ class _SuperAdminSettingsPageState extends State<SuperAdminSettingsPage> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(result['message'] ?? 'Failed to change password', style: const TextStyle(color: Colors.black)),
-              backgroundColor: Colors.red,
+              backgroundColor: AppColors.gold,
             ),
           );
         }

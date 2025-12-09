@@ -3,6 +3,7 @@ import 'services/api_service.dart';
 import 'models/branch_class_models.dart';
 import 'models/standalone_class_models.dart';
 import 'branch_users_page.dart';
+import 'utils/app_colors.dart';
 
 class BranchDashboardPage extends StatefulWidget {
   final Map<String, dynamic> branchData;
@@ -2366,7 +2367,7 @@ class _BranchDashboardPageState extends State<BranchDashboardPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: Colors.white,
+        backgroundColor: AppColors.gold,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),

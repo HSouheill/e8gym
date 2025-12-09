@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_service.dart';
 import '../models/auth_models.dart';
+import '../utils/app_colors.dart';
 
 class UserProfilePage extends StatefulWidget {
   final String accessToken;
@@ -246,7 +247,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(result['message'] ?? 'Profile updated successfully'),
-            backgroundColor: Colors.green,
+            backgroundColor: AppColors.gold,
             duration: const Duration(seconds: 3),
           ),
         );
@@ -254,7 +255,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(result['message'] ?? 'Failed to update profile', style: const TextStyle(color: Colors.black)),
-            backgroundColor: Colors.red,
+            backgroundColor: AppColors.gold,
           ),
         );
       }
@@ -262,7 +263,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error updating profile: $e', style: const TextStyle(color: Colors.black)),
-          backgroundColor: Colors.red,
+          backgroundColor: AppColors.gold,
         ),
       );
     } finally {

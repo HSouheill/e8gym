@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import '../models/auth_models.dart';
+import '../utils/app_colors.dart';
 
 class ChangeBranchPage extends StatefulWidget {
   final String accessToken;
@@ -77,7 +78,7 @@ class _ChangeBranchPageState extends State<ChangeBranchPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Please select a branch'),
-          backgroundColor: Colors.orange,
+          backgroundColor: AppColors.gold,
         ),
       );
       return;
@@ -87,7 +88,7 @@ class _ChangeBranchPageState extends State<ChangeBranchPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('You are already a member of this branch'),
-          backgroundColor: Colors.orange,
+          backgroundColor: AppColors.gold,
         ),
       );
       return;
@@ -105,7 +106,7 @@ class _ChangeBranchPageState extends State<ChangeBranchPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(result['message'] ?? 'Branch changed successfully'),
-            backgroundColor: Colors.green,
+            backgroundColor: AppColors.gold,
             duration: const Duration(seconds: 4),
           ),
         );
@@ -116,7 +117,7 @@ class _ChangeBranchPageState extends State<ChangeBranchPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(result['message'] ?? 'Failed to change branch', style: const TextStyle(color: Colors.black)),
-            backgroundColor: Colors.red,
+            backgroundColor: AppColors.gold,
           ),
         );
       }

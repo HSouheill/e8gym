@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'services/api_service.dart';
 import 'models/branch_user_models.dart';
+import 'utils/app_colors.dart';
 
 class SuperAdminUsersPage extends StatefulWidget {
   final String accessToken;
@@ -775,7 +776,7 @@ class _SuperAdminUsersPageState extends State<SuperAdminUsersPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: Colors.white,
+        backgroundColor: AppColors.gold,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),

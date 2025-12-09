@@ -5,7 +5,7 @@ import 'branch_forgot_password_page.dart';
 import 'branch_dashboard_page.dart';
 import 'super_admin_dashboard_page.dart';
 import 'main.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'utils/app_colors.dart';
 
 class AdminLoginPage extends StatefulWidget {
   const AdminLoginPage({super.key});
@@ -20,84 +20,12 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
   String _selectedAdminType = 'Super Admin';
   bool _isLoading = false;
   bool _obscurePassword = true;
-  String? _backgroundImageUrl;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadBackgroundImage();
-  }
 
   @override
   void dispose() {
     _usernameController.dispose();
     _passwordController.dispose();
     super.dispose();
-  }
-
-  Future<void> _loadBackgroundImage() async {
-    try {
-      // First try to get from API
-      final resp = await ApiService.getAppSettings('');
-      if (resp['success'] == true) {
-        final data = resp['data'];
-        String? backgroundPath;
-        
-        // Extract background image path from various possible keys
-        if (data is Map) {
-          backgroundPath = data['background_image'] ?? 
-                          data['BackgroundImage'] ?? 
-                          data['backgroundImage'];
-        }
-        
-        if (backgroundPath != null && backgroundPath.isNotEmpty) {
-          // Normalize the URL (convert /app/ to /uploads/app/)
-          String normalizedUrl = backgroundPath;
-          if (backgroundPath.startsWith('app/')) {
-            normalizedUrl = 'uploads/$backgroundPath';
-          } else if (!backgroundPath.startsWith('http')) {
-            normalizedUrl = backgroundPath.startsWith('/') ? backgroundPath : '/$backgroundPath';
-          }
-          
-          final fullUrl = normalizedUrl.startsWith('http') 
-              ? normalizedUrl 
-              : 'https://e8gym.online/$normalizedUrl';
-          
-          if (mounted) {
-            setState(() {
-              _backgroundImageUrl = fullUrl;
-            });
-          }
-          
-          // Cache the URL for future use
-          final prefs = await SharedPreferences.getInstance();
-          await prefs.setString('app_background_url', fullUrl);
-          return;
-        }
-      }
-      
-      // Fallback to cached value if API didn't return a background
-      final prefs = await SharedPreferences.getInstance();
-      final cachedUrl = prefs.getString('app_background_url');
-      if (mounted && cachedUrl != null && cachedUrl.isNotEmpty) {
-        setState(() {
-          _backgroundImageUrl = cachedUrl;
-        });
-      }
-    } catch (e) {
-      // Fallback to cached value on error
-      try {
-        final prefs = await SharedPreferences.getInstance();
-        final cachedUrl = prefs.getString('app_background_url');
-        if (mounted && cachedUrl != null && cachedUrl.isNotEmpty) {
-          setState(() {
-            _backgroundImageUrl = cachedUrl;
-          });
-        }
-      } catch (_) {
-        // Ignore errors, fallback to default background
-      }
-    }
   }
 
   @override
@@ -219,7 +147,7 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
         ),
         child: Stack(
           children: [
-            // Static background fallback
+            // Static background
             Positioned.fill(
               child: Image.asset(
                 'assets/E8Logos/admin_login_background.jpeg',
@@ -238,18 +166,6 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
                 },
               ),
             ),
-            // Dynamic background overlay
-            if (_backgroundImageUrl != null)
-              Positioned.fill(
-                child: Image.network(
-                  _backgroundImageUrl!,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) {
-                    // If network image fails, show nothing (fallback to static background)
-                    return const SizedBox.shrink();
-                  },
-                ),
-              ),
             // Dark overlay for better text readability
             Positioned.fill(
               child: Container(
@@ -865,7 +781,7 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: Colors.white,
+        backgroundColor: AppColors.gold,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),

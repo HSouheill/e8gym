@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'services/api_service.dart';
 import 'branch_dashboard_page.dart';
 import 'branch_forgot_password_page.dart';
+import 'utils/app_colors.dart';
 
 class BranchLoginPage extends StatefulWidget {
   const BranchLoginPage({super.key});
@@ -418,7 +419,7 @@ class _BranchLoginPageState extends State<BranchLoginPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: Colors.white,
+        backgroundColor: AppColors.gold,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),

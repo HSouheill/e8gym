@@ -3,6 +3,7 @@ import 'services/api_service.dart';
 import 'models/standalone_class_models.dart';
 import 'create_standalone_class_page.dart';
 import 'edit_standalone_class_page.dart';
+import 'utils/app_colors.dart';
 
 class StandaloneClassesPage extends StatefulWidget {
   final String accessToken;
@@ -1159,7 +1160,7 @@ class _StandaloneClassesPageState extends State<StandaloneClassesPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: Colors.white,
+        backgroundColor: AppColors.gold,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),
@@ -1255,7 +1256,7 @@ class _StandaloneClassesPageState extends State<StandaloneClassesPage> {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
                     content: const Text('Please enter a valid number of weeks (1-52)', style: TextStyle(color: Colors.black)),
-                    backgroundColor: Colors.red,
+                    backgroundColor: AppColors.gold,
                   ),
                 );
                 return;

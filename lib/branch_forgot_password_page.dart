@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'services/api_service.dart';
 import 'branch_reset_password_page.dart';
+import 'utils/app_colors.dart';
 
 class BranchForgotPasswordPage extends StatefulWidget {
   const BranchForgotPasswordPage({super.key});
@@ -325,7 +326,7 @@ class _BranchForgotPasswordPageState extends State<BranchForgotPasswordPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: Colors.white,
+        backgroundColor: AppColors.gold,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),

@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'services/api_service.dart';
 import 'models/auth_models.dart';
 import 'models/standalone_class_models.dart';
+import 'utils/app_colors.dart';
 
 class EditBranchPage extends StatefulWidget {
   final String accessToken;
@@ -1497,7 +1498,7 @@ class _EditBranchPageState extends State<EditBranchPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: Colors.white,
+        backgroundColor: AppColors.gold,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),

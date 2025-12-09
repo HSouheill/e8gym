@@ -3,6 +3,7 @@ import 'services/api_service.dart';
 import 'services/storage_service.dart';
 import 'models/auth_models.dart';
 import 'utils/secure_logger.dart';
+import 'utils/app_colors.dart';
 import 'create_branch_page.dart';
 import 'standalone_classes_page.dart';
 import 'admin_login_page.dart';
@@ -1401,7 +1402,7 @@ class _SuperAdminDashboardPageState extends State<SuperAdminDashboardPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: Colors.white,
+        backgroundColor: AppColors.gold,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),

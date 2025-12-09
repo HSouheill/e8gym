@@ -15,6 +15,7 @@ import 'pages/change_branch_page.dart';
 import 'pages/medical_citations_page.dart';
 import 'main.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'utils/app_colors.dart';
 
 class UserDashboard extends StatefulWidget {
   const UserDashboard({super.key});
@@ -280,7 +281,7 @@ class _UserDashboardState extends State<UserDashboard> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Authentication required', style: const TextStyle(color: Colors.black)),
-          backgroundColor: Colors.red,
+          backgroundColor: AppColors.gold,
         ),
       );
       return;
@@ -299,7 +300,7 @@ class _UserDashboardState extends State<UserDashboard> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('No active bookings found for this class'),
-            backgroundColor: Colors.orange,
+            backgroundColor: AppColors.gold,
           ),
         );
         return;
@@ -395,7 +396,7 @@ class _UserDashboardState extends State<UserDashboard> {
           ElevatedButton(
             onPressed: () => Navigator.of(context).pop(true),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
+              backgroundColor: AppColors.gold,
               foregroundColor: Colors.white,
             ),
             child: const Text('Cancel Booking'),
@@ -446,7 +447,7 @@ class _UserDashboardState extends State<UserDashboard> {
             content: Text(
               result['message'] ?? 'Booking for "${classData.name}" has been cancelled successfully'
             ),
-            backgroundColor: Colors.green,
+            backgroundColor: AppColors.gold,
             duration: const Duration(seconds: 4),
           ),
         );
@@ -454,7 +455,7 @@ class _UserDashboardState extends State<UserDashboard> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(result['message'] ?? 'Failed to cancel booking', style: const TextStyle(color: Colors.black)),
-            backgroundColor: Colors.red,
+            backgroundColor: AppColors.gold,
             duration: const Duration(seconds: 3),
           ),
         );
@@ -464,7 +465,7 @@ class _UserDashboardState extends State<UserDashboard> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error cancelling booking: $e', style: const TextStyle(color: Colors.black)),
-          backgroundColor: Colors.red,
+          backgroundColor: AppColors.gold,
         ),
       );
     }
@@ -752,7 +753,7 @@ class _UserDashboardState extends State<UserDashboard> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Authentication required', style: const TextStyle(color: Colors.black)),
-          backgroundColor: Colors.red,
+          backgroundColor: AppColors.gold,
         ),
       );
       return;
@@ -779,7 +780,7 @@ class _UserDashboardState extends State<UserDashboard> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Branch information is missing', style: const TextStyle(color: Colors.black)),
-          backgroundColor: Colors.red,
+          backgroundColor: AppColors.gold,
         ),
       );
       return;
@@ -811,7 +812,7 @@ class _UserDashboardState extends State<UserDashboard> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(schedulesResult['message'] ?? 'Failed to load available schedules', style: const TextStyle(color: Colors.black)),
-            backgroundColor: Colors.red,
+            backgroundColor: AppColors.gold,
           ),
         );
         return;
@@ -829,7 +830,7 @@ class _UserDashboardState extends State<UserDashboard> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('No available schedules for this class at the moment'),
-            backgroundColor: Colors.orange,
+            backgroundColor: AppColors.gold,
             duration: Duration(seconds: 4),
           ),
         );
@@ -1048,7 +1049,7 @@ class _UserDashboardState extends State<UserDashboard> {
             content: Text(
               result['message'] ?? '${classData.name} booked successfully at ${_userBranch?.branchName}!'
             ),
-            backgroundColor: Colors.green,
+            backgroundColor: AppColors.gold,
             duration: const Duration(seconds: 4),
           ),
         );
@@ -1068,7 +1069,7 @@ class _UserDashboardState extends State<UserDashboard> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(errorMessage, style: const TextStyle(color: Colors.black)),
-              backgroundColor: Colors.red,
+              backgroundColor: AppColors.gold,
             ),
           );
         }
@@ -1078,7 +1079,7 @@ class _UserDashboardState extends State<UserDashboard> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error booking class: $e', style: const TextStyle(color: Colors.black)),
-          backgroundColor: Colors.red,
+          backgroundColor: AppColors.gold,
         ),
       );
     }
@@ -1412,7 +1413,7 @@ class _UserDashboardState extends State<UserDashboard> {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
                     content: Text('Please enter valid height and weight', style: const TextStyle(color: Colors.black)),
-                    backgroundColor: Colors.red,
+                    backgroundColor: AppColors.gold,
                   ),
                 );
                 return;
@@ -1422,7 +1423,7 @@ class _UserDashboardState extends State<UserDashboard> {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
                     content: Text('Height must be between 50 and 300 cm', style: const TextStyle(color: Colors.black)),
-                    backgroundColor: Colors.red,
+                    backgroundColor: AppColors.gold,
                   ),
                 );
                 return;
@@ -1432,7 +1433,7 @@ class _UserDashboardState extends State<UserDashboard> {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
                     content: Text('Weight must be between 20 and 500 kg', style: const TextStyle(color: Colors.black)),
-                    backgroundColor: Colors.red,
+                    backgroundColor: AppColors.gold,
                   ),
                 );
                 return;
@@ -1487,7 +1488,7 @@ class _UserDashboardState extends State<UserDashboard> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('BMI updated successfully! Your BMI is ${bmiData.bmi.toStringAsFixed(1)}'),
-            backgroundColor: Colors.green,
+            backgroundColor: AppColors.gold,
             duration: const Duration(seconds: 3),
           ),
         );
@@ -1495,7 +1496,7 @@ class _UserDashboardState extends State<UserDashboard> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(result['message'] ?? 'Failed to update BMI', style: const TextStyle(color: Colors.black)),
-            backgroundColor: Colors.red,
+            backgroundColor: AppColors.gold,
           ),
         );
       }
@@ -1504,7 +1505,7 @@ class _UserDashboardState extends State<UserDashboard> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error updating BMI: $e', style: const TextStyle(color: Colors.black)),
-          backgroundColor: Colors.red,
+          backgroundColor: AppColors.gold,
         ),
       );
     }
@@ -1608,7 +1609,7 @@ class _UserDashboardState extends State<UserDashboard> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Authentication required', style: const TextStyle(color: Colors.black)),
-          backgroundColor: Colors.red,
+          backgroundColor: AppColors.gold,
         ),
       );
       return;
@@ -1802,7 +1803,7 @@ class _UserDashboardState extends State<UserDashboard> {
             content: Text(
               updateResult['message'] ?? 'Booking updated successfully',
             ),
-            backgroundColor: Colors.green,
+            backgroundColor: AppColors.gold,
             duration: const Duration(seconds: 4),
           ),
         );
@@ -1810,7 +1811,7 @@ class _UserDashboardState extends State<UserDashboard> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(updateResult['message'] ?? 'Failed to update booking', style: const TextStyle(color: Colors.black)),
-            backgroundColor: Colors.red,
+            backgroundColor: AppColors.gold,
             duration: const Duration(seconds: 3),
           ),
         );
@@ -1820,7 +1821,7 @@ class _UserDashboardState extends State<UserDashboard> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error updating booking: $e', style: const TextStyle(color: Colors.black)),
-          backgroundColor: Colors.red,
+          backgroundColor: AppColors.gold,
         ),
       );
     }
