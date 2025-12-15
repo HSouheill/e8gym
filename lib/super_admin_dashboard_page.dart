@@ -4,6 +4,7 @@ import 'services/storage_service.dart';
 import 'models/auth_models.dart';
 import 'utils/secure_logger.dart';
 import 'utils/app_colors.dart';
+import 'utils/background_image_service.dart';
 import 'create_branch_page.dart';
 import 'standalone_classes_page.dart';
 import 'admin_login_page.dart';
@@ -72,55 +73,27 @@ class _SuperAdminDashboardPageState extends State<SuperAdminDashboardPage> {
 
   Future<void> _loadBackgroundImage() async {
     try {
-      // First try to get from API
-      final resp = await ApiService.getAppSettings(widget.accessToken);
-      if (resp['success'] == true) {
-        final data = resp['data'];
-        String? backgroundPath;
-        
-        // Extract background image path from various possible keys
-        if (data is Map) {
-          backgroundPath = data['background_image'] ?? 
-                          data['BackgroundImage'] ?? 
-                          data['backgroundImage'];
-        }
-        
-        if (backgroundPath != null && backgroundPath.isNotEmpty) {
-          // Normalize the URL (convert /app/ to /uploads/app/)
-          String normalizedUrl = backgroundPath;
-          if (backgroundPath.startsWith('app/')) {
-            normalizedUrl = 'uploads/$backgroundPath';
-          } else if (!backgroundPath.startsWith('http')) {
-            normalizedUrl = backgroundPath.startsWith('/') ? backgroundPath : '/$backgroundPath';
-          }
-          
-          final fullUrl = normalizedUrl.startsWith('http') 
-              ? normalizedUrl 
-              : 'https://e8gym.online/$normalizedUrl';
-          
-          if (mounted) {
-            setState(() {
-              _backgroundImageUrl = fullUrl;
-            });
-          }
-          
-          // Cache the URL for future use
-          final prefs = await SharedPreferences.getInstance();
-          await prefs.setString('app_background_url', fullUrl);
-          return;
-        }
-      }
+      // Use centralized service to load superadmin dashboard background
+      final backgroundUrl = await BackgroundImageService.loadBackgroundImage(
+        widget.accessToken,
+        dashboardType: 'superadmin',
+      );
       
-      // Fallback to cached value if API didn't return a background
-      final prefs = await SharedPreferences.getInstance();
-      final cachedUrl = prefs.getString('app_background_url');
+      if (mounted && backgroundUrl != null && backgroundUrl.isNotEmpty) {
+        setState(() {
+          _backgroundImageUrl = backgroundUrl;
+        });
+      }
+    } catch (e) {
+      // Fallback to cached value on error
+      final cachedUrl = await BackgroundImageService.getCachedBackgroundUrl(
+        dashboardType: 'superadmin',
+      );
       if (mounted && cachedUrl != null && cachedUrl.isNotEmpty) {
         setState(() {
           _backgroundImageUrl = cachedUrl;
         });
       }
-    } catch (e) {
-      // Fallback to cached value on error
       try {
         final prefs = await SharedPreferences.getInstance();
         final cachedUrl = prefs.getString('app_background_url');
@@ -1401,8 +1374,8 @@ class _SuperAdminDashboardPageState extends State<SuperAdminDashboardPage> {
   void _showSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message),
-        backgroundColor: AppColors.gold,
+        content: Text(message, style: const TextStyle(color: Colors.black)),
+        backgroundColor: AppColors.snackbarBackground,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),

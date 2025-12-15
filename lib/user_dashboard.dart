@@ -16,6 +16,7 @@ import 'pages/medical_citations_page.dart';
 import 'main.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'utils/app_colors.dart';
+import 'utils/background_image_service.dart';
 
 class UserDashboard extends StatefulWidget {
   const UserDashboard({super.key});
@@ -65,55 +66,26 @@ class _UserDashboardState extends State<UserDashboard> {
 
   Future<void> _loadBackgroundImage() async {
     try {
-      // First try to get from API
-      final resp = await ApiService.getAppSettings('');
-      if (resp['success'] == true) {
-        final data = resp['data'];
-        String? backgroundPath;
-        
-        // Extract background image path from various possible keys
-        if (data is Map) {
-          backgroundPath = data['background_image'] ?? 
-                          data['BackgroundImage'] ?? 
-                          data['backgroundImage'];
-        }
-        
-        if (backgroundPath != null && backgroundPath.isNotEmpty) {
-          // Normalize the URL (convert /app/ to /uploads/app/)
-          String normalizedUrl = backgroundPath;
-          if (backgroundPath.startsWith('app/')) {
-            normalizedUrl = 'uploads/$backgroundPath';
-          } else if (!backgroundPath.startsWith('http')) {
-            normalizedUrl = backgroundPath.startsWith('/') ? backgroundPath : '/$backgroundPath';
-          }
-          
-          final fullUrl = normalizedUrl.startsWith('http') 
-              ? normalizedUrl 
-              : 'https://e8gym.online/$normalizedUrl';
-          
-          if (mounted) {
-            setState(() {
-              _backgroundImageUrl = fullUrl;
-            });
-          }
-          
-          // Cache the URL for future use
-          final prefs = await SharedPreferences.getInstance();
-          await prefs.setString('app_background_url', fullUrl);
-          return;
-        }
-      }
+      // Use centralized service to load user dashboard background
+      final backgroundUrl = await BackgroundImageService.loadBackgroundImagePublic(
+        dashboardType: 'user',
+      );
       
-      // Fallback to cached value if API didn't return a background
-      final prefs = await SharedPreferences.getInstance();
-      final cachedUrl = prefs.getString('app_background_url');
+      if (mounted && backgroundUrl != null && backgroundUrl.isNotEmpty) {
+        setState(() {
+          _backgroundImageUrl = backgroundUrl;
+        });
+      }
+    } catch (e) {
+      // Fallback to cached value on error
+      final cachedUrl = await BackgroundImageService.getCachedBackgroundUrl(
+        dashboardType: 'user',
+      );
       if (mounted && cachedUrl != null && cachedUrl.isNotEmpty) {
         setState(() {
           _backgroundImageUrl = cachedUrl;
         });
       }
-    } catch (e) {
-      // Fallback to cached value on error
       try {
         final prefs = await SharedPreferences.getInstance();
         final cachedUrl = prefs.getString('app_background_url');
@@ -281,7 +253,7 @@ class _UserDashboardState extends State<UserDashboard> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Authentication required', style: const TextStyle(color: Colors.black)),
-          backgroundColor: AppColors.gold,
+          backgroundColor: AppColors.snackbarBackground,
         ),
       );
       return;
@@ -299,8 +271,8 @@ class _UserDashboardState extends State<UserDashboard> {
       if (bookings.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('No active bookings found for this class'),
-            backgroundColor: AppColors.gold,
+            content: Text('No active bookings found for this class', style: TextStyle(color: Colors.black)),
+            backgroundColor: AppColors.snackbarBackground,
           ),
         );
         return;
@@ -319,8 +291,8 @@ class _UserDashboardState extends State<UserDashboard> {
     if (bookingId == null || bookingId.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Booking ID not found. Please refresh and try again.'),
-          backgroundColor: Colors.orange,
+          content: Text('Booking ID not found. Please refresh and try again.', style: TextStyle(color: Colors.black)),
+          backgroundColor: AppColors.snackbarBackground,
         ),
       );
       return;
@@ -396,8 +368,8 @@ class _UserDashboardState extends State<UserDashboard> {
           ElevatedButton(
             onPressed: () => Navigator.of(context).pop(true),
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.gold,
-              foregroundColor: Colors.white,
+              backgroundColor: AppColors.snackbarBackground,
+              foregroundColor: Colors.black,
             ),
             child: const Text('Cancel Booking'),
           ),
@@ -445,9 +417,10 @@ class _UserDashboardState extends State<UserDashboard> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              result['message'] ?? 'Booking for "${classData.name}" has been cancelled successfully'
+              result['message'] ?? 'Booking for "${classData.name}" has been cancelled successfully',
+              style: const TextStyle(color: Colors.black),
             ),
-            backgroundColor: AppColors.gold,
+            backgroundColor: AppColors.snackbarBackground,
             duration: const Duration(seconds: 4),
           ),
         );
@@ -455,7 +428,7 @@ class _UserDashboardState extends State<UserDashboard> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(result['message'] ?? 'Failed to cancel booking', style: const TextStyle(color: Colors.black)),
-            backgroundColor: AppColors.gold,
+            backgroundColor: AppColors.snackbarBackground,
             duration: const Duration(seconds: 3),
           ),
         );
@@ -465,7 +438,7 @@ class _UserDashboardState extends State<UserDashboard> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error cancelling booking: $e', style: const TextStyle(color: Colors.black)),
-          backgroundColor: AppColors.gold,
+          backgroundColor: AppColors.snackbarBackground,
         ),
       );
     }
@@ -753,7 +726,7 @@ class _UserDashboardState extends State<UserDashboard> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Authentication required', style: const TextStyle(color: Colors.black)),
-          backgroundColor: AppColors.gold,
+          backgroundColor: AppColors.snackbarBackground,
         ),
       );
       return;
@@ -767,8 +740,9 @@ class _UserDashboardState extends State<UserDashboard> {
             classData.expiresAt != null
                 ? 'This class expired on ${DateFormat('MMM dd, yyyy').format(classData.expiresAt!)}'
                 : 'This class has expired and is no longer available for booking',
+            style: const TextStyle(color: Colors.black),
           ),
-          backgroundColor: Colors.orange,
+          backgroundColor: AppColors.snackbarBackground,
           duration: const Duration(seconds: 4),
         ),
       );
@@ -780,7 +754,7 @@ class _UserDashboardState extends State<UserDashboard> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Branch information is missing', style: const TextStyle(color: Colors.black)),
-          backgroundColor: AppColors.gold,
+          backgroundColor: AppColors.snackbarBackground,
         ),
       );
       return;
@@ -812,7 +786,7 @@ class _UserDashboardState extends State<UserDashboard> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(schedulesResult['message'] ?? 'Failed to load available schedules', style: const TextStyle(color: Colors.black)),
-            backgroundColor: AppColors.gold,
+            backgroundColor: AppColors.snackbarBackground,
           ),
         );
         return;
@@ -821,17 +795,36 @@ class _UserDashboardState extends State<UserDashboard> {
       // Parse schedules response
       final schedulesData = ClassSchedulesResponse.fromJson(schedulesResult['data']);
       
-      // Filter to only available schedules
+      // Filter to only available schedules with available slots
       final availableSchedules = schedulesData.schedules
-          .where((schedule) => schedule.isAvailable && !schedule.isPast)
+          .where((schedule) => schedule.isAvailable && !schedule.isPast && schedule.availableSlots > 0)
           .toList();
 
       if (availableSchedules.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('No available schedules for this class at the moment'),
-            backgroundColor: AppColors.gold,
-            duration: Duration(seconds: 4),
+          SnackBar(
+            content: const Text(
+              'No available schedules for this class at the moment',
+              style: TextStyle(color: Colors.black),
+            ),
+            backgroundColor: AppColors.snackbarBackground,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+        return;
+      }
+
+      // Check if all schedules have full capacity (availableSlots == 0)
+      final allSchedulesFull = availableSchedules.every((schedule) => schedule.availableSlots == 0);
+      if (allSchedulesFull) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Class capacity is full for "${classData.name}". All available time slots are fully booked.',
+              style: const TextStyle(color: Colors.black),
+            ),
+            backgroundColor: AppColors.snackbarBackground,
+            duration: const Duration(seconds: 4),
           ),
         );
         return;
@@ -947,6 +940,21 @@ class _UserDashboardState extends State<UserDashboard> {
 
       if (selectedSchedule == null) return;
 
+      // Check if selected schedule has available slots
+      if (selectedSchedule.availableSlots == 0) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Class capacity is full for this time slot. Please select another time.',
+              style: const TextStyle(color: Colors.black),
+            ),
+            backgroundColor: AppColors.snackbarBackground,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+        return;
+      }
+
       // Show confirmation dialog
       final shouldBook = await showDialog<bool>(
         context: context,
@@ -1030,6 +1038,7 @@ class _UserDashboardState extends State<UserDashboard> {
         classId: classData.id,
         classType: 'branch',
         branchId: _userBranch!.id,
+        branchLocation: _userBranch!.location,
         scheduleId: selectedSchedule.scheduleId,
         classDate: selectedSchedule.date,
         startTime: selectedSchedule.startTime,
@@ -1047,9 +1056,10 @@ class _UserDashboardState extends State<UserDashboard> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              result['message'] ?? '${classData.name} booked successfully at ${_userBranch?.branchName}!'
+              result['message'] ?? '${classData.name} booked successfully at ${_userBranch?.branchName}!',
+              style: const TextStyle(color: Colors.black),
             ),
-            backgroundColor: AppColors.gold,
+            backgroundColor: AppColors.snackbarBackground,
             duration: const Duration(seconds: 4),
           ),
         );
@@ -1069,7 +1079,7 @@ class _UserDashboardState extends State<UserDashboard> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(errorMessage, style: const TextStyle(color: Colors.black)),
-              backgroundColor: AppColors.gold,
+              backgroundColor: AppColors.snackbarBackground,
             ),
           );
         }
@@ -1079,7 +1089,7 @@ class _UserDashboardState extends State<UserDashboard> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error booking class: $e', style: const TextStyle(color: Colors.black)),
-          backgroundColor: AppColors.gold,
+          backgroundColor: AppColors.snackbarBackground,
         ),
       );
     }
@@ -1413,7 +1423,7 @@ class _UserDashboardState extends State<UserDashboard> {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
                     content: Text('Please enter valid height and weight', style: const TextStyle(color: Colors.black)),
-                    backgroundColor: AppColors.gold,
+                    backgroundColor: AppColors.snackbarBackground,
                   ),
                 );
                 return;
@@ -1423,7 +1433,7 @@ class _UserDashboardState extends State<UserDashboard> {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
                     content: Text('Height must be between 50 and 300 cm', style: const TextStyle(color: Colors.black)),
-                    backgroundColor: AppColors.gold,
+                    backgroundColor: AppColors.snackbarBackground,
                   ),
                 );
                 return;
@@ -1433,7 +1443,7 @@ class _UserDashboardState extends State<UserDashboard> {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
                     content: Text('Weight must be between 20 and 500 kg', style: const TextStyle(color: Colors.black)),
-                    backgroundColor: AppColors.gold,
+                    backgroundColor: AppColors.snackbarBackground,
                   ),
                 );
                 return;
@@ -1487,8 +1497,11 @@ class _UserDashboardState extends State<UserDashboard> {
         
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('BMI updated successfully! Your BMI is ${bmiData.bmi.toStringAsFixed(1)}'),
-            backgroundColor: AppColors.gold,
+            content: Text(
+              'BMI updated successfully! Your BMI is ${bmiData.bmi.toStringAsFixed(1)}',
+              style: const TextStyle(color: Colors.black),
+            ),
+            backgroundColor: AppColors.snackbarBackground,
             duration: const Duration(seconds: 3),
           ),
         );
@@ -1496,7 +1509,7 @@ class _UserDashboardState extends State<UserDashboard> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(result['message'] ?? 'Failed to update BMI', style: const TextStyle(color: Colors.black)),
-            backgroundColor: AppColors.gold,
+            backgroundColor: AppColors.snackbarBackground,
           ),
         );
       }
@@ -1505,7 +1518,7 @@ class _UserDashboardState extends State<UserDashboard> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error updating BMI: $e', style: const TextStyle(color: Colors.black)),
-          backgroundColor: AppColors.gold,
+          backgroundColor: AppColors.snackbarBackground,
         ),
       );
     }
@@ -1609,7 +1622,7 @@ class _UserDashboardState extends State<UserDashboard> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Authentication required', style: const TextStyle(color: Colors.black)),
-          backgroundColor: AppColors.gold,
+          backgroundColor: AppColors.snackbarBackground,
         ),
       );
       return;
@@ -1802,8 +1815,9 @@ class _UserDashboardState extends State<UserDashboard> {
           SnackBar(
             content: Text(
               updateResult['message'] ?? 'Booking updated successfully',
+              style: const TextStyle(color: Colors.black),
             ),
-            backgroundColor: AppColors.gold,
+            backgroundColor: AppColors.snackbarBackground,
             duration: const Duration(seconds: 4),
           ),
         );
@@ -1811,7 +1825,7 @@ class _UserDashboardState extends State<UserDashboard> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(updateResult['message'] ?? 'Failed to update booking', style: const TextStyle(color: Colors.black)),
-            backgroundColor: AppColors.gold,
+            backgroundColor: AppColors.snackbarBackground,
             duration: const Duration(seconds: 3),
           ),
         );
@@ -1821,7 +1835,7 @@ class _UserDashboardState extends State<UserDashboard> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error updating booking: $e', style: const TextStyle(color: Colors.black)),
-          backgroundColor: AppColors.gold,
+          backgroundColor: AppColors.snackbarBackground,
         ),
       );
     }

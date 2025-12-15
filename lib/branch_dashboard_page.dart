@@ -4,6 +4,7 @@ import 'models/branch_class_models.dart';
 import 'models/standalone_class_models.dart';
 import 'branch_users_page.dart';
 import 'utils/app_colors.dart';
+import 'utils/background_image_service.dart';
 
 class BranchDashboardPage extends StatefulWidget {
   final Map<String, dynamic> branchData;
@@ -27,6 +28,7 @@ class _BranchDashboardPageState extends State<BranchDashboardPage> {
   List<BranchClassResponse> _classes = [];
   String? _errorMessage;
   int _currentTab = 0; // 0 = Dashboard, 1 = Classes, 2 = Users
+  String? _backgroundImageUrl;
 
   @override
   void initState() {
@@ -42,6 +44,34 @@ class _BranchDashboardPageState extends State<BranchDashboardPage> {
     
     // Load classes on initialization
     _loadClasses();
+    // Load background image
+    _loadBackgroundImage();
+  }
+  
+  Future<void> _loadBackgroundImage() async {
+    try {
+      // Use centralized service to load branch dashboard background
+      final backgroundUrl = await BackgroundImageService.loadBackgroundImage(
+        accessToken,
+        dashboardType: 'branch',
+      );
+      
+      if (mounted && backgroundUrl != null && backgroundUrl.isNotEmpty) {
+        setState(() {
+          _backgroundImageUrl = backgroundUrl;
+        });
+      }
+    } catch (e) {
+      // Fallback to cached value on error
+      final cachedUrl = await BackgroundImageService.getCachedBackgroundUrl(
+        dashboardType: 'branch',
+      );
+      if (mounted && cachedUrl != null && cachedUrl.isNotEmpty) {
+        setState(() {
+          _backgroundImageUrl = cachedUrl;
+        });
+      }
+    }
   }
 
   Future<void> _loadClasses() async {
@@ -116,21 +146,44 @@ class _BranchDashboardPageState extends State<BranchDashboardPage> {
             colors: [Colors.white, Colors.white70],
           ),
         ),
-        child: Container(
-          decoration: const BoxDecoration(
-            image: DecorationImage(
-              image: AssetImage('assets/background/background.png'),
-              fit: BoxFit.cover,
-              colorFilter: ColorFilter.mode(
-                Color(0x50000000),
-                BlendMode.darken,
+        child: Stack(
+          children: [
+            // Static background fallback
+            Container(
+              decoration: const BoxDecoration(
+                image: DecorationImage(
+                  image: AssetImage('assets/background/background.png'),
+                  fit: BoxFit.cover,
+                  colorFilter: ColorFilter.mode(
+                    Color(0x50000000),
+                    BlendMode.darken,
+                  ),
+                ),
               ),
             ),
-          ),
-          child: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 18.0, vertical: 30),
-              child: Column(
+            // Dynamic background overlay
+            if (_backgroundImageUrl != null)
+              Positioned.fill(
+                child: Image.network(
+                  _backgroundImageUrl!,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    // If network image fails, show nothing (fallback to static background)
+                    return const SizedBox.shrink();
+                  },
+                ),
+              ),
+            // Dark overlay
+            const Positioned.fill(
+              child: ColoredBox(
+                color: Color(0x50000000),
+              ),
+            ),
+            // Main content
+            SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 18.0, vertical: 30),
+                child: Column(
                 children: [
                   // Header with back button and logout
                   Row(
@@ -256,9 +309,10 @@ class _BranchDashboardPageState extends State<BranchDashboardPage> {
                             : _buildUsersContent(),
                   ),
                 ],
+                ),
               ),
             ),
-          ),
+          ],
         ),
       ),
     );
@@ -696,6 +750,7 @@ class _BranchDashboardPageState extends State<BranchDashboardPage> {
             
             _buildInfoRow('Instructor', classData.instructor),
             _buildInfoRow('Capacity', '${classData.capacity} members'),
+            _buildInfoRow('Booked', '${classData.bookedCount} bookings'),
             _buildInfoRow('Duration', '${classData.duration} minutes'),
             
             const SizedBox(height: 16),
@@ -1163,6 +1218,8 @@ class _BranchDashboardPageState extends State<BranchDashboardPage> {
               Text('Instructor: ${classData.instructor}'),
               const SizedBox(height: 8),
               Text('Capacity: ${classData.capacity} members'),
+              const SizedBox(height: 8),
+              Text('Booked: ${classData.bookedCount} bookings'),
               const SizedBox(height: 8),
               Text('Duration: ${classData.duration} minutes'),
               const SizedBox(height: 8),
@@ -2366,8 +2423,8 @@ class _BranchDashboardPageState extends State<BranchDashboardPage> {
   void _showSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message),
-        backgroundColor: AppColors.gold,
+        content: Text(message, style: const TextStyle(color: Colors.black)),
+        backgroundColor: AppColors.snackbarBackground,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),

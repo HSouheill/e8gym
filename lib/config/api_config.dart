@@ -70,7 +70,9 @@ class ApiConfig {
 
   // App Settings Endpoints
   static const String getAppSettings = '/settings';
-  static const String uploadBackgroundImage = '/settings/background';
+  static const String uploadSuperAdminBackgroundImage = '/settings/background/superadmin';
+  static const String uploadBranchBackgroundImage = '/settings/background/branch';
+  static const String uploadUserBackgroundImage = '/settings/background/user';
   
   // Branch Class Management Endpoints
   static const String getBranchClasses = '/api/branch/classes';

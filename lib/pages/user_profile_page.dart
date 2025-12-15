@@ -247,7 +247,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(result['message'] ?? 'Profile updated successfully'),
-            backgroundColor: AppColors.gold,
+            backgroundColor: AppColors.snackbarBackground,
             duration: const Duration(seconds: 3),
           ),
         );
@@ -255,7 +255,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(result['message'] ?? 'Failed to update profile', style: const TextStyle(color: Colors.black)),
-            backgroundColor: AppColors.gold,
+            backgroundColor: AppColors.snackbarBackground,
           ),
         );
       }
@@ -263,7 +263,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error updating profile: $e', style: const TextStyle(color: Colors.black)),
-          backgroundColor: AppColors.gold,
+          backgroundColor: AppColors.snackbarBackground,
         ),
       );
     } finally {

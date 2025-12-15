@@ -20,10 +20,24 @@ class SuperAdminSettingsPage extends StatefulWidget {
 
 class _SuperAdminSettingsPageState extends State<SuperAdminSettingsPage> {
   bool _loading = true;
-  String? _currentBackgroundUrl;
-  File? _selectedFile;
-  bool _uploading = false;
-  bool _picking = false;
+  
+  // Background images for each dashboard type
+  String? _superAdminBackgroundUrl;
+  String? _branchBackgroundUrl;
+  String? _userBackgroundUrl;
+  
+  // Selected files for each dashboard type
+  File? _selectedSuperAdminFile;
+  File? _selectedBranchFile;
+  File? _selectedUserFile;
+  
+  // Upload/pick states for each dashboard type
+  bool _uploadingSuperAdmin = false;
+  bool _uploadingBranch = false;
+  bool _uploadingUser = false;
+  bool _pickingSuperAdmin = false;
+  bool _pickingBranch = false;
+  bool _pickingUser = false;
   
   // Change password state
   final _passwordFormKey = GlobalKey<FormState>();
@@ -54,13 +68,26 @@ class _SuperAdminSettingsPageState extends State<SuperAdminSettingsPage> {
       _loading = true;
     });
     
-    // Use centralized service to load background image
-    final backgroundUrl = await BackgroundImageService.loadBackgroundImage(widget.accessToken);
+    // Load background images for each dashboard type
+    final superAdminUrl = await BackgroundImageService.loadBackgroundImage(
+      widget.accessToken, 
+      dashboardType: 'superadmin',
+    );
+    final branchUrl = await BackgroundImageService.loadBackgroundImage(
+      widget.accessToken, 
+      dashboardType: 'branch',
+    );
+    final userUrl = await BackgroundImageService.loadBackgroundImage(
+      widget.accessToken, 
+      dashboardType: 'user',
+    );
     
     if (mounted) {
       setState(() {
         _loading = false;
-        _currentBackgroundUrl = backgroundUrl;
+        _superAdminBackgroundUrl = superAdminUrl;
+        _branchBackgroundUrl = branchUrl;
+        _userBackgroundUrl = userUrl;
       });
     }
   }
@@ -86,9 +113,24 @@ class _SuperAdminSettingsPageState extends State<SuperAdminSettingsPage> {
     }
   }
 
-  Future<void> _pickImage() async {
-    if (_picking) return;
-    _picking = true;
+  Future<void> _pickImage(String dashboardType) async {
+    // Set the appropriate picking state
+    switch (dashboardType) {
+      case 'superadmin':
+        if (_pickingSuperAdmin) return;
+        setState(() => _pickingSuperAdmin = true);
+        break;
+      case 'branch':
+        if (_pickingBranch) return;
+        setState(() => _pickingBranch = true);
+        break;
+      case 'user':
+        if (_pickingUser) return;
+        setState(() => _pickingUser = true);
+        break;
+      default:
+        return;
+    }
     try {
       final picker = ImagePicker();
       final picked = await picker.pickImage(
@@ -99,8 +141,12 @@ class _SuperAdminSettingsPageState extends State<SuperAdminSettingsPage> {
       );
       if (picked == null) {
         if (mounted) {
+          _resetPickingState(dashboardType);
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Image selection cancelled')),
+            const SnackBar(
+              content: Text('Image selection cancelled', style: TextStyle(color: Colors.black)),
+              backgroundColor: AppColors.snackbarBackground,
+            ),
           );
         }
         return;
@@ -147,8 +193,8 @@ class _SuperAdminSettingsPageState extends State<SuperAdminSettingsPage> {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text('Image too large (${(compressedSize / 1024 / 1024).toStringAsFixed(1)}MB). Please choose a smaller image.'),
-                backgroundColor: AppColors.gold,
+                content: Text('Image too large (${(compressedSize / 1024 / 1024).toStringAsFixed(1)}MB). Please choose a smaller image.', style: const TextStyle(color: Colors.black)),
+                backgroundColor: AppColors.snackbarBackground,
               ),
             );
           }
@@ -156,80 +202,188 @@ class _SuperAdminSettingsPageState extends State<SuperAdminSettingsPage> {
         }
       }
 
+      // Set the selected file based on dashboard type
       setState(() {
-        _selectedFile = resultFile;
+        switch (dashboardType) {
+          case 'superadmin':
+            _selectedSuperAdminFile = resultFile;
+            break;
+          case 'branch':
+            _selectedBranchFile = resultFile;
+            break;
+          case 'user':
+            _selectedUserFile = resultFile;
+            break;
+        }
       });
 
       final finalSize = await resultFile.length();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Image selected (${(finalSize / 1024 / 1024).toStringAsFixed(1)}MB). Ready to upload.'),
+          content: Text('Image selected (${(finalSize / 1024 / 1024).toStringAsFixed(1)}MB). Ready to upload.', style: const TextStyle(color: Colors.black)),
+          backgroundColor: AppColors.snackbarBackground,
         ),
       );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to pick image: $e')),
+        SnackBar(
+          content: Text('Failed to pick image: $e', style: const TextStyle(color: Colors.black)),
+          backgroundColor: AppColors.snackbarBackground,
+        ),
       );
     } finally {
       if (mounted) {
-        setState(() {
-          _picking = false;
-        });
+        _resetPickingState(dashboardType);
       } else {
-        _picking = false;
+        _resetPickingState(dashboardType);
       }
     }
   }
+  
+  void _resetPickingState(String dashboardType) {
+    switch (dashboardType) {
+      case 'superadmin':
+        _pickingSuperAdmin = false;
+        break;
+      case 'branch':
+        _pickingBranch = false;
+        break;
+      case 'user':
+        _pickingUser = false;
+        break;
+    }
+    if (mounted) {
+      setState(() {});
+    }
+  }
 
-  Future<void> _upload() async {
-    if (_selectedFile == null || _uploading) return;
+  Future<void> _upload(String dashboardType) async {
+    File? selectedFile;
+    bool isUploading;
+    
+    // Get the appropriate file and upload state
+    switch (dashboardType) {
+      case 'superadmin':
+        selectedFile = _selectedSuperAdminFile;
+        isUploading = _uploadingSuperAdmin;
+        if (selectedFile == null || isUploading) return;
+        setState(() => _uploadingSuperAdmin = true);
+        break;
+      case 'branch':
+        selectedFile = _selectedBranchFile;
+        isUploading = _uploadingBranch;
+        if (selectedFile == null || isUploading) return;
+        setState(() => _uploadingBranch = true);
+        break;
+      case 'user':
+        selectedFile = _selectedUserFile;
+        isUploading = _uploadingUser;
+        if (selectedFile == null || isUploading) return;
+        setState(() => _uploadingUser = true);
+        break;
+      default:
+        return;
+    }
     
     // Check file size before upload
-    final fileSize = await _selectedFile!.length();
+    final fileSize = await selectedFile.length();
     const maxFileSize = 5 * 1024 * 1024; // 5MB limit
     
     if (fileSize > maxFileSize) {
+      _resetUploadingState(dashboardType);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('File too large (${(fileSize / 1024 / 1024).toStringAsFixed(1)}MB). Please choose a smaller image.'),
-          backgroundColor: Colors.red,
+          content: Text('File too large (${(fileSize / 1024 / 1024).toStringAsFixed(1)}MB). Please choose a smaller image.', style: const TextStyle(color: Colors.black)),
+          backgroundColor: AppColors.snackbarBackground,
         ),
       );
       return;
     }
     
-    setState(() {
-      _uploading = true;
-    });
-    
     try {
-      final resp = await ApiService.uploadBackgroundImage(accessToken: widget.accessToken, imageFile: _selectedFile!);
+      final resp = await ApiService.uploadBackgroundImage(
+        accessToken: widget.accessToken, 
+        imageFile: selectedFile,
+        dashboardType: dashboardType,
+      );
       if (mounted) {
-        setState(() {
-          _uploading = false;
-        });
+        _resetUploadingState(dashboardType);
         
         if (resp['success'] == true) {
-          // Extract and normalize the background URL
-          final backgroundPath = BackgroundImageService.extractBackgroundFromData(resp['data']);
-          final normalizedUrl = BackgroundImageService.normalizeUrl(backgroundPath);
+          // Extract background path from API response
+          // Backend returns BackgroundImage field directly in the response
+          String? backgroundPath;
+          final responseData = resp['data'];
           
-          // Immediately cache the URL so all pages can access it
-          if (normalizedUrl != null && normalizedUrl.isNotEmpty) {
-            await BackgroundImageService.setBackgroundUrl(normalizedUrl);
+          if (responseData is String) {
+            backgroundPath = responseData;
+          } else if (responseData is Map) {
+            // Try various possible keys
+            backgroundPath = responseData['BackgroundImage'] ?? 
+                            responseData['backgroundImage'] ?? 
+                            responseData['background_image'] ??
+                            responseData['imagePath'] ??
+                            responseData['image_path'];
           }
           
-          setState(() {
-            _currentBackgroundUrl = normalizedUrl;
-            _selectedFile = null;
-          });
+          if (backgroundPath == null || backgroundPath.isEmpty) {
+            // Try extracting using the service method as fallback
+            backgroundPath = BackgroundImageService.extractBackgroundFromData(
+              resp['data'], 
+              dashboardType: null, // Don't use dashboard type for upload response
+            );
+          }
+          
+          final normalizedUrl = BackgroundImageService.normalizeUrl(backgroundPath);
+          
+          // Immediately cache the URL for this dashboard type
+          if (normalizedUrl != null && normalizedUrl.isNotEmpty) {
+            await BackgroundImageService.setBackgroundUrl(normalizedUrl, dashboardType: dashboardType);
+            
+            // Update the appropriate background URL and clear selected file
+            setState(() {
+              switch (dashboardType) {
+                case 'superadmin':
+                  _superAdminBackgroundUrl = normalizedUrl;
+                  _selectedSuperAdminFile = null;
+                  break;
+                case 'branch':
+                  _branchBackgroundUrl = normalizedUrl;
+                  _selectedBranchFile = null;
+                  break;
+                case 'user':
+                  _userBackgroundUrl = normalizedUrl;
+                  _selectedUserFile = null;
+                  break;
+              }
+            });
+          } else {
+            // If URL extraction failed, show error but keep the selected file
+            print('Failed to extract image URL. Response data: ${resp['data']}');
+            print('Background path extracted: $backgroundPath');
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Upload succeeded but failed to extract image URL. Please try again.', style: const TextStyle(color: Colors.black)),
+                backgroundColor: AppColors.snackbarBackground,
+                duration: const Duration(seconds: 5),
+              ),
+            );
+            // Don't clear selected file so user can try uploading again
+            return;
+          }
+          
+          final dashboardName = dashboardType == 'superadmin' 
+              ? 'Super Admin' 
+              : dashboardType == 'branch' 
+                  ? 'Branch' 
+                  : 'User';
           
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Background image updated successfully! It will now appear on all pages.'),
-              backgroundColor: AppColors.gold,
-              duration: Duration(seconds: 3),
+            SnackBar(
+              content: Text('$dashboardName dashboard background updated successfully!', style: const TextStyle(color: Colors.black)),
+              backgroundColor: AppColors.snackbarBackground,
+              duration: const Duration(seconds: 3),
             ),
           );
         } else {
@@ -237,23 +391,38 @@ class _SuperAdminSettingsPageState extends State<SuperAdminSettingsPage> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(msg, style: const TextStyle(color: Colors.black)),
-              backgroundColor: AppColors.gold,
+              backgroundColor: AppColors.snackbarBackground,
             ),
           );
         }
       }
     } catch (e) {
       if (mounted) {
-        setState(() {
-          _uploading = false;
-        });
+        _resetUploadingState(dashboardType);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Upload failed: ${e.toString()}'),
-            backgroundColor: Colors.red,
+            content: Text('Upload failed: ${e.toString()}', style: const TextStyle(color: Colors.black)),
+            backgroundColor: AppColors.snackbarBackground,
           ),
         );
       }
+    }
+  }
+  
+  void _resetUploadingState(String dashboardType) {
+    switch (dashboardType) {
+      case 'superadmin':
+        _uploadingSuperAdmin = false;
+        break;
+      case 'branch':
+        _uploadingBranch = false;
+        break;
+      case 'user':
+        _uploadingUser = false;
+        break;
+    }
+    if (mounted) {
+      setState(() {});
     }
   }
 
@@ -281,8 +450,8 @@ class _SuperAdminSettingsPageState extends State<SuperAdminSettingsPage> {
 
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(result['message'] ?? 'Password changed successfully'),
-              backgroundColor: AppColors.gold,
+              content: Text(result['message'] ?? 'Password changed successfully', style: const TextStyle(color: Colors.black)),
+              backgroundColor: AppColors.snackbarBackground,
               duration: const Duration(seconds: 4),
             ),
           );
@@ -290,7 +459,7 @@ class _SuperAdminSettingsPageState extends State<SuperAdminSettingsPage> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(result['message'] ?? 'Failed to change password', style: const TextStyle(color: Colors.black)),
-              backgroundColor: AppColors.gold,
+              backgroundColor: AppColors.snackbarBackground,
             ),
           );
         }
@@ -300,7 +469,7 @@ class _SuperAdminSettingsPageState extends State<SuperAdminSettingsPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error changing password: $e', style: const TextStyle(color: Colors.black)),
-            backgroundColor: Colors.red,
+            backgroundColor: AppColors.snackbarBackground,
           ),
         );
       }
@@ -344,86 +513,36 @@ class _SuperAdminSettingsPageState extends State<SuperAdminSettingsPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Background Image',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                  // Super Admin Dashboard Background Section
+                  _buildDashboardBackgroundSection(
+                    'Super Admin Dashboard',
+                    'superadmin',
+                    _superAdminBackgroundUrl,
+                    _selectedSuperAdminFile,
+                    _pickingSuperAdmin,
+                    _uploadingSuperAdmin,
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Supports JPG, PNG, GIF and other image formats (max 5MB, recommended 2K resolution)',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey.shade600,
-                    ),
+                  const SizedBox(height: 32),
+                  
+                  // Branch Dashboard Background Section
+                  _buildDashboardBackgroundSection(
+                    'Branch Dashboard',
+                    'branch',
+                    _branchBackgroundUrl,
+                    _selectedBranchFile,
+                    _pickingBranch,
+                    _uploadingBranch,
                   ),
-                  const SizedBox(height: 12),
-                  AspectRatio(
-                    aspectRatio: 16 / 9,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.grey.shade300),
-                      ),
-                      clipBehavior: Clip.antiAlias,
-                      child: _selectedFile != null
-                          ? Image.file(
-                              _selectedFile!, 
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) {
-                                return Container(
-                                  color: Colors.grey.shade100,
-                                  child: const Center(
-                                    child: Icon(Icons.image, size: 48, color: Colors.grey),
-                                  ),
-                                );
-                              },
-                            )
-                          : (_currentBackgroundUrl != null && _currentBackgroundUrl!.isNotEmpty)
-                              ? Image.network(
-                                  _currentBackgroundUrl!, 
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) {
-                                    return Container(
-                                      color: Colors.grey.shade100,
-                                      child: const Center(
-                                        child: Icon(Icons.image, size: 48, color: Colors.grey),
-                                      ),
-                                    );
-                                  },
-                                )
-                              : Container(
-                                  color: Colors.grey.shade100,
-                                  child: const Center(
-                                    child: Text('No background set'),
-                                  ),
-                                ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      ElevatedButton.icon(
-                        onPressed: _picking ? null : _pickImage,
-                        icon: const Icon(Icons.photo_library),
-                        label: const Text('Choose Image'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.white,
-                          foregroundColor: Colors.black,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      ElevatedButton.icon(
-                        onPressed: _uploading || _selectedFile == null ? null : _upload,
-                        icon: _uploading
-                            ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                            : const Icon(Icons.cloud_upload),
-                        label: Text(_uploading ? 'Uploading...' : 'Upload'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blue.shade50,
-                          foregroundColor: Colors.blue.shade700,
-                        ),
-                      ),
-                    ],
+                  const SizedBox(height: 32),
+                  
+                  // User Dashboard Background Section
+                  _buildDashboardBackgroundSection(
+                    'User Dashboard',
+                    'user',
+                    _userBackgroundUrl,
+                    _selectedUserFile,
+                    _pickingUser,
+                    _uploadingUser,
                   ),
                   const SizedBox(height: 32),
                   // Change Password Section
@@ -564,6 +683,138 @@ class _SuperAdminSettingsPageState extends State<SuperAdminSettingsPage> {
             ),
         ],
       ),
+    );
+  }
+  
+  Widget _buildDashboardBackgroundSection(
+    String title,
+    String dashboardType,
+    String? currentBackgroundUrl,
+    File? selectedFile,
+    bool picking,
+    bool uploading,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Supports JPG, PNG, GIF and other image formats (max 5MB, recommended 2K resolution)',
+          style: TextStyle(
+            fontSize: 12,
+            color: Colors.grey.shade600,
+          ),
+        ),
+        const SizedBox(height: 12),
+        AspectRatio(
+          aspectRatio: 16 / 9,
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.grey.shade300),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: selectedFile != null
+                ? Image.file(
+                    selectedFile, 
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      print('Error loading selected file: $error');
+                      return Container(
+                        color: Colors.grey.shade100,
+                        child: const Center(
+                          child: Icon(Icons.image, size: 48, color: Colors.grey),
+                        ),
+                      );
+                    },
+                  )
+                : (currentBackgroundUrl != null && currentBackgroundUrl.isNotEmpty)
+                    ? Image.network(
+                        currentBackgroundUrl, 
+                        fit: BoxFit.cover,
+                        loadingBuilder: (context, child, loadingProgress) {
+                          if (loadingProgress == null) return child;
+                          return Container(
+                            color: Colors.grey.shade100,
+                            child: Center(
+                              child: CircularProgressIndicator(
+                                value: loadingProgress.expectedTotalBytes != null
+                                    ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                                    : null,
+                              ),
+                            ),
+                          );
+                        },
+                        errorBuilder: (context, error, stackTrace) {
+                          print('Error loading network image from $currentBackgroundUrl: $error');
+                          return Container(
+                            color: Colors.grey.shade100,
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(Icons.image, size: 48, color: Colors.grey),
+                                const SizedBox(height: 8),
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                                  child: Text(
+                                    'Failed to load image',
+                                    style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      )
+                    : Container(
+                        color: Colors.grey.shade100,
+                        child: const Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.image, size: 48, color: Colors.grey),
+                              SizedBox(height: 8),
+                              Text('No background set'),
+                            ],
+                          ),
+                        ),
+                      ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            ElevatedButton.icon(
+              onPressed: picking ? null : () => _pickImage(dashboardType),
+              icon: const Icon(Icons.photo_library),
+              label: const Text('Choose Image'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.white,
+                foregroundColor: Colors.black,
+              ),
+            ),
+            const SizedBox(width: 12),
+            ElevatedButton.icon(
+              onPressed: uploading || selectedFile == null 
+                  ? null 
+                  : () => _upload(dashboardType),
+              icon: uploading
+                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                  : const Icon(Icons.cloud_upload),
+              label: Text(uploading ? 'Uploading...' : 'Upload'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue.shade50,
+                foregroundColor: Colors.blue.shade700,
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }

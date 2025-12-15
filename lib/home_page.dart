@@ -122,7 +122,7 @@ class _HomePageState extends State<HomePage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(errorMessage, style: const TextStyle(color: Colors.black)),
-            backgroundColor: Colors.red,
+            backgroundColor: AppColors.snackbarBackground,
           ),
         );
       }

@@ -132,6 +132,7 @@ class StandaloneClassResponse {
   final DateTime? expiresAt;
   final bool isExpired;
   final int renewalCount;
+  final int bookedCount;
   final DateTime createdAt;
   final DateTime updatedAt;
   final String createdBy;
@@ -150,6 +151,7 @@ class StandaloneClassResponse {
     this.expiresAt,
     this.isExpired = false,
     this.renewalCount = 0,
+    this.bookedCount = 0,
     required this.createdAt,
     required this.updatedAt,
     required this.createdBy,
@@ -203,6 +205,7 @@ class StandaloneClassResponse {
       expiresAt: json['expires_at'] != null ? DateTime.parse(json['expires_at']) : null,
       isExpired: json['is_expired'] ?? false,
       renewalCount: json['renewal_count'] != null ? int.tryParse(json['renewal_count'].toString()) ?? 0 : 0,
+      bookedCount: json['booked_count'] != null ? int.tryParse(json['booked_count'].toString()) ?? 0 : 0,
       createdAt: DateTime.parse(json['created_at']),
       updatedAt: DateTime.parse(json['updated_at']),
       createdBy: json['created_by'] ?? '',
@@ -223,6 +226,7 @@ class StandaloneClassResponse {
     DateTime? expiresAt,
     bool? isExpired,
     int? renewalCount,
+    int? bookedCount,
     DateTime? createdAt,
     DateTime? updatedAt,
     String? createdBy,
@@ -241,6 +245,7 @@ class StandaloneClassResponse {
       expiresAt: expiresAt ?? this.expiresAt,
       isExpired: isExpired ?? this.isExpired,
       renewalCount: renewalCount ?? this.renewalCount,
+      bookedCount: bookedCount ?? this.bookedCount,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       createdBy: createdBy ?? this.createdBy,

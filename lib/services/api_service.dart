@@ -49,9 +49,15 @@ class ApiService {
   }
 
   // App Settings: GET current settings
-  static Future<Map<String, dynamic>> getAppSettings(String accessToken) async {
+  static Future<Map<String, dynamic>> getAppSettings(String accessToken, {String? dashboardType}) async {
     try {
-      if (!SecurityService.validateSSLCertificate('${cfg.ApiConfig.baseUrl}${cfg.ApiConfig.getAppSettings}')) {
+      var url = '${cfg.ApiConfig.baseUrl}${cfg.ApiConfig.getAppSettings}';
+      // Add dashboard type as query parameter if provided
+      if (dashboardType != null && dashboardType.isNotEmpty) {
+        url += '?dashboard=$dashboardType';
+      }
+      final uri = Uri.parse(url);
+      if (!SecurityService.validateSSLCertificate(uri.toString())) {
         return {
           'success': false,
           'message': 'Security validation failed',
@@ -60,11 +66,11 @@ class ApiService {
       }
       final headers = SecurityService.getSecurityHeaders(accessToken);
       final response = await http.get(
-        Uri.parse('${cfg.ApiConfig.baseUrl}${cfg.ApiConfig.getAppSettings}'),
+        uri,
         headers: headers,
       );
 
-      SecureLogger.apiResponse(response.statusCode, '${cfg.ApiConfig.baseUrl}${cfg.ApiConfig.getAppSettings}', body: response.body);
+      SecureLogger.apiResponse(response.statusCode, uri.toString(), body: response.body);
 
       final data = jsonDecode(response.body);
       return {
@@ -82,10 +88,33 @@ class ApiService {
   }
 
   // App Settings: Upload background image (multipart)
-  static Future<Map<String, dynamic>> uploadBackgroundImage({required String accessToken, required File imageFile}) async {
+  // dashboardType: 'superadmin', 'branch', or 'user'
+  static Future<Map<String, dynamic>> uploadBackgroundImage({
+    required String accessToken, 
+    required File imageFile,
+    String? dashboardType,
+  }) async {
     try {
-      final url = Uri.parse('${cfg.ApiConfig.baseUrl}${cfg.ApiConfig.uploadBackgroundImage}');
-      if (!SecurityService.validateSSLCertificate(url.toString())) {
+      // Use the appropriate endpoint based on dashboard type
+      String endpoint;
+      switch (dashboardType) {
+        case 'superadmin':
+          endpoint = cfg.ApiConfig.uploadSuperAdminBackgroundImage;
+          break;
+        case 'branch':
+          endpoint = cfg.ApiConfig.uploadBranchBackgroundImage;
+          break;
+        case 'user':
+          endpoint = cfg.ApiConfig.uploadUserBackgroundImage;
+          break;
+        default:
+          // Fallback to superadmin if not specified
+          endpoint = cfg.ApiConfig.uploadSuperAdminBackgroundImage;
+      }
+      
+      final url = '${cfg.ApiConfig.baseUrl}$endpoint';
+      final uri = Uri.parse(url);
+      if (!SecurityService.validateSSLCertificate(uri.toString())) {
         return {
           'success': false,
           'message': 'Security validation failed',
@@ -96,13 +125,13 @@ class ApiService {
       final headers = SecurityService.getSecurityHeaders(accessToken);
       headers.remove('Content-Type');
 
-      final request = http.MultipartRequest('POST', url);
+      final request = http.MultipartRequest('POST', uri);
       request.headers.addAll(headers);
       request.files.add(await http.MultipartFile.fromPath('image', imageFile.path));
 
       final streamed = await request.send();
       final response = await http.Response.fromStream(streamed);
-      SecureLogger.apiResponse(response.statusCode, url.toString(), body: response.body);
+      SecureLogger.apiResponse(response.statusCode, uri.toString(), body: response.body);
 
       if (response.statusCode == 413) {
         return {
@@ -2713,6 +2742,73 @@ class ApiService {
       
       final response = await http.get(
         Uri.parse('${ApiConfig.baseUrl}${ApiConfig.getBranchClass}/$classId'),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return {
+          'success': true,
+          'data': data['data'],
+          'message': data['message'],
+        };
+      } else {
+        final errorData = jsonDecode(response.body);
+        return {
+          'success': false,
+          'message': errorData['message'] ?? 'Failed to fetch branch class',
+          'error': errorData['error'],
+        };
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Network error: $e',
+        'error': e.toString(),
+      };
+    }
+  }
+
+  // Get Single Branch Class for Super Admin (uses branch ID in path)
+  static Future<Map<String, dynamic>> getBranchClassForSuperAdmin(
+    String branchId,
+    String classId,
+    String accessToken,
+  ) async {
+    try {
+      // Validate input
+      if (!SecurityService.validateInput(branchId) || !SecurityService.validateInput(classId) || !SecurityService.validateInput(accessToken)) {
+        SecurityService.logSecurityEvent('invalid_branch_class_input', details: {
+          'branch_id_length': branchId.length,
+          'class_id_length': classId.length,
+          'token_length': accessToken.length
+        });
+        return {
+          'success': false,
+          'message': 'Invalid input data',
+          'error': 'Input validation failed',
+        };
+      }
+      
+      // Super admin endpoint: /api/branches/:branchId/classes/:classId
+      final url = '${ApiConfig.baseUrl}/api/branches/$branchId/classes/$classId';
+      
+      // Validate SSL certificate
+      if (!SecurityService.validateSSLCertificate(url)) {
+        SecurityService.logSecurityEvent('invalid_ssl_certificate', details: {'url': url});
+        return {
+          'success': false,
+          'message': 'Security validation failed',
+          'error': 'Invalid SSL certificate',
+        };
+      }
+      
+      final deviceId = await SecurityService.getDeviceId();
+      final headers = SecurityService.getSecurityHeaders(accessToken);
+      headers['X-Device-ID'] = deviceId;
+      
+      final response = await http.get(
+        Uri.parse(url),
         headers: headers,
       );
 

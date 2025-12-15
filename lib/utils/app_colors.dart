@@ -9,6 +9,10 @@ class AppColors {
   static const Color goldLight = Color(0xFFFFE44D);
   static const Color goldDark = Color(0xFFB8860B);
   
+  // Snackbar colors
+  static const Color snackbarBackground = Color(0xFFF5F5F5); // White grey background
+  static const Color snackbarText = Colors.black; // Black text color
+  
   // Private constructor to prevent instantiation
   AppColors._();
 }

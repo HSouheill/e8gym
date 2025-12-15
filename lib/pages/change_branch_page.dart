@@ -78,7 +78,7 @@ class _ChangeBranchPageState extends State<ChangeBranchPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Please select a branch'),
-          backgroundColor: AppColors.gold,
+          backgroundColor: AppColors.snackbarBackground,
         ),
       );
       return;
@@ -88,7 +88,7 @@ class _ChangeBranchPageState extends State<ChangeBranchPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('You are already a member of this branch'),
-          backgroundColor: AppColors.gold,
+          backgroundColor: AppColors.snackbarBackground,
         ),
       );
       return;
@@ -106,7 +106,7 @@ class _ChangeBranchPageState extends State<ChangeBranchPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(result['message'] ?? 'Branch changed successfully'),
-            backgroundColor: AppColors.gold,
+            backgroundColor: AppColors.snackbarBackground,
             duration: const Duration(seconds: 4),
           ),
         );
@@ -117,7 +117,7 @@ class _ChangeBranchPageState extends State<ChangeBranchPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(result['message'] ?? 'Failed to change branch', style: const TextStyle(color: Colors.black)),
-            backgroundColor: AppColors.gold,
+            backgroundColor: AppColors.snackbarBackground,
           ),
         );
       }
@@ -125,7 +125,7 @@ class _ChangeBranchPageState extends State<ChangeBranchPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error changing branch: $e', style: const TextStyle(color: Colors.black)),
-          backgroundColor: Colors.red,
+          backgroundColor: AppColors.snackbarBackground,
         ),
       );
     } finally {

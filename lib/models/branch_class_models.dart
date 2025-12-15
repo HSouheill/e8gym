@@ -14,6 +14,7 @@ class BranchClassResponse {
   final bool? isVisible; // Visibility flag - if false, class should be hidden from users
   final DateTime? expiresAt;
   final bool isExpired;
+  final int bookedCount;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -30,6 +31,7 @@ class BranchClassResponse {
     this.isVisible,
     this.expiresAt,
     this.isExpired = false,
+    this.bookedCount = 0,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -84,6 +86,7 @@ class BranchClassResponse {
       isVisible: json['is_visible'] ?? json['IsVisible'] ?? true, // Default to true if not specified
       expiresAt: expiresAt,
       isExpired: isExpired,
+      bookedCount: json['booked_count'] != null ? int.tryParse(json['booked_count'].toString()) ?? 0 : 0,
       createdAt: json['created_at'] != null 
           ? DateTime.parse(json['created_at'].toString())
           : DateTime.now(),

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/auth_service.dart';
 import '../models/auth_models.dart';
@@ -148,7 +147,7 @@ class _SignupPageState extends State<SignupPage> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('Failed to load branches: ${response['message']}'),
-              backgroundColor: AppColors.gold,
+              backgroundColor: AppColors.snackbarBackground,
             
             )
           );
@@ -160,7 +159,7 @@ class _SignupPageState extends State<SignupPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error loading branches: $e', style: const TextStyle(color: Colors.black)),
-            backgroundColor: AppColors.gold,
+            backgroundColor: AppColors.snackbarBackground,
           ),
         );
       }
@@ -180,7 +179,7 @@ class _SignupPageState extends State<SignupPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Could not open $url', style: const TextStyle(color: Colors.black)),
-            backgroundColor: AppColors.gold,
+            backgroundColor: AppColors.snackbarBackground,
           ),
         );
       }
@@ -188,7 +187,7 @@ class _SignupPageState extends State<SignupPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error opening link: $e', style: const TextStyle(color: Colors.black)),
-          backgroundColor: AppColors.gold,
+          backgroundColor: AppColors.snackbarBackground,
         ),
       );
     }
@@ -233,7 +232,7 @@ class _SignupPageState extends State<SignupPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Please accept the Privacy Policy and Terms & Conditions to continue', style: const TextStyle(color: Colors.black)),
-          backgroundColor: AppColors.gold,
+          backgroundColor: AppColors.snackbarBackground,
         ),
       );
       return;
@@ -314,7 +313,7 @@ class _SignupPageState extends State<SignupPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(displayMessage, style: const TextStyle(color: Colors.black)),
-          backgroundColor: AppColors.gold,
+          backgroundColor: AppColors.snackbarBackground,
         ),
       );
     }
@@ -430,10 +429,10 @@ class _SignupPageState extends State<SignupPage> {
           Container(
             decoration: const BoxDecoration(
               image: DecorationImage(
-                image: AssetImage('assets/background/background.png'),
+                image: AssetImage('assets/E8Logos/admin_login_background.jpeg'),
                 fit: BoxFit.cover,
                 colorFilter: ColorFilter.mode(
-                  Color(0x50000000), // Dark overlay for better text readability
+                  Color(0x90000000), // Darker overlay for better text readability
                   BlendMode.darken,
                 ),
               ),
@@ -442,19 +441,25 @@ class _SignupPageState extends State<SignupPage> {
           // Dynamic background overlay
           if (_backgroundImageUrl != null)
             Positioned.fill(
-              child: Image.network(
-                _backgroundImageUrl!,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  // If network image fails, show nothing (fallback to static background)
-                  return const SizedBox.shrink();
-                },
+              child: ColorFiltered(
+                colorFilter: const ColorFilter.mode(
+                  Color(0x90000000), // Dark overlay for dynamic background
+                  BlendMode.darken,
+                ),
+                child: Image.network(
+                  _backgroundImageUrl!,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    // If network image fails, show nothing (fallback to static background)
+                    return const SizedBox.shrink();
+                  },
+                ),
               ),
             ),
           // Dark overlay
           const Positioned.fill(
             child: ColoredBox(
-              color: Color(0x50000000),
+              color: Color(0x90000000), // Darker overlay
             ),
           ),
           // Main content
@@ -684,20 +689,30 @@ class _SignupPageState extends State<SignupPage> {
                       SizedBox(
                         width: buttonWidth,
                         height: buttonHeight,
-                        child: GestureDetector(
-                          onTap: _isLoading ? null : _handleSignup,
+                        child: ElevatedButton(
+                          onPressed: _isLoading ? null : _handleSignup,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            foregroundColor: Colors.black,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            padding: EdgeInsets.zero,
+                          ),
                           child: _isLoading
                               ? Center(
                                   child: CircularProgressIndicator(
-                                    valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+                                    valueColor: const AlwaysStoppedAnimation<Color>(Colors.black),
                                     strokeWidth: screenWidth * (isSmallDevice ? 0.01 : isLargeDevice ? 0.006 : 0.008),
                                   ),
                                 )
-                              : SvgPicture.asset(
-                                  'assets/img/SignUpButton.svg',
-                                  width: buttonWidth * (isSmallDevice ? 0.9 : isLargeDevice ? 0.8 : 0.83),
-                                  height: buttonHeight * (isSmallDevice ? 0.4 : isLargeDevice ? 0.35 : 0.375),
-                                  fit: BoxFit.cover,
+                              : Text(
+                                  'Sign Up',
+                                  style: TextStyle(
+                                    fontSize: fontSizeMedium,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.black,
+                                  ),
                                 ),
                         ),
                       ),
@@ -1163,7 +1178,7 @@ class _SignupPageState extends State<SignupPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('No branches available. You can still sign up without selecting a branch.'),
-          backgroundColor: Colors.orange,
+          backgroundColor: AppColors.snackbarBackground,
           duration: Duration(seconds: 3),
         ),
       );

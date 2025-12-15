@@ -4,6 +4,7 @@ import 'models/auth_models.dart';
 import 'services/api_service.dart';
 import 'edit_branch_page.dart';
 import 'utils/app_colors.dart';
+import 'branch_class_detail_page.dart';
 
 class BranchDetailPage extends StatefulWidget {
   final String accessToken;
@@ -114,7 +115,7 @@ class _BranchDetailPageState extends State<BranchDetailPage> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(message, style: const TextStyle(color: Colors.black)),
-              backgroundColor: AppColors.gold,
+              backgroundColor: AppColors.snackbarBackground,
             ),
           );
         }
@@ -124,7 +125,7 @@ class _BranchDetailPageState extends State<BranchDetailPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error loading branch details: $e', style: const TextStyle(color: Colors.black)),
-            backgroundColor: Colors.red,
+            backgroundColor: AppColors.snackbarBackground,
           ),
         );
       }
@@ -235,7 +236,7 @@ class _BranchDetailPageState extends State<BranchDetailPage> {
               result['message'] ?? 
               (updatedIsVisible ? 'Class is now visible' : 'Class is now hidden'),
             ),
-            backgroundColor: Colors.green,
+            backgroundColor: AppColors.snackbarBackground,
             duration: const Duration(seconds: 2),
           ),
         );
@@ -256,7 +257,7 @@ class _BranchDetailPageState extends State<BranchDetailPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(errorMessage, style: const TextStyle(color: Colors.black)),
-            backgroundColor: Colors.red,
+            backgroundColor: AppColors.snackbarBackground,
             duration: const Duration(seconds: 4),
           ),
         );
@@ -609,99 +610,145 @@ class _BranchDetailPageState extends State<BranchDetailPage> {
                 itemBuilder: (context, index) {
                   final classItem = _branch.classes[index];
                   final isVisible = classItem.isVisible ?? true;
-                  return Container(
-                    margin: const EdgeInsets.only(bottom: 8),
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: isVisible ? Colors.grey[50] : Colors.grey[200],
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: isVisible ? Colors.grey[200]! : Colors.grey[400]!,
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.fitness_center,
-                          color: isVisible ? Colors.green : Colors.grey,
-                          size: 20,
+                  final branchIdentifier = _branch.id.isNotEmpty ? _branch.id : (_branch.branchId ?? '');
+                  
+                  return GestureDetector(
+                    onTap: classItem.id != null && classItem.id!.isNotEmpty && branchIdentifier.isNotEmpty
+                        ? () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => BranchClassDetailPage(
+                                  accessToken: widget.accessToken,
+                                  branchId: branchIdentifier,
+                                  classId: classItem.id!,
+                                  branchName: _branch.branchName,
+                                ),
+                              ),
+                            );
+                          }
+                        : null,
+                    child: Container(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: isVisible ? Colors.grey[50] : Colors.grey[200],
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: isVisible ? Colors.grey[200]! : Colors.grey[400]!,
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      classItem.name,
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.w600,
-                                        color: isVisible ? Colors.black87 : Colors.grey[600],
-                                        decoration: isVisible ? null : TextDecoration.lineThrough,
-                                      ),
-                                    ),
-                                  ),
-                                  if (!isVisible)
-                                    Container(
-                                      margin: const EdgeInsets.only(left: 8),
-                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                      decoration: BoxDecoration(
-                                        color: Colors.orange,
-                                        borderRadius: BorderRadius.circular(10),
-                                      ),
-                                      child: const Text(
-                                        'Hidden',
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.fitness_center,
+                            color: isVisible ? Colors.green : Colors.grey,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        classItem.name,
                                         style: TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 9,
                                           fontWeight: FontWeight.w600,
+                                          color: isVisible ? Colors.black87 : Colors.grey[600],
+                                          decoration: isVisible ? null : TextDecoration.lineThrough,
                                         ),
                                       ),
                                     ),
-                                ],
+                                    if (!isVisible)
+                                      Container(
+                                        margin: const EdgeInsets.only(left: 8),
+                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: Colors.orange,
+                                          borderRadius: BorderRadius.circular(10),
+                                        ),
+                                        child: const Text(
+                                          'Hidden',
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 9,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                                Text(
+                                  'Duration: ${classItem.duration} minutes',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: isVisible ? Colors.black54 : Colors.grey[500],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          if (classItem.id != null && classItem.id!.isNotEmpty)
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                IconButton(
+                                  icon: const Icon(Icons.visibility, size: 20),
+                                  onPressed: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => BranchClassDetailPage(
+                                          accessToken: widget.accessToken,
+                                          branchId: branchIdentifier,
+                                          classId: classItem.id!,
+                                          branchName: _branch.branchName,
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                  tooltip: 'View Details',
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(
+                                    minWidth: 32,
+                                    minHeight: 32,
+                                  ),
+                                ),
+                                Switch(
+                                  value: isVisible,
+                                  onChanged: _isTogglingVisibility
+                                      ? null
+                                      : (value) {
+                                          // Only toggle if the value actually changed
+                                          if (value != isVisible) {
+                                            _toggleClassVisibility(classItem.id!, index, value);
+                                          }
+                                        },
+                                  activeColor: Colors.green,
+                                ),
+                              ],
+                            )
+                          else
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: isVisible ? Colors.green : Colors.grey,
+                                borderRadius: BorderRadius.circular(12),
                               ),
-                              Text(
-                                'Duration: ${classItem.duration} minutes',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: isVisible ? Colors.black54 : Colors.grey[500],
+                              child: Text(
+                                isVisible ? 'Active' : 'Hidden',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
                                 ),
                               ),
-                            ],
-                          ),
-                        ),
-                        if (classItem.id != null && classItem.id!.isNotEmpty)
-                          Switch(
-                            value: isVisible,
-                            onChanged: _isTogglingVisibility
-                                ? null
-                                : (value) {
-                                    // Only toggle if the value actually changed
-                                    if (value != isVisible) {
-                                      _toggleClassVisibility(classItem.id!, index, value);
-                                    }
-                                  },
-                            activeColor: Colors.green,
-                          )
-                        else
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: isVisible ? Colors.green : Colors.grey,
-                              borderRadius: BorderRadius.circular(12),
                             ),
-                            child: Text(
-                              isVisible ? 'Active' : 'Hidden',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 10,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                      ],
+                        ],
+                      ),
                     ),
                   );
                 },

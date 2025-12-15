@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'dart:async';
 import 'splash_screen.dart';
 import 'signup_page.dart';
@@ -86,8 +85,8 @@ class _LoginPageState extends State<LoginPage> {
     if (_emailController.text.trim().isEmpty || _passwordController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: const Text('Please enter both email and password', style: TextStyle(color: Colors.black)),
-          backgroundColor: AppColors.gold,
+          content: Text('Please enter both email and password', style: TextStyle(color: Colors.black)),
+          backgroundColor: AppColors.snackbarBackground,
         ),
       );
       return;
@@ -135,7 +134,7 @@ class _LoginPageState extends State<LoginPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(errorMessage, style: const TextStyle(color: Colors.black)),
-            backgroundColor: AppColors.gold,
+            backgroundColor: AppColors.snackbarBackground,
           ),
         );
       }
@@ -182,26 +181,32 @@ class _LoginPageState extends State<LoginPage> {
           ),
           // Static background
           Positioned.fill(
-            child: Image.asset(
-              'assets/background/background.png',
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) {
-                // If background image fails, show gradient only
-                return Container(
-                  decoration: const BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [Colors.white, Colors.white70],
+            child: ColorFiltered(
+              colorFilter: const ColorFilter.mode(
+                Color(0x90000000), // Dark overlay for better text readability
+                BlendMode.darken,
+              ),
+              child: Image.asset(
+                'assets/E8Logos/admin_login_background.jpeg',
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  // If background image fails, show gradient only
+                  return Container(
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [Colors.white, Colors.white70],
+                      ),
                     ),
-                  ),
-                );
-              },
+                  );
+                },
+              ),
             ),
           ),
           const Positioned.fill(
             child: ColoredBox(
-              color: Color(0x50000000),
+              color: Color(0x90000000), // Darker overlay
             ),
           ),
           SafeArea(
@@ -520,20 +525,30 @@ class _LoginPageState extends State<LoginPage> {
                   SizedBox(
                     width: buttonWidth,
                     height: buttonHeight,
-                    child: GestureDetector(
-                      onTap: _isLoading ? null : _handleLogin,
+                    child: ElevatedButton(
+                      onPressed: _isLoading ? null : _handleLogin,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: Colors.black,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        padding: EdgeInsets.zero,
+                      ),
                       child: _isLoading
                           ? Center(
                               child: CircularProgressIndicator(
-                                valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+                                valueColor: const AlwaysStoppedAnimation<Color>(Colors.black),
                                 strokeWidth: screenWidth * 0.008,
                               ),
                             )
-                          : SvgPicture.asset(
-                              'assets/img/Button.svg',
-                              width: buttonWidth * 0.9,
-                              height: buttonHeight * 0.8,
-                              fit: BoxFit.contain,
+                          : Text(
+                              'Log in',
+                              style: TextStyle(
+                                fontSize: fontSizeLarge,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black,
+                              ),
                             ),
                     ),
                   ),

@@ -321,8 +321,8 @@ class _EditStandaloneClassPageState extends State<EditStandaloneClassPage> {
   void _showSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message),
-        backgroundColor: AppColors.gold,
+        content: Text(message, style: const TextStyle(color: Colors.black)),
+        backgroundColor: AppColors.snackbarBackground,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),
@@ -361,7 +361,7 @@ class _EditStandaloneClassPageState extends State<EditStandaloneClassPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: const Text('Please select at least one date for the class schedule', style: TextStyle(color: Colors.black)),
-          backgroundColor: AppColors.gold,
+          backgroundColor: AppColors.snackbarBackground,
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -377,7 +377,7 @@ class _EditStandaloneClassPageState extends State<EditStandaloneClassPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Schedule ${i + 1}: Class date cannot be in the past', style: const TextStyle(color: Colors.black)),
-            backgroundColor: AppColors.gold,
+            backgroundColor: AppColors.snackbarBackground,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -389,7 +389,7 @@ class _EditStandaloneClassPageState extends State<EditStandaloneClassPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Schedule ${i + 1}: End time must be after start time', style: const TextStyle(color: Colors.black)),
-            backgroundColor: AppColors.gold,
+            backgroundColor: AppColors.snackbarBackground,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -404,7 +404,7 @@ class _EditStandaloneClassPageState extends State<EditStandaloneClassPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Schedule ${i + 1}: Start and end times must be on the same date as the schedule date', style: const TextStyle(color: Colors.black)),
-            backgroundColor: AppColors.gold,
+            backgroundColor: AppColors.snackbarBackground,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -449,7 +449,7 @@ class _EditStandaloneClassPageState extends State<EditStandaloneClassPage> {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('No changes detected. Please modify at least one field before updating.'),
-              backgroundColor: AppColors.gold,
+              backgroundColor: AppColors.snackbarBackground,
               behavior: SnackBarBehavior.floating,
             ),
           );
@@ -497,7 +497,7 @@ class _EditStandaloneClassPageState extends State<EditStandaloneClassPage> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(result['message'] ?? 'Class updated successfully'),
-              backgroundColor: AppColors.gold,
+              backgroundColor: AppColors.snackbarBackground,
               behavior: SnackBarBehavior.floating,
             ),
           );
@@ -508,7 +508,7 @@ class _EditStandaloneClassPageState extends State<EditStandaloneClassPage> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(result['message'] ?? 'Failed to update class', style: const TextStyle(color: Colors.black)),
-              backgroundColor: AppColors.gold,
+              backgroundColor: AppColors.snackbarBackground,
               behavior: SnackBarBehavior.floating,
             ),
           );
@@ -519,7 +519,7 @@ class _EditStandaloneClassPageState extends State<EditStandaloneClassPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('An error occurred: $e', style: const TextStyle(color: Colors.black)),
-            backgroundColor: AppColors.gold,
+            backgroundColor: AppColors.snackbarBackground,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -1017,21 +1017,21 @@ class _EditStandaloneClassPageState extends State<EditStandaloneClassPage> {
                                 decoration: BoxDecoration(
                                   color: Colors.white.withOpacity(0.1),
                                   borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: Colors.white),
+                                  border: Border.all(color: Colors.black),
                                 ),
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Row(
                                       children: [
-                                        const Icon(Icons.calendar_today, color: Colors.white),
+                                        const Icon(Icons.calendar_today, color: Colors.black),
                                         const SizedBox(width: 8),
                                         Text(
                                           'Selected Dates & Times (${_selectedDates.length})',
                                           style: const TextStyle(
                                             fontSize: 16,
                                             fontWeight: FontWeight.w600,
-                                            color: Colors.white,
+                                            color: Colors.black,
                                           ),
                                         ),
                                       ],
@@ -1076,7 +1076,7 @@ class _EditStandaloneClassPageState extends State<EditStandaloneClassPage> {
                                                         const Icon(
                                                           Icons.calendar_today,
                                                           size: 16,
-                                                          color: Colors.white,
+                                                          color: Colors.black,
                                                         ),
                                                         const SizedBox(width: 8),
                                                         Expanded(
@@ -1085,7 +1085,7 @@ class _EditStandaloneClassPageState extends State<EditStandaloneClassPage> {
                                                             style: const TextStyle(
                                                               fontSize: 14,
                                                               fontWeight: FontWeight.w600,
-                                                              color: Colors.white,
+                                                              color: Colors.black,
                                                             ),
                                                           ),
                                                         ),

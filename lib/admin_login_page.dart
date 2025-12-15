@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'services/api_service.dart';
 import 'branch_forgot_password_page.dart';
 import 'branch_dashboard_page.dart';
@@ -149,28 +148,34 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
           children: [
             // Static background
             Positioned.fill(
-              child: Image.asset(
-                'assets/E8Logos/admin_login_background.jpeg',
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  // Return a dark container with gradient if image fails to load
-                  return Container(
-                    decoration: const BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [Color(0xFF1a1a1a), Color(0xFF000000)],
+              child: ColorFiltered(
+                colorFilter: const ColorFilter.mode(
+                  Color(0x90000000), // Dark overlay for better text readability
+                  BlendMode.darken,
+                ),
+                child: Image.asset(
+                  'assets/E8Logos/admin_login_background.jpeg',
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    // Return a dark container with gradient if image fails to load
+                    return Container(
+                      decoration: const BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [Color(0xFF1a1a1a), Color(0xFF000000)],
+                        ),
                       ),
-                    ),
-                  );
-                },
+                    );
+                  },
+                ),
               ),
             ),
             // Dark overlay for better text readability
             Positioned.fill(
               child: Container(
                 decoration: const BoxDecoration(
-                  color: Color(0x80000000), // Stronger dark overlay
+                  color: Color(0xA0000000), // Even darker overlay
                 ),
               ),
             ),
@@ -514,34 +519,32 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
                       child: SizedBox(
                         width: buttonWidth,
                         height: buttonHeight,
-                        child: GestureDetector(
-                          onTap: _isLoading ? null : () async {
+                        child: ElevatedButton(
+                          onPressed: _isLoading ? null : () async {
                             await _handleLogin();
                           },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            foregroundColor: Colors.black,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            padding: EdgeInsets.zero,
+                          ),
                           child: _isLoading
-                              ? Container(
-                                  width: buttonWidth * 0.9,
-                                  height: buttonHeight * 0.9,
-                                  decoration: BoxDecoration(
-                                    gradient: const LinearGradient(
-                                      begin: Alignment.topCenter,
-                                      end: Alignment.bottomCenter,
-                                      colors: [Colors.white, Colors.white70],
-                                    ),
-                                    borderRadius: BorderRadius.circular(20),
-                                  ),
-                                  child: Center(
-                                    child: CircularProgressIndicator(
-                                      valueColor: const AlwaysStoppedAnimation<Color>(Colors.black),
-                                      strokeWidth: screenWidth * (isSmallDevice ? 0.03 : isLargeDevice ? 0.008 : 0.0010),
-                                    ),
+                              ? Center(
+                                  child: CircularProgressIndicator(
+                                    valueColor: const AlwaysStoppedAnimation<Color>(Colors.black),
+                                    strokeWidth: screenWidth * (isSmallDevice ? 0.03 : isLargeDevice ? 0.008 : 0.0010),
                                   ),
                                 )
-                              : SvgPicture.asset(
-                                  'assets/img/Button.svg',
-                                  width: buttonWidth,
-                                  height: buttonHeight,
-                                  fit: BoxFit.contain,
+                              : Text(
+                                  'Log in',
+                                  style: TextStyle(
+                                    fontSize: fontSizeLarge,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.black,
+                                  ),
                                 ),
                         ),
                       ),
@@ -780,8 +783,8 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
   void _showSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message),
-        backgroundColor: AppColors.gold,
+        content: Text(message, style: const TextStyle(color: Colors.black)),
+        backgroundColor: AppColors.snackbarBackground,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),

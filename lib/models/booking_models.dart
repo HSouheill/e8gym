@@ -2,6 +2,7 @@ class CreateBookingRequest {
   final String classId;
   final String classType;
   final String? branchId;
+  final String? branchLocation;
   final String scheduleId;
   final DateTime classDate;
   final DateTime startTime;
@@ -12,6 +13,7 @@ class CreateBookingRequest {
     required this.classId,
     required this.classType,
     this.branchId,
+    this.branchLocation,
     required this.scheduleId,
     required this.classDate,
     required this.startTime,
@@ -33,6 +35,10 @@ class CreateBookingRequest {
     if (classType == 'branch' && branchId != null) {
       data['branch_id'] = branchId;
     }
+    // Include branch location if provided
+    if (branchLocation != null && branchLocation!.isNotEmpty) {
+      data['branch_location'] = branchLocation;
+    }
     if (notes != null) {
       data['notes'] = notes;
     }
@@ -45,6 +51,7 @@ class CreateBookingRequest {
       classId: json['class_id'],
       classType: json['class_type'],
       branchId: json['branch_id'],
+      branchLocation: json['branch_location'],
       scheduleId: json['schedule_id'],
       classDate: DateTime.parse(json['class_date']),
       startTime: DateTime.parse(json['start_time']),

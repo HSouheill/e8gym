@@ -62,7 +62,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(result['message'] ?? 'Password changed successfully'),
-            backgroundColor: AppColors.gold,
+            backgroundColor: AppColors.snackbarBackground,
             duration: const Duration(seconds: 4),
           ),
         );
@@ -73,7 +73,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(result['message'] ?? 'Failed to change password', style: const TextStyle(color: Colors.black)),
-            backgroundColor: AppColors.gold,
+            backgroundColor: AppColors.snackbarBackground,
           ),
         );
       }
@@ -81,7 +81,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error changing password: $e', style: const TextStyle(color: Colors.black)),
-          backgroundColor: AppColors.gold,
+          backgroundColor: AppColors.snackbarBackground,
         ),
       );
     } finally {

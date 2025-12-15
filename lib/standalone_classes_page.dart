@@ -1159,8 +1159,8 @@ class _StandaloneClassesPageState extends State<StandaloneClassesPage> {
   void _showSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message),
-        backgroundColor: AppColors.gold,
+        content: Text(message, style: const TextStyle(color: Colors.black)),
+        backgroundColor: AppColors.snackbarBackground,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),
@@ -1256,7 +1256,7 @@ class _StandaloneClassesPageState extends State<StandaloneClassesPage> {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
                     content: const Text('Please enter a valid number of weeks (1-52)', style: TextStyle(color: Colors.black)),
-                    backgroundColor: AppColors.gold,
+                    backgroundColor: AppColors.snackbarBackground,
                   ),
                 );
                 return;
@@ -1330,7 +1330,7 @@ class _StandaloneClassesPageState extends State<StandaloneClassesPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error: $e', style: const TextStyle(color: Colors.black)),
-          backgroundColor: Colors.red,
+          backgroundColor: AppColors.snackbarBackground,
           duration: const Duration(seconds: 3),
         ),
       );
