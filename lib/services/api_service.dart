@@ -2630,6 +2630,7 @@ class ApiService {
         final errorData = jsonDecode(response.body);
         return {
           'success': false,
+          'statusCode': response.statusCode,
           'message': errorData['message'] ?? 'Failed to fetch user branch classes',
           'error': errorData['error'],
         };
@@ -3724,6 +3725,7 @@ class ApiService {
         final errorData = jsonDecode(response.body);
         return {
           'success': false,
+          'statusCode': response.statusCode,
           'message': errorData['message'] ?? 'Failed to fetch user bookings',
           'error': errorData['error'],
         };
@@ -4900,6 +4902,7 @@ class ApiService {
         final errorData = jsonDecode(response.body);
         return {
           'success': false,
+          'statusCode': response.statusCode,
           'message': errorData['message'] ?? 'Failed to fetch user profile',
           'error': errorData['error'] ?? 'Unknown error',
         };
@@ -4907,6 +4910,51 @@ class ApiService {
     } catch (e) {
       SecureLogger.error('Error fetching user profile', error: e);
       SecurityService.logSecurityEvent('api_error', details: {'error': e.toString(), 'endpoint': 'get_user_profile'});
+      return {
+        'success': false,
+        'message': 'Network error: $e',
+        'error': e.toString(),
+      };
+    }
+  }
+
+  // Delete user account
+  static Future<Map<String, dynamic>> deleteAccount(String accessToken) async {
+    try {
+      if (!SecurityService.validateInput(accessToken)) {
+        SecurityService.logSecurityEvent('invalid_token_input', details: {'token_length': accessToken.length});
+        return {
+          'success': false,
+          'message': 'Invalid token data',
+          'error': 'Input validation failed',
+        };
+      }
+
+      final deviceId = await SecurityService.getDeviceId();
+      final headers = SecurityService.getSecurityHeaders(accessToken);
+      headers['X-Device-ID'] = deviceId;
+
+      final response = await http.delete(
+        Uri.parse('${ApiConfig.baseUrl}/api/auth/account'),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return {
+          'success': true,
+          'message': data['message'] ?? 'Account deleted successfully',
+        };
+      } else {
+        final errorData = jsonDecode(response.body);
+        return {
+          'success': false,
+          'statusCode': response.statusCode,
+          'message': errorData['message'] ?? 'Failed to delete account',
+          'error': errorData['error'] ?? 'Unknown error',
+        };
+      }
+    } catch (e) {
       return {
         'success': false,
         'message': 'Network error: $e',

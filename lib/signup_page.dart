@@ -146,7 +146,7 @@ class _SignupPageState extends State<SignupPage> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Failed to load branches: ${response['message']}'),
+              content: Text('Failed to load branches: ${response['message']}', style: const TextStyle(color: Colors.black)),
               backgroundColor: AppColors.snackbarBackground,
             
             )
@@ -208,6 +208,15 @@ class _SignupPageState extends State<SignupPage> {
               surface: Color(0xFF1A1A1A),
               onSurface: Colors.white,
             ),
+            textTheme: const TextTheme(
+              bodyLarge: TextStyle(color: Colors.white),
+              bodyMedium: TextStyle(color: Colors.white),
+              bodySmall: TextStyle(color: Colors.white),
+            ),
+            inputDecorationTheme: const InputDecorationTheme(
+              labelStyle: TextStyle(color: Colors.white),
+              hintStyle: TextStyle(color: Colors.white70),
+            ),
           ),
           child: child!,
         );
@@ -231,7 +240,7 @@ class _SignupPageState extends State<SignupPage> {
     if (!_acceptPolicies) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please accept the Privacy Policy and Terms & Conditions to continue', style: const TextStyle(color: Colors.black)),
+          content: Text('Please accept the Privacy Policy and Terms & Conditions to continue', style: TextStyle(color: Colors.black)),
           backgroundColor: AppColors.snackbarBackground,
         ),
       );
@@ -366,45 +375,44 @@ class _SignupPageState extends State<SignupPage> {
             ? screenHeight * 0.045  // 4.5% for large devices
             : screenHeight * 0.04; // 4% for medium devices
     
-    // Responsive font sizes with device-specific scaling
+    // Responsive font sizes with device-specific scaling (slightly smaller)
     final fontSizeSmall = isSmallDevice 
-        ? screenWidth * 0.040  // 3.5% for small devices
+        ? screenWidth * 0.032
         : isLargeDevice 
-            ? screenWidth * 0.030  // 2.5% for large devices
-            : screenWidth * 0.04; // 3% for medium devices
+            ? screenWidth * 0.028
+            : screenWidth * 0.035;
     
     final fontSizeMedium = isSmallDevice 
-        ? screenWidth * 0.050  // 4.5% for small devices
+        ? screenWidth * 0.045
         : isLargeDevice 
-            ? screenWidth * 0.040  // 3.5% for large devices
-            : screenWidth * 0.05; // 4% for medium devices
+            ? screenWidth * 0.038
+            : screenWidth * 0.045;
     
     final fontSizeLarge = isSmallDevice 
-        ? screenWidth * 0.060  // 5.5% for small devices
+        ? screenWidth * 0.055
         : isLargeDevice 
-            ? screenWidth * 0.050  // 4.5% for large devices
-            : screenWidth * 0.06; // 5% for medium devices
+            ? screenWidth * 0.048
+            : screenWidth * 0.055;
     
-    
-    // Responsive icon sizes with device-specific scaling
+    // Responsive icon sizes with device-specific scaling (slightly smaller)
     final iconSizeSmall = isSmallDevice 
-        ? screenWidth * 0.05  // 4% for small devices
+        ? screenWidth * 0.045
         : isLargeDevice 
-            ? screenWidth * 0.04  // 3% for large devices
-            : screenWidth * 0.040; // 3.5% for medium devices
+            ? screenWidth * 0.038
+            : screenWidth * 0.040;
     
     final iconSizeMedium = isSmallDevice 
-        ? screenWidth * 0.050  // 4.5% for small devices
+        ? screenWidth * 0.048
         : isLargeDevice 
-            ? screenWidth * 0.040  // 3.5% for large devices
-            : screenWidth * 0.05; // 4% for medium devices
+            ? screenWidth * 0.038
+            : screenWidth * 0.048;
     
-    // Responsive container sizes with device-specific scaling
+    // Responsive container sizes with device-specific scaling (slightly smaller)
     final buttonHeight = isSmallDevice 
-        ? screenHeight * 0.07  // 8% for small devices
+        ? screenHeight * 0.065
         : isLargeDevice 
-            ? screenHeight * 0.12  // 12% for large devices
-            : screenHeight * 0.1; // 10% for medium devices
+            ? screenHeight * 0.10
+            : screenHeight * 0.085;
     
     final buttonWidth = isSmallDevice 
         ? screenWidth * 0.7  // 70% for small devices
@@ -702,7 +710,7 @@ class _SignupPageState extends State<SignupPage> {
                           child: _isLoading
                               ? Center(
                                   child: CircularProgressIndicator(
-                                    valueColor: const AlwaysStoppedAnimation<Color>(Colors.black),
+                                    valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
                                     strokeWidth: screenWidth * (isSmallDevice ? 0.01 : isLargeDevice ? 0.006 : 0.008),
                                   ),
                                 )
@@ -838,7 +846,7 @@ class _SignupPageState extends State<SignupPage> {
                 hintStyle: TextStyle(color: Colors.white70, fontSize: fontSizeSmall),
                 border: InputBorder.none,
                 errorStyle: TextStyle(
-                  color: Colors.red,
+                  color: Colors.black,
                   fontSize: fontSizeSmall * 0.75,
                   height: 1.4,
                 ),
@@ -952,7 +960,7 @@ class _SignupPageState extends State<SignupPage> {
                 hintStyle: TextStyle(color: Colors.white70, fontSize: fontSizeSmall),
                 border: InputBorder.none,
                 errorStyle: TextStyle(
-                  color: Colors.red,
+                  color: Colors.black,
                   fontSize: fontSizeSmall * 0.8,
                   height: 1.2,
                 ),
@@ -979,7 +987,7 @@ class _SignupPageState extends State<SignupPage> {
                 hintStyle: TextStyle(color: Colors.white70, fontSize: fontSizeSmall),
                 border: InputBorder.none,
                 errorStyle: TextStyle(
-                  color: Colors.red,
+                  color: Colors.black,
                   fontSize: fontSizeSmall * 0.8,
                   height: 1.2,
                 ),
@@ -1045,33 +1053,35 @@ class _SignupPageState extends State<SignupPage> {
           SizedBox(width: spacing),
           Expanded(
             child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
               onTap: _selectDate,
-              child: TextFormField(
-                controller: _dateOfBirthController,
-                enabled: false,
-                style: TextStyle(color: Colors.white, fontSize: fontSizeSmall),
-                decoration: InputDecoration(
-                  hintText: 'Date of Birth (Optional)',
-                  hintStyle: TextStyle(color: Colors.white70, fontSize: fontSizeSmall),
-                  border: InputBorder.none,
-                  errorStyle: TextStyle(
-                    color: Colors.red,
-                    fontSize: fontSizeSmall * 0.8,
-                    height: 1.2,
+              child: IgnorePointer(
+                child: TextFormField(
+                  controller: _dateOfBirthController,
+                  style: TextStyle(color: Colors.white, fontSize: fontSizeSmall),
+                  decoration: InputDecoration(
+                    hintText: 'Date of Birth (Optional)',
+                    hintStyle: TextStyle(color: Colors.white70, fontSize: fontSizeSmall),
+                    border: InputBorder.none,
+                    errorStyle: TextStyle(
+                      color: Colors.black,
+                      fontSize: fontSizeSmall * 0.8,
+                      height: 1.2,
+                    ),
                   ),
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return null; // Optional field
+                    }
+                    if (_parsedDateOfBirth == null) {
+                      return 'Please select a valid date of birth';
+                    }
+                    if (!ValidationUtils.isValidDateOfBirth(_parsedDateOfBirth!)) {
+                      return 'You must be at least 13 years old to register';
+                    }
+                    return null;
+                  },
                 ),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return null; // Optional field
-                  }
-                  if (_parsedDateOfBirth == null) {
-                    return 'Please select a valid date of birth';
-                  }
-                  if (!ValidationUtils.isValidDateOfBirth(_parsedDateOfBirth!)) {
-                    return 'You must be at least 13 years old to register';
-                  }
-                  return null;
-                },
               ),
             ),
           ),
@@ -1177,7 +1187,7 @@ class _SignupPageState extends State<SignupPage> {
     if (_branches.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('No branches available. You can still sign up without selecting a branch.'),
+          content: Text('No branches available. You can still sign up without selecting a branch.', style: TextStyle(color: Colors.black)),
           backgroundColor: AppColors.snackbarBackground,
           duration: Duration(seconds: 3),
         ),

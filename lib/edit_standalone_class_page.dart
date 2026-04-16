@@ -6,6 +6,12 @@ import 'services/api_service.dart';
 import 'models/standalone_class_models.dart';
 import 'utils/app_colors.dart';
 
+class _TimeSlotEntry {
+  TimeOfDay startTime;
+  TimeOfDay endTime;
+  _TimeSlotEntry({required this.startTime, required this.endTime});
+}
+
 class EditStandaloneClassPage extends StatefulWidget {
   final String accessToken;
   final StandaloneClassResponse classData;
@@ -29,13 +35,11 @@ class _EditStandaloneClassPageState extends State<EditStandaloneClassPage> {
   final _durationController = TextEditingController();
   
   bool _isLoading = false;
-  List<ClassSchedule> _schedules = [];
   bool _isActive = true;
-  
-  // Multi-date selection
+
+  // Multi-date selection with multiple time slots per date
   Set<DateTime> _selectedDates = {};
-  TimeOfDay _defaultStartTime = const TimeOfDay(hour: 9, minute: 0);
-  TimeOfDay _defaultEndTime = const TimeOfDay(hour: 10, minute: 0);
+  Map<DateTime, List<_TimeSlotEntry>> _dateTimeSlots = {};
   DateTime _displayMonth = DateTime.now();
   
   // Image handling
@@ -59,20 +63,21 @@ class _EditStandaloneClassPageState extends State<EditStandaloneClassPage> {
     _capacityController.text = widget.classData.capacity.toString();
     _durationController.text = widget.classData.duration.toString();
     _isActive = widget.classData.isActive;
-    
-    // Initialize existing images
     _existingImages = List.from(widget.classData.images);
-    
-    // Initialize schedules
-    if (widget.classData.schedule.isNotEmpty) {
-      _schedules = List.from(widget.classData.schedule);
-      // Populate selected dates from existing schedules
-      _selectedDates = _schedules.map((schedule) => schedule.date).toSet();
-      // Set default times from first schedule
-      if (_schedules.isNotEmpty) {
-        _defaultStartTime = TimeOfDay.fromDateTime(_schedules.first.startTime);
-        _defaultEndTime = TimeOfDay.fromDateTime(_schedules.first.endTime);
+
+    // Group schedules by date to support multiple time slots per date
+    _selectedDates = {};
+    _dateTimeSlots = {};
+    for (final schedule in widget.classData.schedule) {
+      final dateKey = DateTime(schedule.date.year, schedule.date.month, schedule.date.day);
+      if (!_selectedDates.contains(dateKey)) {
+        _selectedDates.add(dateKey);
+        _dateTimeSlots[dateKey] = [];
       }
+      _dateTimeSlots[dateKey]!.add(_TimeSlotEntry(
+        startTime: TimeOfDay.fromDateTime(schedule.startTime),
+        endTime: TimeOfDay.fromDateTime(schedule.endTime),
+      ));
     }
   }
 
@@ -87,186 +92,107 @@ class _EditStandaloneClassPageState extends State<EditStandaloneClassPage> {
   }
 
   void _toggleDateSelection(DateTime date) {
+    final dateKey = DateTime(date.year, date.month, date.day);
     setState(() {
-      if (_selectedDates.contains(date)) {
-        _selectedDates.remove(date);
+      if (_selectedDates.any((d) => d.year == dateKey.year && d.month == dateKey.month && d.day == dateKey.day)) {
+        _selectedDates.removeWhere((d) => d.year == dateKey.year && d.month == dateKey.month && d.day == dateKey.day);
+        _dateTimeSlots.remove(dateKey);
       } else {
-        _selectedDates.add(date);
+        _selectedDates.add(dateKey);
+        _dateTimeSlots[dateKey] = [
+          _TimeSlotEntry(startTime: const TimeOfDay(hour: 9, minute: 0), endTime: const TimeOfDay(hour: 10, minute: 0)),
+        ];
       }
-      _generateSchedulesFromSelectedDates();
     });
   }
 
-  void _generateSchedulesFromSelectedDates() {
-    // Store existing custom times before regenerating
-    final Map<DateTime, ClassSchedule> existingSchedules = {};
-    for (final schedule in _schedules) {
-      final dateKey = DateTime(schedule.date.year, schedule.date.month, schedule.date.day);
-      existingSchedules[dateKey] = schedule;
+  List<ClassSchedule> _getScheduleList() {
+    final schedules = <ClassSchedule>[];
+    for (final date in _dateTimeSlots.keys) {
+      final slots = _dateTimeSlots[date] ?? [];
+      for (final slot in slots) {
+        final backendDayOfWeek = date.weekday == 7 ? 0 : date.weekday;
+        schedules.add(ClassSchedule(
+          dayOfWeek: backendDayOfWeek,
+          date: date,
+          startTime: DateTime.utc(date.year, date.month, date.day, slot.startTime.hour, slot.startTime.minute),
+          endTime: DateTime.utc(date.year, date.month, date.day, slot.endTime.hour, slot.endTime.minute),
+        ));
+      }
     }
-    
-    _schedules.clear();
-    for (final date in _selectedDates) {
-      final dartWeekday = date.weekday;
-      final backendDayOfWeek = dartWeekday == 7 ? 0 : dartWeekday;
-      
-      final dateKey = DateTime(date.year, date.month, date.day);
-      final existingSchedule = existingSchedules[dateKey];
-      
-      // Use existing schedule times if available, otherwise use default times
-      final startTime = existingSchedule != null
-          ? existingSchedule.startTime
-          : DateTime.utc(date.year, date.month, date.day, _defaultStartTime.hour, _defaultStartTime.minute);
-      final endTime = existingSchedule != null
-          ? existingSchedule.endTime
-          : DateTime.utc(date.year, date.month, date.day, _defaultEndTime.hour, _defaultEndTime.minute);
-      
-      _schedules.add(ClassSchedule(
-        dayOfWeek: backendDayOfWeek,
-        date: date,
-        startTime: startTime,
-        endTime: endTime,
-      ));
+    return schedules;
+  }
+
+  void _addTimeSlotForDate(DateTime date) {
+    setState(() {
+      _dateTimeSlots[date]!.add(
+        _TimeSlotEntry(startTime: const TimeOfDay(hour: 9, minute: 0), endTime: const TimeOfDay(hour: 10, minute: 0)),
+      );
+    });
+  }
+
+  void _removeTimeSlotForDate(DateTime date, int slotIndex) {
+    setState(() {
+      _dateTimeSlots[date]!.removeAt(slotIndex);
+      if (_dateTimeSlots[date]!.isEmpty) {
+        _dateTimeSlots.remove(date);
+        _selectedDates.removeWhere((d) => d.year == date.year && d.month == date.month && d.day == date.day);
+      }
+    });
+  }
+
+  void _updateTimeSlotForDate(DateTime date, int slotIndex, TimeOfDay? start, TimeOfDay? end) {
+    setState(() {
+      final slot = _dateTimeSlots[date]![slotIndex];
+      _dateTimeSlots[date]![slotIndex] = _TimeSlotEntry(
+        startTime: start ?? slot.startTime,
+        endTime: end ?? slot.endTime,
+      );
+    });
+  }
+
+  void _changeDateForSchedule(DateTime oldDate, DateTime newDate) {
+    final normalizedOld = DateTime(oldDate.year, oldDate.month, oldDate.day);
+    final normalizedNew = DateTime(newDate.year, newDate.month, newDate.day);
+
+    if (_selectedDates.any((d) => d.year == normalizedNew.year && d.month == normalizedNew.month && d.day == normalizedNew.day)) {
+      _showSnackBar('This date is already selected');
+      return;
     }
-  }
 
-  void _updateScheduleTime(DateTime date, TimeOfDay? startTime, TimeOfDay? endTime) {
+    final today = DateTime.now();
+    final todayDate = DateTime(today.year, today.month, today.day);
+    if (normalizedNew.isBefore(todayDate)) {
+      _showSnackBar('Cannot select a date in the past');
+      return;
+    }
+
     setState(() {
-      final scheduleIndex = _schedules.indexWhere((s) => 
-        s.date.year == date.year && 
-        s.date.month == date.month && 
-        s.date.day == date.day
-      );
-      
-      if (scheduleIndex != -1) {
-        final schedule = _schedules[scheduleIndex];
-        final updatedStartTime = startTime != null
-            ? DateTime.utc(date.year, date.month, date.day, startTime.hour, startTime.minute)
-            : schedule.startTime;
-        final updatedEndTime = endTime != null
-            ? DateTime.utc(date.year, date.month, date.day, endTime.hour, endTime.minute)
-            : schedule.endTime;
-        
-        _schedules[scheduleIndex] = ClassSchedule(
-          dayOfWeek: schedule.dayOfWeek,
-          date: schedule.date,
-          startTime: updatedStartTime,
-          endTime: updatedEndTime,
-        );
-      }
+      final existingSlots = _dateTimeSlots[normalizedOld] ?? [
+        _TimeSlotEntry(startTime: const TimeOfDay(hour: 9, minute: 0), endTime: const TimeOfDay(hour: 10, minute: 0)),
+      ];
+      _selectedDates.removeWhere((d) => d.year == normalizedOld.year && d.month == normalizedOld.month && d.day == normalizedOld.day);
+      _dateTimeSlots.remove(normalizedOld);
+      _selectedDates.add(normalizedNew);
+      _dateTimeSlots[normalizedNew] = existingSlots;
     });
   }
 
-  void _changeDate(DateTime oldDate, DateTime newDate) {
-    setState(() {
-      // Normalize dates
-      final normalizedOldDate = DateTime(oldDate.year, oldDate.month, oldDate.day);
-      final normalizedNewDate = DateTime(newDate.year, newDate.month, newDate.day);
-      
-      // Check if new date is already selected
-      final isNewDateAlreadySelected = _selectedDates.any((d) => 
-        d.year == normalizedNewDate.year && 
-        d.month == normalizedNewDate.month && 
-        d.day == normalizedNewDate.day
-      );
-      
-      if (isNewDateAlreadySelected) {
-        _showSnackBar('This date is already selected');
-        return;
-      }
-      
-      // Check if new date is in the past
-      final today = DateTime.now();
-      final todayDate = DateTime(today.year, today.month, today.day);
-      if (normalizedNewDate.isBefore(todayDate)) {
-        _showSnackBar('Cannot select a date in the past');
-        return;
-      }
-      
-      // Get the schedule for the old date to preserve times
-      final scheduleIndex = _schedules.indexWhere((s) => 
-        s.date.year == normalizedOldDate.year && 
-        s.date.month == normalizedOldDate.month && 
-        s.date.day == normalizedOldDate.day
-      );
-      
-      TimeOfDay? preservedStartTime;
-      TimeOfDay? preservedEndTime;
-      
-      if (scheduleIndex != -1) {
-        final schedule = _schedules[scheduleIndex];
-        preservedStartTime = TimeOfDay.fromDateTime(schedule.startTime);
-        preservedEndTime = TimeOfDay.fromDateTime(schedule.endTime);
-      }
-      
-      // Find and remove the exact old date from the set
-      _selectedDates.removeWhere((d) => 
-        d.year == normalizedOldDate.year && 
-        d.month == normalizedOldDate.month && 
-        d.day == normalizedOldDate.day
-      );
-      
-      // Remove old schedule
-      if (scheduleIndex != -1) {
-        _schedules.removeAt(scheduleIndex);
-      }
-      
-      // Add new date
-      _selectedDates.add(normalizedNewDate);
-      
-      // Create new schedule with preserved times or default times
-      final dartWeekday = normalizedNewDate.weekday;
-      final backendDayOfWeek = dartWeekday == 7 ? 0 : dartWeekday;
-      
-      final newStartTime = preservedStartTime != null
-          ? DateTime.utc(normalizedNewDate.year, normalizedNewDate.month, normalizedNewDate.day, 
-                        preservedStartTime.hour, preservedStartTime.minute)
-          : DateTime.utc(normalizedNewDate.year, normalizedNewDate.month, normalizedNewDate.day, 
-                        _defaultStartTime.hour, _defaultStartTime.minute);
-      
-      final newEndTime = preservedEndTime != null
-          ? DateTime.utc(normalizedNewDate.year, normalizedNewDate.month, normalizedNewDate.day, 
-                        preservedEndTime.hour, preservedEndTime.minute)
-          : DateTime.utc(normalizedNewDate.year, normalizedNewDate.month, normalizedNewDate.day, 
-                        _defaultEndTime.hour, _defaultEndTime.minute);
-      
-      _schedules.add(ClassSchedule(
-        dayOfWeek: backendDayOfWeek,
-        date: normalizedNewDate,
-        startTime: newStartTime,
-        endTime: newEndTime,
-      ));
-    });
-  }
+  void _changeDayOfWeek(DateTime date, int targetDayIndex) {
+    // targetDayIndex: 0=Sun, 1=Mon, ..., 6=Sat (matching date.weekday % 7)
+    final currentDayIndex = date.weekday % 7;
+    if (targetDayIndex == currentDayIndex) return;
 
-  TimeOfDay _getStartTimeForDate(DateTime date) {
-    final schedule = _schedules.firstWhere(
-      (s) => s.date.year == date.year && 
-             s.date.month == date.month && 
-             s.date.day == date.day,
-      orElse: () => ClassSchedule(
-        dayOfWeek: date.weekday % 7,
-        date: date,
-        startTime: DateTime.utc(date.year, date.month, date.day, _defaultStartTime.hour, _defaultStartTime.minute),
-        endTime: DateTime.utc(date.year, date.month, date.day, _defaultEndTime.hour, _defaultEndTime.minute),
-      ),
-    );
-    return TimeOfDay.fromDateTime(schedule.startTime);
-  }
+    int diff = targetDayIndex - currentDayIndex;
+    DateTime newDate = DateTime(date.year, date.month, date.day + diff);
 
-  TimeOfDay _getEndTimeForDate(DateTime date) {
-    final schedule = _schedules.firstWhere(
-      (s) => s.date.year == date.year && 
-             s.date.month == date.month && 
-             s.date.day == date.day,
-      orElse: () => ClassSchedule(
-        dayOfWeek: date.weekday % 7,
-        date: date,
-        startTime: DateTime.utc(date.year, date.month, date.day, _defaultStartTime.hour, _defaultStartTime.minute),
-        endTime: DateTime.utc(date.year, date.month, date.day, _defaultEndTime.hour, _defaultEndTime.minute),
-      ),
-    );
-    return TimeOfDay.fromDateTime(schedule.endTime);
+    final today = DateTime.now();
+    final todayDate = DateTime(today.year, today.month, today.day);
+    if (newDate.isBefore(todayDate)) {
+      newDate = DateTime(newDate.year, newDate.month, newDate.day + 7);
+    }
+
+    _changeDateForSchedule(date, newDate);
   }
 
   Future<void> _pickImages() async {
@@ -333,22 +259,26 @@ class _EditStandaloneClassPageState extends State<EditStandaloneClassPage> {
 
 
   bool _schedulesChanged() {
-    if (_schedules.length != widget.classData.schedule.length) {
-      return true;
-    }
-    
-    for (int i = 0; i < _schedules.length; i++) {
-      final currentSchedule = _schedules[i];
-      final originalSchedule = widget.classData.schedule[i];
-      
-      if (currentSchedule.dayOfWeek != originalSchedule.dayOfWeek ||
-          currentSchedule.date != originalSchedule.date ||
-          currentSchedule.startTime != originalSchedule.startTime ||
-          currentSchedule.endTime != originalSchedule.endTime) {
+    final currentSchedules = _getScheduleList();
+    if (currentSchedules.length != widget.classData.schedule.length) return true;
+    final sortedCurrent = List<ClassSchedule>.from(currentSchedules)
+      ..sort((a, b) {
+        final dc = a.date.compareTo(b.date);
+        return dc != 0 ? dc : a.startTime.compareTo(b.startTime);
+      });
+    final sortedOriginal = List<ClassSchedule>.from(widget.classData.schedule)
+      ..sort((a, b) {
+        final dc = a.date.compareTo(b.date);
+        return dc != 0 ? dc : a.startTime.compareTo(b.startTime);
+      });
+    for (int i = 0; i < sortedCurrent.length; i++) {
+      if (sortedCurrent[i].dayOfWeek != sortedOriginal[i].dayOfWeek ||
+          sortedCurrent[i].date != sortedOriginal[i].date ||
+          sortedCurrent[i].startTime != sortedOriginal[i].startTime ||
+          sortedCurrent[i].endTime != sortedOriginal[i].endTime) {
         return true;
       }
     }
-    
     return false;
   }
 
@@ -369,8 +299,9 @@ class _EditStandaloneClassPageState extends State<EditStandaloneClassPage> {
     }
 
     // Validate that all schedules have valid times
-    for (int i = 0; i < _schedules.length; i++) {
-      final schedule = _schedules[i];
+    final schedulesToSubmit = _getScheduleList();
+    for (int i = 0; i < schedulesToSubmit.length; i++) {
+      final schedule = schedulesToSubmit[i];
       
       // Validate that the date is not in the past (matching backend validation)
       if (schedule.date.isBefore(DateTime.now().subtract(const Duration(days: 1)))) {
@@ -429,7 +360,7 @@ class _EditStandaloneClassPageState extends State<EditStandaloneClassPage> {
         instructor: _instructorController.text.trim() != widget.classData.instructor ? _instructorController.text.trim() : null,
         capacity: int.parse(_capacityController.text) != widget.classData.capacity ? int.parse(_capacityController.text) : null,
         duration: int.parse(_durationController.text) != widget.classData.duration ? int.parse(_durationController.text) : null,
-        schedule: _schedulesChanged() ? _schedules : null,
+        schedule: _schedulesChanged() ? _getScheduleList() : null,
         images: imagesChanged ? _existingImages : null,
         isActive: _isActive != widget.classData.isActive ? _isActive : null,
       );
@@ -448,7 +379,7 @@ class _EditStandaloneClassPageState extends State<EditStandaloneClassPage> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('No changes detected. Please modify at least one field before updating.'),
+              content: Text('No changes detected. Please modify at least one field before updating.', style: TextStyle(color: Colors.black)),
               backgroundColor: AppColors.snackbarBackground,
               behavior: SnackBarBehavior.floating,
             ),
@@ -496,7 +427,7 @@ class _EditStandaloneClassPageState extends State<EditStandaloneClassPage> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(result['message'] ?? 'Class updated successfully'),
+              content: Text(result['message'] ?? 'Class updated successfully', style: const TextStyle(color: Colors.black)),
               backgroundColor: AppColors.snackbarBackground,
               behavior: SnackBarBehavior.floating,
             ),
@@ -1038,15 +969,15 @@ class _EditStandaloneClassPageState extends State<EditStandaloneClassPage> {
                                     ),
                                     const SizedBox(height: 16),
                                     ...(() {
-                                      final sortedDates = _selectedDates.toList();
-                                      sortedDates.sort();
+                                      final sortedDates = _selectedDates.toList()..sort();
                                       return sortedDates;
                                     })().map((date) {
-                                      final startTime = _getStartTimeForDate(date);
-                                      final endTime = _getEndTimeForDate(date);
-                                      
+                                      final slots = _dateTimeSlots[date] ?? [];
+                                      final dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                                      final currentDayIndex = date.weekday % 7;
+
                                       return Container(
-                                        margin: const EdgeInsets.only(bottom: 12),
+                                        margin: const EdgeInsets.only(bottom: 16),
                                         padding: const EdgeInsets.all(12),
                                         decoration: BoxDecoration(
                                           color: Colors.white,
@@ -1056,6 +987,7 @@ class _EditStandaloneClassPageState extends State<EditStandaloneClassPage> {
                                         child: Column(
                                           crossAxisAlignment: CrossAxisAlignment.start,
                                           children: [
+                                            // Date row with edit and remove
                                             Row(
                                               children: [
                                                 Expanded(
@@ -1068,16 +1000,12 @@ class _EditStandaloneClassPageState extends State<EditStandaloneClassPage> {
                                                         lastDate: DateTime.now().add(const Duration(days: 365 * 2)),
                                                       );
                                                       if (selectedDate != null) {
-                                                        _changeDate(date, selectedDate);
+                                                        _changeDateForSchedule(date, selectedDate);
                                                       }
                                                     },
                                                     child: Row(
                                                       children: [
-                                                        const Icon(
-                                                          Icons.calendar_today,
-                                                          size: 16,
-                                                          color: Colors.black,
-                                                        ),
+                                                        const Icon(Icons.calendar_today, size: 16, color: Colors.black),
                                                         const SizedBox(width: 8),
                                                         Expanded(
                                                           child: Text(
@@ -1089,11 +1017,7 @@ class _EditStandaloneClassPageState extends State<EditStandaloneClassPage> {
                                                             ),
                                                           ),
                                                         ),
-                                                        const Icon(
-                                                          Icons.edit,
-                                                          size: 14,
-                                                          color: Colors.grey,
-                                                        ),
+                                                        const Icon(Icons.edit, size: 14, color: Colors.grey),
                                                       ],
                                                     ),
                                                   ),
@@ -1109,100 +1033,151 @@ class _EditStandaloneClassPageState extends State<EditStandaloneClassPage> {
                                               ],
                                             ),
                                             const SizedBox(height: 8),
-                                            const Text(
-                                              'Tap to edit time',
-                                              style: TextStyle(
-                                                fontSize: 12,
-                                                color: Colors.grey,
-                                                fontStyle: FontStyle.italic,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 8),
+                                            // Day-of-week selector
                                             Row(
-                                              children: [
-                                                Expanded(
-                                                  child: InkWell(
-                                                    onTap: () async {
-                                                      final time = await showTimePicker(
-                                                        context: context,
-                                                        initialTime: startTime,
-                                                      );
-                                                      if (time != null) {
-                                                        _updateScheduleTime(date, time, null);
-                                                      }
-                                                    },
-                                                    child: Container(
-                                                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
-                                                      decoration: BoxDecoration(
-                                                        border: Border.all(color: Colors.white, width: 1.5),
-                                                        borderRadius: BorderRadius.circular(8),
-                                                        color: Colors.white,
+                                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                              children: List.generate(7, (i) {
+                                                final isSelected = i == currentDayIndex;
+                                                return GestureDetector(
+                                                  onTap: () => _changeDayOfWeek(date, i),
+                                                  child: Container(
+                                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                                                    decoration: BoxDecoration(
+                                                      color: isSelected ? Colors.black : Colors.grey[100],
+                                                      borderRadius: BorderRadius.circular(6),
+                                                      border: Border.all(
+                                                        color: isSelected ? Colors.black : Colors.grey[300]!,
                                                       ),
-                                                      child: Row(
-                                                        mainAxisAlignment: MainAxisAlignment.center,
-                                                        children: [
-                                                          const Icon(Icons.access_time, size: 18, color: Colors.white),
-                                                          const SizedBox(width: 8),
-                                                          Text(
-                                                            '${startTime.hour.toString().padLeft(2, '0')}:${startTime.minute.toString().padLeft(2, '0')}',
-                                                            style: const TextStyle(
-                                                              fontSize: 14,
-                                                              fontWeight: FontWeight.w600,
-                                                              color: Colors.black87,
-                                                            ),
-                                                          ),
-                                                          const SizedBox(width: 4),
-                                                          const Icon(Icons.edit, size: 14, color: Colors.grey),
-                                                        ],
+                                                    ),
+                                                    child: Text(
+                                                      dayLabels[i],
+                                                      style: TextStyle(
+                                                        fontSize: 11,
+                                                        fontWeight: FontWeight.w600,
+                                                        color: isSelected ? Colors.white : Colors.grey[600],
                                                       ),
                                                     ),
                                                   ),
-                                                ),
-                                                const SizedBox(width: 12),
-                                                const Text(
-                                                  'to',
-                                                  style: TextStyle(fontSize: 14, color: Colors.grey, fontWeight: FontWeight.w500),
-                                                ),
-                                                const SizedBox(width: 12),
-                                                Expanded(
-                                                  child: InkWell(
-                                                    onTap: () async {
-                                                      final time = await showTimePicker(
-                                                        context: context,
-                                                        initialTime: endTime,
-                                                      );
-                                                      if (time != null) {
-                                                        _updateScheduleTime(date, null, time);
-                                                      }
-                                                    },
-                                                    child: Container(
-                                                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+                                                );
+                                              }),
+                                            ),
+                                            const SizedBox(height: 12),
+                                            // Time slots
+                                            ...List.generate(slots.length, (slotIndex) {
+                                              final slot = slots[slotIndex];
+                                              return Padding(
+                                                padding: const EdgeInsets.only(bottom: 8),
+                                                child: Row(
+                                                  children: [
+                                                    // Slot number
+                                                    Container(
+                                                      width: 22,
+                                                      height: 22,
                                                       decoration: BoxDecoration(
-                                                        border: Border.all(color: Colors.white, width: 1.5),
-                                                        borderRadius: BorderRadius.circular(8),
-                                                        color: Colors.white,
+                                                        color: Colors.grey[200],
+                                                        shape: BoxShape.circle,
                                                       ),
-                                                      child: Row(
-                                                        mainAxisAlignment: MainAxisAlignment.center,
-                                                        children: [
-                                                          const Icon(Icons.access_time, size: 18, color: Colors.white),
-                                                          const SizedBox(width: 8),
-                                                          Text(
-                                                            '${endTime.hour.toString().padLeft(2, '0')}:${endTime.minute.toString().padLeft(2, '0')}',
-                                                            style: const TextStyle(
-                                                              fontSize: 14,
-                                                              fontWeight: FontWeight.w600,
-                                                              color: Colors.black87,
-                                                            ),
-                                                          ),
-                                                          const SizedBox(width: 4),
-                                                          const Icon(Icons.edit, size: 14, color: Colors.grey),
-                                                        ],
+                                                      child: Center(
+                                                        child: Text(
+                                                          '${slotIndex + 1}',
+                                                          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                                                        ),
                                                       ),
                                                     ),
-                                                  ),
+                                                    const SizedBox(width: 8),
+                                                    // Start time
+                                                    Expanded(
+                                                      child: InkWell(
+                                                        onTap: () async {
+                                                          final time = await showTimePicker(
+                                                            context: context,
+                                                            initialTime: slot.startTime,
+                                                          );
+                                                          if (time != null) {
+                                                            _updateTimeSlotForDate(date, slotIndex, time, null);
+                                                          }
+                                                        },
+                                                        child: Container(
+                                                          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+                                                          decoration: BoxDecoration(
+                                                            border: Border.all(color: Colors.grey[300]!),
+                                                            borderRadius: BorderRadius.circular(8),
+                                                            color: Colors.grey[50],
+                                                          ),
+                                                          child: Row(
+                                                            mainAxisAlignment: MainAxisAlignment.center,
+                                                            children: [
+                                                              const Icon(Icons.access_time, size: 14, color: Colors.black54),
+                                                              const SizedBox(width: 4),
+                                                              Text(
+                                                                '${slot.startTime.hour.toString().padLeft(2, '0')}:${slot.startTime.minute.toString().padLeft(2, '0')}',
+                                                                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                                                              ),
+                                                            ],
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    const Padding(
+                                                      padding: EdgeInsets.symmetric(horizontal: 6),
+                                                      child: Text('–', style: TextStyle(color: Colors.grey)),
+                                                    ),
+                                                    // End time
+                                                    Expanded(
+                                                      child: InkWell(
+                                                        onTap: () async {
+                                                          final time = await showTimePicker(
+                                                            context: context,
+                                                            initialTime: slot.endTime,
+                                                          );
+                                                          if (time != null) {
+                                                            _updateTimeSlotForDate(date, slotIndex, null, time);
+                                                          }
+                                                        },
+                                                        child: Container(
+                                                          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+                                                          decoration: BoxDecoration(
+                                                            border: Border.all(color: Colors.grey[300]!),
+                                                            borderRadius: BorderRadius.circular(8),
+                                                            color: Colors.grey[50],
+                                                          ),
+                                                          child: Row(
+                                                            mainAxisAlignment: MainAxisAlignment.center,
+                                                            children: [
+                                                              const Icon(Icons.access_time, size: 14, color: Colors.black54),
+                                                              const SizedBox(width: 4),
+                                                              Text(
+                                                                '${slot.endTime.hour.toString().padLeft(2, '0')}:${slot.endTime.minute.toString().padLeft(2, '0')}',
+                                                                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                                                              ),
+                                                            ],
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    const SizedBox(width: 6),
+                                                    // Remove slot button (only if more than 1)
+                                                    if (slots.length > 1)
+                                                      GestureDetector(
+                                                        onTap: () => _removeTimeSlotForDate(date, slotIndex),
+                                                        child: const Icon(Icons.remove_circle_outline, color: Colors.red, size: 20),
+                                                      )
+                                                    else
+                                                      const SizedBox(width: 20),
+                                                  ],
                                                 ),
-                                              ],
+                                              );
+                                            }),
+                                            // Add time slot button
+                                            TextButton.icon(
+                                              onPressed: () => _addTimeSlotForDate(date),
+                                              icon: const Icon(Icons.add, size: 16),
+                                              label: const Text('Add Time Slot', style: TextStyle(fontSize: 13)),
+                                              style: TextButton.styleFrom(
+                                                foregroundColor: Colors.black87,
+                                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                              ),
                                             ),
                                           ],
                                         ),

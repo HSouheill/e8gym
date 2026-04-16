@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'services/api_service.dart';
 import 'utils/app_colors.dart';
+import 'utils/background_image_service.dart';
 
 class SuperAdminBookingsPage extends StatefulWidget {
   final String accessToken;
@@ -103,74 +103,15 @@ class _SuperAdminBookingsPageState extends State<SuperAdminBookingsPage> {
   }
 
   Future<void> _loadBackgroundImage() async {
-    try {
-      // First try to get from API
-      final result = await ApiService.getAppSettings(widget.accessToken);
-      if (result['success'] && result['data'] != null) {
-        final data = result['data'];
-        String? backgroundImage;
-        
-        // Try different possible keys for background image
-        if (data['background_image'] != null) {
-          backgroundImage = data['background_image'];
-        } else if (data['backgroundImage'] != null) {
-          backgroundImage = data['backgroundImage'];
-        } else if (data['background'] != null) {
-          backgroundImage = data['background'];
-        }
-        
-        if (backgroundImage != null && backgroundImage.isNotEmpty) {
-          // Normalize the URL
-          String normalizedUrl = _normalizeUrl(backgroundImage);
-          setState(() {
-            _backgroundImageUrl = normalizedUrl;
-          });
-          
-          // Cache the URL
-          final prefs = await SharedPreferences.getInstance();
-          await prefs.setString('background_image_url', normalizedUrl);
-          return;
-        }
-      }
-      
-      // Fallback to cached URL
-      final prefs = await SharedPreferences.getInstance();
-      final cachedUrl = prefs.getString('background_image_url');
-      if (cachedUrl != null && cachedUrl.isNotEmpty) {
-        setState(() {
-          _backgroundImageUrl = cachedUrl;
-        });
-      }
-    } catch (e) {
-      print('Error loading background image: $e');
-      // Fallback to cached URL
-      final prefs = await SharedPreferences.getInstance();
-      final cachedUrl = prefs.getString('background_image_url');
-      if (cachedUrl != null && cachedUrl.isNotEmpty) {
-        setState(() {
-          _backgroundImageUrl = cachedUrl;
-        });
-      }
+    final url = await BackgroundImageService.loadBackgroundImage(
+      widget.accessToken,
+      dashboardType: 'superadmin',
+    );
+    if (mounted && url != null && url.isNotEmpty) {
+      setState(() {
+        _backgroundImageUrl = url;
+      });
     }
-  }
-
-  String _normalizeUrl(String url) {
-    if (url.startsWith('http://') || url.startsWith('https://')) {
-      return url;
-    }
-    
-    // Handle relative paths
-    if (url.startsWith('/app/')) {
-      return 'https://e8gym.online/uploads$url';
-    } else if (url.startsWith('app/')) {
-      return 'https://e8gym.online/uploads/$url';
-    } else if (url.startsWith('/uploads/')) {
-      return 'https://e8gym.online$url';
-    } else if (url.startsWith('uploads/')) {
-      return 'https://e8gym.online/$url';
-    }
-    
-    return 'https://e8gym.online/uploads/$url';
   }
 
   @override

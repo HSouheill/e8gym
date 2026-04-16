@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_service.dart';
+import '../services/storage_service.dart';
 import '../models/auth_models.dart';
 import '../utils/app_colors.dart';
+import '../utils/background_image_service.dart';
 
 class UserProfilePage extends StatefulWidget {
   final String accessToken;
@@ -32,6 +33,8 @@ class _UserProfilePageState extends State<UserProfilePage> {
   // State
   bool _isLoading = false;
   bool _isLoadingProfile = false;
+  bool _isDeletingAccount = false;
+  final StorageService _storageService = StorageService();
   DateTime? _selectedDateOfBirth;
   UserResponse? _currentUser;
   
@@ -119,74 +122,15 @@ class _UserProfilePageState extends State<UserProfilePage> {
   }
 
   Future<void> _loadBackgroundImage() async {
-    try {
-      // First try to get from API
-      final result = await ApiService.getAppSettings(widget.accessToken);
-      if (result['success'] && result['data'] != null) {
-        final data = result['data'];
-        String? backgroundImage;
-        
-        // Try different possible keys for background image
-        if (data['background_image'] != null) {
-          backgroundImage = data['background_image'];
-        } else if (data['backgroundImage'] != null) {
-          backgroundImage = data['backgroundImage'];
-        } else if (data['background'] != null) {
-          backgroundImage = data['background'];
-        }
-        
-        if (backgroundImage != null && backgroundImage.isNotEmpty) {
-          // Normalize the URL
-          String normalizedUrl = _normalizeUrl(backgroundImage);
-          setState(() {
-            _backgroundImageUrl = normalizedUrl;
-          });
-          
-          // Cache the URL
-          final prefs = await SharedPreferences.getInstance();
-          await prefs.setString('background_image_url', normalizedUrl);
-          return;
-        }
-      }
-      
-      // Fallback to cached URL
-      final prefs = await SharedPreferences.getInstance();
-      final cachedUrl = prefs.getString('background_image_url');
-      if (cachedUrl != null && cachedUrl.isNotEmpty) {
-        setState(() {
-          _backgroundImageUrl = cachedUrl;
-        });
-      }
-    } catch (e) {
-      print('Error loading background image: $e');
-      // Fallback to cached URL
-      final prefs = await SharedPreferences.getInstance();
-      final cachedUrl = prefs.getString('background_image_url');
-      if (cachedUrl != null && cachedUrl.isNotEmpty) {
-        setState(() {
-          _backgroundImageUrl = cachedUrl;
-        });
-      }
+    final url = await BackgroundImageService.loadBackgroundImage(
+      widget.accessToken,
+      dashboardType: 'user',
+    );
+    if (mounted && url != null && url.isNotEmpty) {
+      setState(() {
+        _backgroundImageUrl = url;
+      });
     }
-  }
-
-  String _normalizeUrl(String url) {
-    if (url.startsWith('http://') || url.startsWith('https://')) {
-      return url;
-    }
-    
-    // Handle relative paths
-    if (url.startsWith('/app/')) {
-      return 'https://e8gym.online/uploads$url';
-    } else if (url.startsWith('app/')) {
-      return 'https://e8gym.online/uploads/$url';
-    } else if (url.startsWith('/uploads/')) {
-      return 'https://e8gym.online$url';
-    } else if (url.startsWith('uploads/')) {
-      return 'https://e8gym.online/$url';
-    }
-    
-    return 'https://e8gym.online/uploads/$url';
   }
 
   Future<void> _selectDateOfBirth() async {
@@ -214,6 +158,75 @@ class _UserProfilePageState extends State<UserProfilePage> {
       setState(() {
         _selectedDateOfBirth = picked;
       });
+    }
+  }
+
+  Future<void> _handleDeleteAccount() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1A1A),
+        title: const Text(
+          'Delete Account',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+        content: const Text(
+          'Are you sure you want to delete your account? This action cannot be undone and all your data will be permanently removed.',
+          style: TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel', style: TextStyle(color: Colors.white70)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    setState(() => _isDeletingAccount = true);
+
+    try {
+      final result = await ApiService.deleteAccount(widget.accessToken);
+
+      if (result['success']) {
+        await _storageService.init();
+        await _storageService.clearAuthData();
+        if (mounted) {
+          Navigator.pushNamedAndRemoveUntil(context, '/login', (_) => false);
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(result['message'] ?? 'Failed to delete account',
+                  style: const TextStyle(color: Colors.black)),
+              backgroundColor: AppColors.snackbarBackground,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error deleting account: $e',
+                style: const TextStyle(color: Colors.black)),
+            backgroundColor: AppColors.snackbarBackground,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isDeletingAccount = false);
     }
   }
 
@@ -246,7 +259,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(result['message'] ?? 'Profile updated successfully'),
+            content: Text(result['message'] ?? 'Profile updated successfully', style: const TextStyle(color: Colors.black)),
             backgroundColor: AppColors.snackbarBackground,
             duration: const Duration(seconds: 3),
           ),
@@ -275,6 +288,13 @@ class _UserProfilePageState extends State<UserProfilePage> {
 
   @override
   Widget build(BuildContext context) {
+    final screenSize = MediaQuery.of(context).size;
+    final screenWidth = screenSize.width;
+    final isSmallDevice = screenWidth < 400;
+    final titleFontSize = isSmallDevice ? 20.0 : 24.0;
+    final bodyFontSize = isSmallDevice ? 14.0 : 16.0;
+    final sectionSpacing = isSmallDevice ? 16.0 : 24.0;
+
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
@@ -324,7 +344,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
           // Main content
           SafeArea(
             child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(isSmallDevice ? 12 : 16),
             child: Form(
               key: _formKey,
               child: Column(
@@ -341,18 +361,18 @@ class _UserProfilePageState extends State<UserProfilePage> {
                         ),
                       ),
                       const SizedBox(width: 8),
-                      const Text(
+                      Text(
                         'Profile Settings',
                         style: TextStyle(
                           color: Colors.white,
-                          fontSize: 24,
+                          fontSize: titleFontSize,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                     ],
                   ),
                   
-                  const SizedBox(height: 24),
+                  SizedBox(height: sectionSpacing),
                   
                   // Loading indicator for profile fetch
                   if (_isLoadingProfile)
@@ -390,7 +410,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
                             },
                           ),
                           
-                          const SizedBox(height: 16),
+                          SizedBox(height: sectionSpacing / 1.5),
                           
                           // Phone Number
                           _buildTextField(
@@ -409,7 +429,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
                             },
                           ),
                           
-                          const SizedBox(height: 16),
+                          SizedBox(height: sectionSpacing / 1.5),
                           
                           // Country Code
                           _buildTextField(
@@ -427,58 +447,14 @@ class _UserProfilePageState extends State<UserProfilePage> {
                             },
                           ),
                           
-                          const SizedBox(height: 16),
+                          SizedBox(height: sectionSpacing / 1.5),
                           
                           // Date of Birth
                           _buildDateField(),
                           
-                          const SizedBox(height: 16),
+                          SizedBox(height: sectionSpacing / 1.5),
                           
-                          // Height
-                          _buildTextField(
-                            controller: _heightController,
-                            label: 'Height (cm)',
-                            hint: 'Enter your height in centimeters',
-                            icon: Icons.height,
-                            keyboardType: TextInputType.number,
-                            validator: (value) {
-                              if (value != null && value.trim().isNotEmpty) {
-                                final height = double.tryParse(value.trim());
-                                if (height == null) {
-                                  return 'Please enter a valid height';
-                                }
-                                if (height < 50 || height > 300) {
-                                  return 'Height must be between 50 and 300 cm';
-                                }
-                              }
-                              return null;
-                            },
-                          ),
                           
-                          const SizedBox(height: 16),
-                          
-                          // Weight
-                          _buildTextField(
-                            controller: _weightController,
-                            label: 'Weight (kg)',
-                            hint: 'Enter your weight in kilograms',
-                            icon: Icons.monitor_weight,
-                            keyboardType: TextInputType.number,
-                            validator: (value) {
-                              if (value != null && value.trim().isNotEmpty) {
-                                final weight = double.tryParse(value.trim());
-                                if (weight == null) {
-                                  return 'Please enter a valid weight';
-                                }
-                                if (weight < 20 || weight > 500) {
-                                  return 'Weight must be between 20 and 500 kg';
-                                }
-                              }
-                              return null;
-                            },
-                          ),
-                          
-                          const SizedBox(height: 32),
                           
                           // Update Button
                           SizedBox(
@@ -488,7 +464,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Colors.white,
                                 foregroundColor: Colors.black,
-                                padding: const EdgeInsets.symmetric(vertical: 16),
+                                padding: EdgeInsets.symmetric(vertical: isSmallDevice ? 12 : 14),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(8),
                                 ),
@@ -502,10 +478,44 @@ class _UserProfilePageState extends State<UserProfilePage> {
                                         strokeWidth: 2,
                                       ),
                                     )
-                                  : const Text(
+                                  : Text(
                                       'Update Profile',
                                       style: TextStyle(
-                                        fontSize: 16,
+                                        fontSize: bodyFontSize,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                            ),
+                          ),
+
+                          SizedBox(height: sectionSpacing / 1.5),
+
+                          // Delete Account Button
+                          SizedBox(
+                            width: double.infinity,
+                            child: OutlinedButton(
+                              onPressed: (_isLoading || _isDeletingAccount) ? null : _handleDeleteAccount,
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: Colors.red,
+                                side: const BorderSide(color: Colors.red),
+                                padding: EdgeInsets.symmetric(vertical: isSmallDevice ? 12 : 14),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
+                              child: _isDeletingAccount
+                                  ? const SizedBox(
+                                      height: 20,
+                                      width: 20,
+                                      child: CircularProgressIndicator(
+                                        valueColor: AlwaysStoppedAnimation<Color>(Colors.red),
+                                        strokeWidth: 2,
+                                      ),
+                                    )
+                                  : Text(
+                                      'Delete Account',
+                                      style: TextStyle(
+                                        fontSize: bodyFontSize,
                                         fontWeight: FontWeight.bold,
                                       ),
                                     ),
@@ -573,11 +583,11 @@ class _UserProfilePageState extends State<UserProfilePage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'Date of Birth',
-          style: TextStyle(
+          style: const TextStyle(
             color: Colors.white70,
-            fontSize: 16,
+            fontSize: 14,
             fontWeight: FontWeight.w500,
           ),
         ),

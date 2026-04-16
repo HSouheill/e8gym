@@ -579,7 +579,7 @@ class _CreateStandaloneClassPageState extends State<CreateStandaloneClassPage> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(result['message'] ?? 'Class created successfully'),
+              content: Text(result['message'] ?? 'Class created successfully', style: const TextStyle(color: Colors.black)),
               backgroundColor: AppColors.snackbarBackground,
               behavior: SnackBarBehavior.floating,
             ),

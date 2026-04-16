@@ -354,6 +354,7 @@ class _SuperAdminDashboardPageState extends State<SuperAdminDashboardPage> {
     required String title,
     required bool isSelected,
     required VoidCallback onTap,
+    required bool isLargeDevice,
   }) {
     final bool isDisabled = title == 'Logging out...';
     
@@ -370,7 +371,7 @@ class _SuperAdminDashboardPageState extends State<SuperAdminDashboardPage> {
               : isDisabled 
                   ? Colors.grey[400] 
                   : Colors.grey[600],
-          size: 22,
+          size: isLargeDevice ? 26 : 22,
         ),
         title: Text(
           title,
@@ -381,7 +382,7 @@ class _SuperAdminDashboardPageState extends State<SuperAdminDashboardPage> {
                     ? Colors.grey[400] 
                     : Colors.grey[800],
             fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-            fontSize: 14,
+            fontSize: isLargeDevice ? 18 : 14,
           ),
         ),
         onTap: onTap,
@@ -398,6 +399,9 @@ class _SuperAdminDashboardPageState extends State<SuperAdminDashboardPage> {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width ;
+    final isLargeDevice = screenWidth >= 800; // e.g. iPad 13-inch
+
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
@@ -456,19 +460,19 @@ class _SuperAdminDashboardPageState extends State<SuperAdminDashboardPage> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const Text(
+                                  Text(
                                     'SuperAdmin Dashboard',
                                     style: TextStyle(
                                       color: Colors.white,
-                                      fontSize: 24,
+                                      fontSize: isLargeDevice ? 30 : 24,
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
                                   Text(
                                     'Welcome, ${widget.userEmail}',
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       color: Colors.white70,
-                                      fontSize: 16,
+                                      fontSize: isLargeDevice ? 20 : 16,
                                     ),
                                   ),
                               ],
@@ -553,13 +557,26 @@ class _SuperAdminDashboardPageState extends State<SuperAdminDashboardPage> {
                         child: TextField(
                           controller: _searchController,
                           onChanged: _onSearchChanged,
-                          style: const TextStyle(color: Colors.white),
-                          decoration: const InputDecoration(
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: isLargeDevice ? 20 : 18,
+                          ),
+                          decoration: InputDecoration(
                             hintText: 'Search branches...',
-                            hintStyle: TextStyle(color: Colors.white70),
-                            prefixIcon: Icon(Icons.search, color: Colors.white70),
+                            hintStyle: TextStyle(
+                              color: Colors.white70,
+                              fontSize: isLargeDevice ? 18 : 16,
+                            ),
+                            prefixIcon: Icon(
+                              Icons.search,
+                              color: Colors.white70,
+                              size: isLargeDevice ? 24 : 22,
+                            ),
                             border: InputBorder.none,
-                            contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            contentPadding: EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: isLargeDevice ? 14 : 12,
+                            ),
                           ),
                         ),
                       ),
@@ -585,7 +602,7 @@ class _SuperAdminDashboardPageState extends State<SuperAdminDashboardPage> {
                               Icon(
                                 _showStats ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
                                 color: Colors.white70,
-                                size: 24,
+                                size: isLargeDevice ? 30 : 24,
                               ),
                             ],
                           ),
@@ -611,6 +628,7 @@ class _SuperAdminDashboardPageState extends State<SuperAdminDashboardPage> {
                                           'Total Branches',
                                           _totalBranches.toString(),
                                           Icons.business,
+                                          isLargeDevice,
                                         ),
                                       ),
                                       const SizedBox(width: 16),
@@ -619,6 +637,7 @@ class _SuperAdminDashboardPageState extends State<SuperAdminDashboardPage> {
                                           'Total Classes',
                                           _branches.fold(0, (sum, branch) => sum + branch.classes.length).toString(),
                                           Icons.fitness_center,
+                                          isLargeDevice,
                                         ),
                                       ),
                                       const SizedBox(width: 16),
@@ -627,6 +646,7 @@ class _SuperAdminDashboardPageState extends State<SuperAdminDashboardPage> {
                                           'Total Team Members',
                                           _branches.fold(0, (sum, branch) => sum + branch.teamMembers.length).toString(),
                                           Icons.people,
+                                          isLargeDevice,
                                         ),
                                       ),
                                     ],
@@ -644,11 +664,11 @@ class _SuperAdminDashboardPageState extends State<SuperAdminDashboardPage> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text(
+                          Text(
                             'All Branches',
                             style: TextStyle(
                               color: Colors.white,
-                              fontSize: 20,
+                              fontSize: isLargeDevice ? 24 : 20,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -656,9 +676,9 @@ class _SuperAdminDashboardPageState extends State<SuperAdminDashboardPage> {
                             children: [
                               Text(
                                 '${_branches.length} of $_totalBranches',
-                                style: const TextStyle(
+                                style: TextStyle(
                                   color: Colors.white70,
-                                  fontSize: 14,
+                                  fontSize: isLargeDevice ? 16 : 14,
                                 ),
                               ),
                               const SizedBox(width: 12),
@@ -703,12 +723,12 @@ class _SuperAdminDashboardPageState extends State<SuperAdminDashboardPage> {
                       child: RefreshIndicator(
                         onRefresh: () => _loadBranches(refresh: true),
                         child: _branches.isEmpty && !_isLoading
-                            ? const Center(
+                            ? Center(
                                 child: Text(
                                   'No branches found',
                                   style: TextStyle(
                                     color: Colors.white70,
-                                    fontSize: 18,
+                                    fontSize: isLargeDevice ? 22 : 18,
                                   ),
                                 ),
                               )
@@ -781,20 +801,20 @@ class _SuperAdminDashboardPageState extends State<SuperAdminDashboardPage> {
                                   ),
                                 ),
                                 const SizedBox(width: 10),
-                                const Expanded(
+                                Expanded(
                                   child: Text(
                                     'SuperAdmin',
                                     style: TextStyle(
                                       color: Colors.black,
-                                      fontSize: 18,
+                                      fontSize: isLargeDevice ? 22 : 18,
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
                                 ),
-                                const Icon(
+                                Icon(
                                   Icons.admin_panel_settings,
                                   color: Colors.black,
-                                  size: 28,
+                                  size: isLargeDevice ? 32 : 28,
                                 ),
                               ],
                             ),
@@ -814,6 +834,7 @@ class _SuperAdminDashboardPageState extends State<SuperAdminDashboardPage> {
                                       _isSidebarOpen = false;
                                     });
                                   },
+                                  isLargeDevice: isLargeDevice,
                                 ),
                                 const SizedBox(height: 6),
                                 _buildSidebarMenuItem(
@@ -825,6 +846,7 @@ class _SuperAdminDashboardPageState extends State<SuperAdminDashboardPage> {
                                       _isSidebarOpen = false;
                                     });
                                   },
+                                  isLargeDevice: isLargeDevice,
                                 ),
                                 const SizedBox(height: 6),
                                 _buildSidebarMenuItem(
@@ -832,6 +854,7 @@ class _SuperAdminDashboardPageState extends State<SuperAdminDashboardPage> {
                                   title: 'Classes',
                                   isSelected: false,
                                   onTap: _navigateToStandaloneClasses,
+                                  isLargeDevice: isLargeDevice,
                                 ),
                                 const SizedBox(height: 6),
                                 _buildSidebarMenuItem(
@@ -851,6 +874,7 @@ class _SuperAdminDashboardPageState extends State<SuperAdminDashboardPage> {
                                       _isSidebarOpen = false;
                                     });
                                   },
+                                  isLargeDevice: isLargeDevice,
                                 ),
                                 const SizedBox(height: 6),
                                 _buildSidebarMenuItem(
@@ -870,6 +894,7 @@ class _SuperAdminDashboardPageState extends State<SuperAdminDashboardPage> {
                                       _isSidebarOpen = false;
                                     });
                                   },
+                                  isLargeDevice: isLargeDevice,
                                 ),
                                 const SizedBox(height: 6),
                                 _buildSidebarMenuItem(
@@ -889,6 +914,7 @@ class _SuperAdminDashboardPageState extends State<SuperAdminDashboardPage> {
                                       _isSidebarOpen = false;
                                     });
                                   },
+                                  isLargeDevice: isLargeDevice,
                                 ),
                                 
                               ],
@@ -915,14 +941,14 @@ class _SuperAdminDashboardPageState extends State<SuperAdminDashboardPage> {
                                     children: [
                                       // User Avatar
                                       CircleAvatar(
-                                        radius: 25,
+                                        radius: isLargeDevice ? 30 : 25,
                                         backgroundColor: Colors.white,
                                         child: Text(
                                           widget.userEmail[0].toUpperCase(),
-                                          style: const TextStyle(
+                                          style: TextStyle(
                                             color: Colors.black,
                                             fontWeight: FontWeight.bold,
-                                            fontSize: 18,
+                                            fontSize: isLargeDevice ? 22 : 18,
                                           ),
                                         ),
                                       ),
@@ -931,17 +957,17 @@ class _SuperAdminDashboardPageState extends State<SuperAdminDashboardPage> {
                                       // User Info
                                       Text(
                                         widget.userEmail,
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           fontWeight: FontWeight.w600,
-                                          fontSize: 13,
+                                          fontSize: isLargeDevice ? 16 : 13,
                                         ),
                                         overflow: TextOverflow.ellipsis,
                                         textAlign: TextAlign.center,
                                       ),
-                                      const Text(
+                                      Text(
                                         'SuperAdmin',
                                         style: TextStyle(
-                                          fontSize: 11,
+                                          fontSize: isLargeDevice ? 14 : 11,
                                           color: Colors.grey,
                                         ),
                                       ),
@@ -965,7 +991,7 @@ class _SuperAdminDashboardPageState extends State<SuperAdminDashboardPage> {
                                         : const Icon(Icons.logout, size: 16),
                                     label: Text(
                                       _isLoggingOut ? 'Logging out...' : 'Logout',
-                                      style: const TextStyle(fontSize: 13),
+                                      style: TextStyle(fontSize: isLargeDevice ? 16 : 13),
                                     ),
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: Colors.red[50],
@@ -995,7 +1021,7 @@ class _SuperAdminDashboardPageState extends State<SuperAdminDashboardPage> {
     );
   }
 
-  Widget _buildStatCard(String title, String value, IconData icon) {
+  Widget _buildStatCard(String title, String value, IconData icon, bool isLargeDevice) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -1008,22 +1034,22 @@ class _SuperAdminDashboardPageState extends State<SuperAdminDashboardPage> {
           Icon(
             icon,
             color: Colors.white,
-            size: 32,
+            size: isLargeDevice ? 40 : 32,
           ),
           const SizedBox(height: 8),
           Text(
             value,
-            style: const TextStyle(
+            style: TextStyle(
               color: Colors.white,
-              fontSize: 24,
+              fontSize: isLargeDevice ? 30 : 24,
               fontWeight: FontWeight.bold,
             ),
           ),
           Text(
             title,
-            style: const TextStyle(
+            style: TextStyle(
               color: Colors.white70,
-              fontSize: 12,
+              fontSize: isLargeDevice ? 14 : 12,
             ),
             textAlign: TextAlign.center,
           ),
@@ -1079,6 +1105,8 @@ class _SuperAdminDashboardPageState extends State<SuperAdminDashboardPage> {
   }
 
   Widget _buildBranchCard(BranchResponse branch) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isLargeDevice = screenWidth >= 800;
     // Debug: Print branch image information
     print('=== Branch Image Debug ===');
     print('Branch Name: ${branch.branchName}');
@@ -1198,27 +1226,27 @@ class _SuperAdminDashboardPageState extends State<SuperAdminDashboardPage> {
                   children: [
                     Text(
                       branch.branchName,
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: Colors.white,
-                        fontSize: 18,
+                        fontSize: isLargeDevice ? 22 : 18,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       'Admin: ${branch.adminName}',
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: Colors.white70,
-                        fontSize: 14,
+                        fontSize: isLargeDevice ? 20 : 18,
                       ),
                     ),
                     if (branch.branchId != null && branch.branchId!.isNotEmpty) ...[
                       const SizedBox(height: 2),
                       Text(
                         'ID: ${branch.branchId}',
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: Colors.white60,
-                          fontSize: 12,
+                          fontSize: isLargeDevice ? 20 : 18,
                         ),
                       ),
                     ],
@@ -1239,9 +1267,9 @@ class _SuperAdminDashboardPageState extends State<SuperAdminDashboardPage> {
               Expanded(
                 child: Text(
                   branch.email,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: Colors.white70,
-                    fontSize: 14,
+                    fontSize: isLargeDevice ? 20 : 18,
                   ),
                 ),
               ),
@@ -1259,9 +1287,9 @@ class _SuperAdminDashboardPageState extends State<SuperAdminDashboardPage> {
               Expanded(
                 child: Text(
                   branch.phoneNumber,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: Colors.white70,
-                    fontSize: 14,
+                    fontSize: isLargeDevice ? 20 : 18,
                   ),
                 ),
               ),
@@ -1279,9 +1307,9 @@ class _SuperAdminDashboardPageState extends State<SuperAdminDashboardPage> {
               Expanded(
                 child: Text(
                   branch.location,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: Colors.white70,
-                    fontSize: 14,
+                    fontSize: isLargeDevice ? 20 : 18,
                   ),
                 ),
               ),
@@ -1298,9 +1326,9 @@ class _SuperAdminDashboardPageState extends State<SuperAdminDashboardPage> {
               const SizedBox(width: 8),
               Text(
                 '${branch.classes.length} Classes',
-                style: const TextStyle(
+                style: TextStyle(
                   color: Colors.white70,
-                  fontSize: 14,
+                  fontSize: isLargeDevice ? 20 : 18,
                 ),
               ),
               const SizedBox(width: 24),
@@ -1312,9 +1340,9 @@ class _SuperAdminDashboardPageState extends State<SuperAdminDashboardPage> {
               const SizedBox(width: 8),
               Text(
                 '${branch.teamMembers.length} Team Members',
-                style: const TextStyle(
+                style: TextStyle(
                   color: Colors.white70,
-                  fontSize: 14,
+                  fontSize: isLargeDevice ? 20 : 18,
                 ),
               ),
             ],
@@ -1322,9 +1350,9 @@ class _SuperAdminDashboardPageState extends State<SuperAdminDashboardPage> {
           const SizedBox(height: 8),
           Text(
             'Created: ${_formatDate(branch.createdAt)}',
-            style: const TextStyle(
+            style: TextStyle(
               color: Colors.white60,
-              fontSize: 12,
+              fontSize: isLargeDevice ? 18 : 14,
             ),
           ),
           const SizedBox(height: 12),
@@ -1385,10 +1413,15 @@ class _SuperAdminDashboardPageState extends State<SuperAdminDashboardPage> {
   }
 
   Widget _buildActionButton(String label, IconData icon, Color color, VoidCallback onTap) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isLargeDevice = screenWidth >= 800;
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        padding: EdgeInsets.symmetric(
+          horizontal: isLargeDevice ? 14 : 12,
+          vertical: isLargeDevice ? 10 : 8,
+        ),
         decoration: BoxDecoration(
           color: color.withValues(alpha: 0.2),
           borderRadius: BorderRadius.circular(8),
@@ -1397,13 +1430,13 @@ class _SuperAdminDashboardPageState extends State<SuperAdminDashboardPage> {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, color: color, size: 16),
+            Icon(icon, color: color, size: isLargeDevice ? 20 : 16),
             const SizedBox(width: 4),
             Text(
               label,
               style: TextStyle(
                 color: color,
-                fontSize: 12,
+                fontSize: isLargeDevice ? 15 : 12,
                 fontWeight: FontWeight.w600,
               ),
             ),

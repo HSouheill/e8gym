@@ -61,7 +61,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(result['message'] ?? 'Password changed successfully'),
+            content: Text(result['message'] ?? 'Password changed successfully', style: const TextStyle(color: Colors.black)),
             backgroundColor: AppColors.snackbarBackground,
             duration: const Duration(seconds: 4),
           ),

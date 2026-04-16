@@ -23,10 +23,13 @@ android {
     // Configure signing
     signingConfigs {
         create("release") {
-            keyAlias = keystoreProperties["keyAlias"] as String? ?: "e8gym-key-alias"
-            keyPassword = keystoreProperties["keyPassword"] as String? ?: "9Z9ZE8gym"
+            keyAlias = keystoreProperties["keyAlias"] as String
+                ?: error("keyAlias not found in key.properties")
+            keyPassword = keystoreProperties["keyPassword"] as String
+                ?: error("keyPassword not found in key.properties")
             storeFile = file("e8gym-release-key.keystore")
-            storePassword = keystoreProperties["storePassword"] as String? ?: "9Z9ZE8gym"
+            storePassword = keystoreProperties["storePassword"] as String
+                ?: error("storePassword not found in key.properties")
         }
     }
 

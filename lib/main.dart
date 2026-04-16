@@ -147,25 +147,25 @@ class _LoginPageState extends State<LoginPage> {
     final screenHeight = screenSize.height;
     final screenWidth = screenSize.width;
     
-    // Responsive sizing calculations
-    final horizontalPadding = screenWidth * 0.05; // 5% of screen width
-    final spacingSmall = screenHeight * 0.01; // 1% of screen height (reduced)
-    final spacingMedium = screenHeight * 0.015; // 1.5% of screen height (reduced)
-    final spacingLarge = screenHeight * 0.02; // 2% of screen height (reduced)
+    // Responsive sizing calculations - compact for single-page fit
+    final horizontalPadding = screenWidth * 0.05;
+    final spacingSmall = screenHeight * 0.006;
+    final spacingMedium = screenHeight * 0.01;
+    final spacingLarge = screenHeight * 0.012;
     
-    // Responsive font sizes - increased for better readability
-    final fontSizeSmall = screenWidth * 0.03; // 3% of screen width
-    final fontSizeMedium = screenWidth * 0.04; // 5% of screen width
-    final fontSizeLarge = screenWidth * 0.065; // 6.5% of screen width
+    // Responsive font sizes - reduced for single-page fit
+    final fontSizeSmall = screenWidth * 0.035;
+    final fontSizeMedium = screenWidth * 0.035;
+    final fontSizeLarge = screenWidth * 0.048;
     
     // Responsive icon sizes
-    final iconSizeSmall = screenWidth * 0.03; // 4% of screen width
-    final iconSizeMedium = screenWidth * 0.04; // 5% of screen width
+    final iconSizeSmall = screenWidth * 0.028;
+    final iconSizeMedium = screenWidth * 0.032;
     
-    // Responsive container sizes - optimized for better fit
-    final profileIconSize = screenWidth * 0.08; // 8% of screen width (reduced)
-    final buttonHeight = screenHeight * 0.08; // 8% of screen height (increased)
-    final buttonWidth = screenWidth * 0.6; // 60% of screen width (increased)
+    // Responsive container sizes
+    final profileIconSize = screenWidth * 0.065;
+    final buttonHeight = screenHeight * 0.055;
+    final buttonWidth = screenWidth * 0.6;
 
     return Scaffold(
       body: Stack(
@@ -246,19 +246,19 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                   ),
                   
-                  // E8 Logo - positioned directly below profile icon with no spacing
-                  SizedBox(height: 0),
+                  // E8 Logo - compact for single-page fit
+                  SizedBox(height: spacingSmall),
                   Center(
                     child: Image.asset(
                       'assets/E8Logos/E8_Short_Logo.png',
-                      width: screenWidth * 0.3,
+                      width: screenWidth * 0.22,
                       // height: screenWidth * 0.3,
                       fit: BoxFit.contain,
                       errorBuilder: (context, error, stackTrace) {
                         // Show a placeholder if image fails to load
                         return Container(
-                          width: screenWidth * 0.3,
-                          height: screenWidth * 0.3,
+                          width: screenWidth * 0.22,
+                          height: screenWidth * 0.22,
                           color: Colors.transparent,
                           child: Icon(
                             Icons.image_not_supported,
@@ -305,19 +305,19 @@ class _LoginPageState extends State<LoginPage> {
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: Colors.white,
-                      fontSize: fontSizeSmall,
-                      height: 1.3,
+                      fontSize: fontSizeSmall * 0.9,
+                      height: 1.2,
                     ),
                   ),
                   
-                  SizedBox(height: spacingMedium),
+                  SizedBox(height: spacingMedium * 3),
                   
                   // Explore section
                   Text(
                     'Explore our:',
                     style: TextStyle(
                       color: Colors.white,
-                      fontSize: fontSizeMedium,
+                      fontSize: fontSizeSmall,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -337,14 +337,14 @@ class _LoginPageState extends State<LoginPage> {
                           ),
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        padding: EdgeInsets.all(screenWidth * 0.008),
+                        padding: EdgeInsets.all(screenWidth * 0.006),
                         child: Icon(
                           Icons.fitness_center,
                           color: Colors.white,
                           size: iconSizeSmall,
                         ),
                       ),
-                      SizedBox(width: screenWidth * 0.02),
+                      SizedBox(width: screenWidth * 0.015),
                       Text(
                         'Gym - "Place for Athletes"',
                         style: TextStyle(
@@ -371,14 +371,14 @@ class _LoginPageState extends State<LoginPage> {
                           ),
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        padding: EdgeInsets.all(screenWidth * 0.008),
+                        padding: EdgeInsets.all(screenWidth * 0.006),
                         child: Icon(
                           Icons.local_drink,
                           color: Colors.white,
                           size: iconSizeSmall,
                         ),
                       ),
-                      SizedBox(width: screenWidth * 0.02),
+                      SizedBox(width: screenWidth * 0.015),
                       Text(
                         'Products & Services - "Made for Athletes"',
                         style: TextStyle(
@@ -390,14 +390,14 @@ class _LoginPageState extends State<LoginPage> {
                     ],
                   ),
                   
-                  SizedBox(height: spacingLarge),
+                  SizedBox(height: spacingLarge * 1.5),
                   
                   // Login section
                   Text(
                     'Log in',
                     style: TextStyle(
                       color: Colors.white,
-                      fontSize: fontSizeLarge,
+                      fontSize: fontSizeMedium,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -423,24 +423,26 @@ class _LoginPageState extends State<LoginPage> {
                               end: Alignment.bottomCenter,
                               colors: [Colors.white, Colors.white70],
                             ),
-                            borderRadius: BorderRadius.circular(8),
+                            borderRadius: BorderRadius.circular(6),
                           ),
-                          padding: EdgeInsets.all(screenWidth * 0.015),
+                          padding: EdgeInsets.all(screenWidth * 0.01),
                           child: Icon(
                             Icons.email,
                             color: Colors.white,
                             size: iconSizeMedium,
                           ),
                         ),
-                        SizedBox(width: screenWidth * 0.03),
+                        SizedBox(width: screenWidth * 0.025),
                         Expanded(
                           child: TextField(
                             controller: _emailController,
-                            style: TextStyle(color: Colors.white, fontSize: fontSizeMedium),
+                            style: TextStyle(color: Colors.white, fontSize: fontSizeSmall),
                             decoration: InputDecoration(
                               hintText: 'Email',
-                              hintStyle: TextStyle(color: Colors.white70, fontSize: fontSizeMedium),
+                              hintStyle: TextStyle(color: Colors.white70, fontSize: fontSizeSmall),
                               border: InputBorder.none,
+                              isDense: true,
+                              contentPadding: EdgeInsets.symmetric(vertical: 6),
                             ),
                           ),
                         ),
@@ -469,29 +471,31 @@ class _LoginPageState extends State<LoginPage> {
                               end: Alignment.bottomCenter,
                               colors: [Colors.white, Colors.white70],
                             ),
-                            borderRadius: BorderRadius.circular(8),
+                            borderRadius: BorderRadius.circular(6),
                           ),
-                          padding: EdgeInsets.all(screenWidth * 0.015),
+                          padding: EdgeInsets.all(screenWidth * 0.01),
                           child: Icon(
                             Icons.lock,
                             color: Colors.white,
                             size: iconSizeMedium,
                           ),
                         ),
-                        SizedBox(width: screenWidth * 0.03),
+                        SizedBox(width: screenWidth * 0.025),
                         Expanded(
                           child: TextField(
                             controller: _passwordController,
                             obscureText: _obscurePassword,
-                            style: TextStyle(color: Colors.white, fontSize: fontSizeMedium),
+                            style: TextStyle(color: Colors.white, fontSize: fontSizeSmall),
                             decoration: InputDecoration(
                               hintText: 'Password',
-                              hintStyle: TextStyle(color: Colors.white70, fontSize: fontSizeMedium),
+                              hintStyle: TextStyle(color: Colors.white70, fontSize: fontSizeSmall),
                               border: InputBorder.none,
+                              isDense: true,
+                              contentPadding: EdgeInsets.symmetric(vertical: 6),
                             ),
                           ),
                         ),
-                        SizedBox(width: screenWidth * 0.02),
+                        SizedBox(width: screenWidth * 0.015),
                         GestureDetector(
                           onTap: () {
                             setState(() {
@@ -505,9 +509,9 @@ class _LoginPageState extends State<LoginPage> {
                                 end: Alignment.bottomCenter,
                                 colors: [Colors.white, Colors.white70],
                               ),
-                              borderRadius: BorderRadius.circular(8),
+                              borderRadius: BorderRadius.circular(6),
                             ),
-                            padding: EdgeInsets.all(screenWidth * 0.015),
+                            padding: EdgeInsets.all(screenWidth * 0.01),
                             child: Icon(
                               _obscurePassword ? Icons.visibility : Icons.visibility_off,
                               color: Colors.white,
@@ -519,7 +523,7 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                   ),
                   
-                  SizedBox(height: 20),
+                  SizedBox(height: spacingLarge * 2),
                   
                   // Login button
                   SizedBox(
@@ -545,7 +549,7 @@ class _LoginPageState extends State<LoginPage> {
                           : Text(
                               'Log in',
                               style: TextStyle(
-                                fontSize: fontSizeLarge,
+                                fontSize: fontSizeMedium,
                                 fontWeight: FontWeight.bold,
                                 color: Colors.black,
                               ),
@@ -553,13 +557,13 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                   ),
                   
-                  SizedBox(height: spacingMedium),
+                  SizedBox(height: spacingLarge ),
                   
-                  // Create account link - Improved accessibility for iPad
+                  // Create account link
                   Container(
                     padding: EdgeInsets.symmetric(
-                      vertical: screenHeight * 0.01, // 1% vertical padding for larger touch target
-                      horizontal: screenWidth * 0.02, // 2% horizontal padding
+                      vertical: screenHeight * 0.005,
+                      horizontal: screenWidth * 0.02,
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -580,8 +584,8 @@ class _LoginPageState extends State<LoginPage> {
                           },
                           child: Container(
                             padding: EdgeInsets.symmetric(
-                              vertical: screenHeight * 0.005, // 0.5% vertical padding
-                              horizontal: screenWidth * 0.015, // 1.5% horizontal padding
+                              vertical: screenHeight * 0.003,
+                              horizontal: screenWidth * 0.012,
                             ),
                             decoration: BoxDecoration(
                               border: Border(
@@ -607,7 +611,7 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                   ),
                   
-                  SizedBox(height: spacingMedium),
+                  SizedBox(height: spacingSmall),
                 ],
                 ),
               ),

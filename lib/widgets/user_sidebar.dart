@@ -14,8 +14,15 @@ class UserSidebar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallDevice = screenWidth < 400;
+    final titleFontSize = isSmallDevice ? 20.0 : 24.0;
+    final iconSize = isSmallDevice ? 22.0 : 24.0;
+    final headerPadding = isSmallDevice ? 20.0 : 24.0;
+    final itemFontSize = isSmallDevice ? 16.0 : 18.0;
+
     return Container(
-      width: 280,
+      width: (screenWidth * 0.75).clamp(220.0, 280.0),
       decoration: const BoxDecoration(
         color: Color(0xFF1A1A1A),
         border: Border(
@@ -29,7 +36,7 @@ class UserSidebar extends StatelessWidget {
         children: [
           // Header
           Container(
-            padding: const EdgeInsets.all(20),
+            padding: EdgeInsets.all(headerPadding),
             decoration: const BoxDecoration(
               border: Border(
                 bottom: BorderSide(
@@ -41,25 +48,25 @@ class UserSidebar extends StatelessWidget {
             child: Row(
               children: [
                 Container(
-                  width: 40,
-                  height: 40,
+                  width: isSmallDevice ? 42 : 48,
+                  height: isSmallDevice ? 42 : 48,
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(24),
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.fitness_center,
                     color: Colors.black,
-                    size: 24,
+                    size: iconSize,
                   ),
                 ),
-                const SizedBox(width: 12),
-                const Expanded(
+                SizedBox(width: isSmallDevice ? 10 : 14),
+                Expanded(
                   child: Text(
                     'E8Gym',
                     style: TextStyle(
                       color: Colors.white,
-                      fontSize: 20,
+                      fontSize: titleFontSize,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -71,45 +78,44 @@ class UserSidebar extends StatelessWidget {
           // Navigation Items
           Expanded(
             child: ListView(
-              padding: const EdgeInsets.symmetric(vertical: 16),
+              padding: const EdgeInsets.symmetric(vertical: 20),
               children: [
                 _buildNavItem(
+                  context: context,
                   icon: Icons.dashboard,
                   title: 'Dashboard',
                   page: 'dashboard',
                   isSelected: currentPage == 'dashboard',
                 ),
                 _buildNavItem(
+                  context: context,
                   icon: Icons.person,
                   title: 'Profile',
                   page: 'profile',
                   isSelected: currentPage == 'profile',
                 ),
                 _buildNavItem(
+                  context: context,
                   icon: Icons.location_on,
                   title: 'Change Branch',
                   page: 'change_branch',
                   isSelected: currentPage == 'change_branch',
                 ),
                 _buildNavItem(
+                  context: context,
                   icon: Icons.lock,
                   title: 'Change Password',
                   page: 'change_password',
                   isSelected: currentPage == 'change_password',
                 ),
-                _buildNavItem(
-                  icon: Icons.fitness_center,
-                  title: 'BMI Calculator',
-                  page: 'bmi',
-                  isSelected: currentPage == 'bmi',
-                ),
+               
               ],
             ),
           ),
 
           // Logout Button
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(isSmallDevice ? 16 : 20),
             decoration: const BoxDecoration(
               border: Border(
                 top: BorderSide(
@@ -122,17 +128,18 @@ class UserSidebar extends StatelessWidget {
               width: double.infinity,
               child: ElevatedButton.icon(
                 onPressed: onLogout,
-                icon: const Icon(Icons.logout, color: Colors.black),
-                label: const Text(
+                icon: const Icon(Icons.logout, color: Colors.black, size: 24),
+                label: Text(
                   'Logout',
                   style: TextStyle(
                     color: Colors.black,
                     fontWeight: FontWeight.bold,
+                    fontSize: itemFontSize,
                   ),
                 ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),
@@ -146,13 +153,25 @@ class UserSidebar extends StatelessWidget {
   }
 
   Widget _buildNavItem({
+    required BuildContext context,
     required IconData icon,
     required String title,
     required String page,
     required bool isSelected,
   }) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallDevice = screenWidth < 400;
+    final itemFontSize = isSmallDevice ? 16.0 : 18.0;
+    final iconSize = isSmallDevice ? 22.0 : 24.0;
+    final navHorizontalMargin = isSmallDevice ? 10.0 : 14.0;
+    final navVerticalMargin = isSmallDevice ? 4.0 : 6.0;
+    final navVerticalPadding = isSmallDevice ? 12.0 : 14.0;
+
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      margin: EdgeInsets.symmetric(
+        horizontal: navHorizontalMargin,
+        vertical: navVerticalMargin,
+      ),
       child: Material(
         color: isSelected ? Colors.white.withOpacity(0.2) : Colors.transparent,
         borderRadius: BorderRadius.circular(8),
@@ -160,29 +179,32 @@ class UserSidebar extends StatelessWidget {
           onTap: () => onPageChanged(page),
           borderRadius: BorderRadius.circular(8),
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            padding: EdgeInsets.symmetric(
+              horizontal: 18,
+              vertical: navVerticalPadding,
+            ),
             child: Row(
               children: [
                 Icon(
                   icon,
                   color: isSelected ? Colors.white : Colors.white70,
-                  size: 20,
+                  size: iconSize,
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 14),
                 Expanded(
                   child: Text(
                     title,
                     style: TextStyle(
                       color: isSelected ? Colors.white : Colors.white70,
-                      fontSize: 16,
+                      fontSize: itemFontSize,
                       fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
                     ),
                   ),
                 ),
                 if (isSelected)
                   Container(
-                    width: 6,
-                    height: 6,
+                    width: 8,
+                    height: 8,
                     decoration: const BoxDecoration(
                       color: Colors.white,
                       shape: BoxShape.circle,

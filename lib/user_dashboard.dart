@@ -12,7 +12,6 @@ import 'widgets/user_sidebar.dart';
 import 'pages/user_profile_page.dart';
 import 'pages/change_password_page.dart';
 import 'pages/change_branch_page.dart';
-import 'pages/medical_citations_page.dart';
 import 'main.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'utils/app_colors.dart';
@@ -46,10 +45,6 @@ class _UserDashboardState extends State<UserDashboard> {
   // Key: "classId_scheduleId" or "classId_date_time", Value: booking ID
   Map<String, String> _bookingKeyToBookingId = {}; // Map booking key to booking ID
   List<BookingResponse> _allBookings = []; // Store all bookings for reference
-  
-  // BMI data
-  BMIResponse? _userBMI;
-  bool _isLoadingBMI = false;
   
   // User data
   UserResponse? _currentUser;
@@ -106,13 +101,19 @@ class _UserDashboardState extends State<UserDashboard> {
     super.dispose();
   }
 
+  Future<void> _handleUnauthorized() async {
+    await _storageService.clearAuthData();
+    if (mounted) {
+      Navigator.pushReplacementNamed(context, '/login');
+    }
+  }
+
   Future<void> _initializePage() async {
     try {
       await _storageService.init();
       _accessToken = await _storageService.getAccessToken();
       if (_accessToken != null) {
         await _loadUserBranchClasses();
-        await _loadUserBMI();
         await _loadCurrentUser();
         await _loadUserBookings();
       } else {
@@ -141,6 +142,10 @@ class _UserDashboardState extends State<UserDashboard> {
           _currentUser = userData;
         });
       } else {
+        if (result['statusCode'] == 401) {
+          await _handleUnauthorized();
+          return;
+        }
         print('Failed to load user profile: ${result['message']}');
       }
     } catch (e) {
@@ -155,6 +160,10 @@ class _UserDashboardState extends State<UserDashboard> {
       // Get user bookings from API
       final result = await ApiService.getUserBookings(_accessToken!);
       
+      if (result['success'] == false && result['statusCode'] == 401) {
+        await _handleUnauthorized();
+        return;
+      }
       if (result['success']) {
         final bookingsData = result['data'];
         
@@ -465,9 +474,6 @@ class _UserDashboardState extends State<UserDashboard> {
       case 'change_password':
         _navigateToChangePassword();
         break;
-      case 'bmi':
-        _showBMICalculator();
-        break;
       case 'dashboard':
       default:
         // Already on dashboard
@@ -623,6 +629,10 @@ class _UserDashboardState extends State<UserDashboard> {
         
         print('User branch loaded: ${branch.branchName} with ${classes.length} classes');
       } else {
+        if (result['statusCode'] == 401) {
+          await _handleUnauthorized();
+          return;
+        }
         final errorMsg = result['message'] ?? 'Failed to load your branch classes';
         print('Failed to load classes: $errorMsg');
         setState(() {
@@ -1129,6 +1139,9 @@ class _UserDashboardState extends State<UserDashboard> {
       }
     }
     
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isLargeDevice = screenWidth >= 800;
+
     return Wrap(
       spacing: 8,
       runSpacing: 8,
@@ -1142,8 +1155,11 @@ class _UserDashboardState extends State<UserDashboard> {
         
         return GestureDetector(
           onTap: () => _showDayScheduleDialog(days[dayOfWeek], allSchedules),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            child: Container(
+              padding: EdgeInsets.symmetric(
+                horizontal: isLargeDevice ? 20 : 16,
+                vertical: isLargeDevice ? 12 : 10,
+              ),
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.15),
               borderRadius: BorderRadius.circular(8),
@@ -1154,24 +1170,27 @@ class _UserDashboardState extends State<UserDashboard> {
               children: [
                 Text(
                   days[dayOfWeek],
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: Colors.white,
-                    fontSize: 14,
+                    fontSize: isLargeDevice ? 18 : 16,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
                 const SizedBox(width: 8),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: isLargeDevice ? 12 : 8,
+                    vertical: isLargeDevice ? 6 : 4,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.2),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
                     '${allSchedules.length}',
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: Colors.white,
-                      fontSize: 12,
+                      fontSize: isLargeDevice ? 14 : 12,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -1180,7 +1199,7 @@ class _UserDashboardState extends State<UserDashboard> {
                 const Icon(
                   Icons.chevron_right,
                   color: Colors.white70,
-                  size: 16,
+                  size: 18,
                 ),
               ],
             ),
@@ -1272,263 +1291,6 @@ class _UserDashboardState extends State<UserDashboard> {
         ],
       ),
     );
-  }
-
-  // BMI Methods
-  Future<void> _loadUserBMI() async {
-    if (_accessToken == null) return;
-
-    setState(() {
-      _isLoadingBMI = true;
-    });
-
-    try {
-      final result = await ApiService.getUserBMI(_accessToken!);
-      
-      if (result['success']) {
-        final bmiData = BMIResponse.fromJson(result['data']);
-        setState(() {
-          _userBMI = bmiData;
-          _isLoadingBMI = false;
-        });
-      } else {
-        // BMI data not available or incomplete
-        setState(() {
-          _userBMI = null;
-          _isLoadingBMI = false;
-        });
-      }
-    } catch (e) {
-      setState(() {
-        _userBMI = null;
-        _isLoadingBMI = false;
-      });
-    }
-  }
-
-  Future<void> _showBMICalculator() async {
-    final TextEditingController heightController = TextEditingController();
-    final TextEditingController weightController = TextEditingController();
-    
-    // Pre-fill with existing data if available
-    if (_userBMI != null) {
-      heightController.text = _userBMI!.height.toString();
-      weightController.text = _userBMI!.weight.toString();
-    }
-
-    final result = await showDialog<Map<String, dynamic>>(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1A1A),
-        title: const Text(
-          'BMI Calculator',
-          style: TextStyle(color: Colors.white),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: heightController,
-              keyboardType: TextInputType.number,
-              style: const TextStyle(color: Colors.white),
-              decoration: InputDecoration(
-                labelText: 'Height (cm)',
-                labelStyle: const TextStyle(color: Colors.white70),
-                hintText: 'Enter your height in centimeters',
-                hintStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
-                border: OutlineInputBorder(),
-                enabledBorder: OutlineInputBorder(
-                  borderSide: BorderSide(color: Colors.white),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderSide: BorderSide(color: Colors.white, width: 2),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: weightController,
-              keyboardType: TextInputType.number,
-              style: const TextStyle(color: Colors.white),
-              decoration: InputDecoration(
-                labelText: 'Weight (kg)',
-                labelStyle: const TextStyle(color: Colors.white70),
-                hintText: 'Enter your weight in kilograms',
-                hintStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
-                border: OutlineInputBorder(),
-                enabledBorder: OutlineInputBorder(
-                  borderSide: BorderSide(color: Colors.white),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderSide: BorderSide(color: Colors.white, width: 2),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            // Medical Citation Link
-            GestureDetector(
-              onTap: () {
-                Navigator.of(context).pop();
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (context) => const MedicalCitationsPage(),
-                  ),
-                );
-              },
-              child: Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.blue.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.blue.withOpacity(0.3)),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.info_outline,
-                      color: Colors.blue[300],
-                      size: 16,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'View medical information sources',
-                        style: TextStyle(
-                          color: Colors.blue[300],
-                          fontSize: 12,
-                          decoration: TextDecoration.underline,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text(
-              'Cancel',
-              style: TextStyle(color: Colors.white70),
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              final height = double.tryParse(heightController.text);
-              final weight = double.tryParse(weightController.text);
-              
-              if (height == null || weight == null) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Please enter valid height and weight', style: const TextStyle(color: Colors.black)),
-                    backgroundColor: AppColors.snackbarBackground,
-                  ),
-                );
-                return;
-              }
-              
-              if (height < 50 || height > 300) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Height must be between 50 and 300 cm', style: const TextStyle(color: Colors.black)),
-                    backgroundColor: AppColors.snackbarBackground,
-                  ),
-                );
-                return;
-              }
-              
-              if (weight < 20 || weight > 500) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Weight must be between 20 and 500 kg', style: const TextStyle(color: Colors.black)),
-                    backgroundColor: AppColors.snackbarBackground,
-                  ),
-                );
-                return;
-              }
-              
-              Navigator.of(context).pop({
-                'height': height,
-                'weight': weight,
-              });
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.white,
-              foregroundColor: Colors.black,
-            ),
-            child: const Text('Calculate BMI'),
-          ),
-        ],
-      ),
-    );
-
-    if (result != null) {
-      await _calculateAndUpdateBMI(result['height'], result['weight']);
-    }
-  }
-
-  Future<void> _calculateAndUpdateBMI(double height, double weight) async {
-    if (_accessToken == null) return;
-
-    // Show loading dialog
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => const Center(
-        child: CircularProgressIndicator(
-          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-        ),
-      ),
-    );
-
-    try {
-      // Update user BMI data
-      final result = await ApiService.updateUserBMI(height, weight, _accessToken!);
-      
-      Navigator.of(context).pop(); // Close loading dialog
-      
-      if (result['success']) {
-        final bmiData = BMIResponse.fromJson(result['data']);
-        setState(() {
-          _userBMI = bmiData;
-        });
-        
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'BMI updated successfully! Your BMI is ${bmiData.bmi.toStringAsFixed(1)}',
-              style: const TextStyle(color: Colors.black),
-            ),
-            backgroundColor: AppColors.snackbarBackground,
-            duration: const Duration(seconds: 3),
-          ),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(result['message'] ?? 'Failed to update BMI', style: const TextStyle(color: Colors.black)),
-            backgroundColor: AppColors.snackbarBackground,
-          ),
-        );
-      }
-    } catch (e) {
-      Navigator.of(context).pop(); // Close loading dialog
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error updating BMI: $e', style: const TextStyle(color: Colors.black)),
-          backgroundColor: AppColors.snackbarBackground,
-        ),
-      );
-    }
-  }
-
-  Color _getBMIColor(double bmi) {
-    if (bmi < 18.5) return Colors.blue; // Underweight
-    if (bmi < 25) return Colors.green; // Normal
-    if (bmi < 30) return Colors.orange; // Overweight
-    return Colors.red; // Obese
   }
 
   Future<BookingResponse?> _showBookingSelectionDialog(
@@ -1961,6 +1723,9 @@ class _UserDashboardState extends State<UserDashboard> {
 
 @override
 Widget build(BuildContext context) {
+  final size = MediaQuery.of(context).size;
+  final width = size.width;
+
   return Scaffold(
     body: Stack(
       children: [
@@ -2010,8 +1775,6 @@ Widget build(BuildContext context) {
                     _buildHeader(),
                     // Search bar
                     _buildSearchBar(),
-                    // BMI Section
-                    _buildBMISection(),
                     // Content
                     Expanded(
                       child: ClipRect(
@@ -2043,7 +1806,7 @@ Widget build(BuildContext context) {
             child: GestureDetector(
               onTap: () {}, // Prevent taps from bubbling up to close sidebar
               child: Container(
-                width: 280,
+                width: (width * 0.75).clamp(220.0, 280.0),
                 child: UserSidebar(
                   currentPage: _currentPage,
                   onPageChanged: _onPageChanged,
@@ -2058,6 +1821,9 @@ Widget build(BuildContext context) {
 }
 
   Widget _buildHeader() {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isLargeDevice = screenWidth >= 900;
+
     return Container(
       padding: const EdgeInsets.all(16),
       child: Row(
@@ -2079,9 +1845,9 @@ Widget build(BuildContext context) {
           Expanded(
             child: Text(
               _userBranch != null ? '${_userBranch!.branchName} Classes' : 'My Classes',
-              style: const TextStyle(
+              style: TextStyle(
                 color: Colors.white,
-                fontSize: 24,
+                fontSize: isLargeDevice ? 28 : 24,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -2093,7 +1859,7 @@ Widget build(BuildContext context) {
             icon: const Icon(
               Icons.refresh,
               color: Colors.white,
-              size: 24,
+              size: 28,
             ),
             tooltip: 'Refresh Classes',
           ),
@@ -2103,6 +1869,9 @@ Widget build(BuildContext context) {
   }
 
   Widget _buildSearchBar() {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isLargeDevice = screenWidth >= 800;
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
@@ -2113,214 +1882,31 @@ Widget build(BuildContext context) {
       child: TextField(
         controller: _classSearchController,
         onChanged: _onClassSearchChanged,
-        style: const TextStyle(color: Colors.white),
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: isLargeDevice ? 18 : 16,
+        ),
         decoration: InputDecoration(
           hintText: 'Search classes...',
-          hintStyle: const TextStyle(color: Colors.white70),
-          prefixIcon: const Icon(Icons.search, color: Colors.white70),
+          hintStyle: TextStyle(
+            color: Colors.white70,
+            fontSize: isLargeDevice ? 18 : 16,
+          ),
+          prefixIcon: Icon(
+            Icons.search,
+            color: Colors.white70,
+            size: isLargeDevice ? 24 : 22,
+          ),
           border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
         ),
-      ),
-    );
-  }
-
-  Widget _buildBMISection() {
-    if (_isLoadingBMI) {
-      return Container(
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.white, width: 1),
-        ),
-        child: const Center(
-          child: CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-          ),
-        ),
-      );
-    }
-
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white, width: 1),
-      ),
-      child: _userBMI != null ? _buildBMIInfo() : _buildBMIEmpty(),
-    );
-  }
-
-  Widget _buildBMIInfo() {
-    final bmiColor = _getBMIColor(_userBMI!.bmi);
-    
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        children: [
-          // BMI Icon
-          Container(
-            width: 50,
-            height: 50,
-            decoration: BoxDecoration(
-              color: bmiColor.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(25),
-              border: Border.all(color: bmiColor, width: 2),
-            ),
-            child: Icon(
-              Icons.monitor_weight,
-              color: bmiColor,
-              size: 24,
-            ),
-          ),
-          const SizedBox(width: 16),
-          
-          // BMI Info
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'BMI: ${_userBMI!.bmi.toStringAsFixed(1)}',
-                  style: TextStyle(
-                    color: bmiColor,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                Text(
-                  _userBMI!.category,
-                  style: const TextStyle(
-                    color: Colors.white70,
-                    fontSize: 14,
-                  ),
-                ),
-                Text(
-                  '${_userBMI!.height.toStringAsFixed(0)}cm • ${_userBMI!.weight.toStringAsFixed(1)}kg',
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.5),
-                    fontSize: 12,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                GestureDetector(
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => const MedicalCitationsPage(),
-                      ),
-                    );
-                  },
-                  child: Text(
-                    'View medical sources',
-                    style: TextStyle(
-                      color: Colors.blue[300],
-                      fontSize: 10,
-                      decoration: TextDecoration.underline,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          
-          // Update Button
-          GestureDetector(
-            onTap: _showBMICalculator,
-            child: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Icon(
-                Icons.edit,
-                color: Colors.black,
-                size: 20,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildBMIEmpty() {
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        children: [
-          Container(
-            width: 50,
-            height: 50,
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(25),
-              border: Border.all(color: Colors.white, width: 2),
-            ),
-            child: const Icon(
-              Icons.monitor_weight_outlined,
-              color: Colors.white,
-              size: 24,
-            ),
-          ),
-          const SizedBox(width: 16),
-          
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Calculate Your BMI',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const Text(
-                  'Track your health and fitness progress',
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          
-          // Calculate Button
-          GestureDetector(
-            onTap: _showBMICalculator,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [Colors.white, Colors.white70],
-                ),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: const Text(
-                'Calculate',
-                style: TextStyle(
-                  color: Colors.black,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                ),
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }
 
   Widget _buildContent() {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isLargeDevice = screenWidth >= 800;
     if (_isLoading && _classes.isEmpty) {
       return const Center(
         child: CircularProgressIndicator(
@@ -2342,7 +1928,10 @@ Widget build(BuildContext context) {
             const SizedBox(height: 16),
             Text(
               _errorMessage!,
-              style: const TextStyle(color: Colors.white, fontSize: 16),
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: isLargeDevice ? 20 : 18,
+              ),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 16),
@@ -2365,6 +1954,8 @@ Widget build(BuildContext context) {
   Widget _buildClassesList() {
     final filteredClasses = _getFilteredClasses();
     final expiredCount = _getExpiredClassesCount();
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isLargeDevice = screenWidth >= 900;
     
     if (filteredClasses.isEmpty) {
       return Center(
@@ -2383,7 +1974,10 @@ Widget build(BuildContext context) {
                 : expiredCount > 0 && _classes.isNotEmpty
                   ? 'All classes at ${_userBranch?.branchName ?? "your branch"} have expired'
                   : 'No classes available at ${_userBranch?.branchName ?? "your branch"}',
-              style: const TextStyle(color: Colors.white70, fontSize: 18),
+              style: TextStyle(
+                color: Colors.white70,
+                fontSize: isLargeDevice ? 20 : 18,
+              ),
               textAlign: TextAlign.center,
             ),
             if (expiredCount > 0 && _classes.isNotEmpty && _classSearchQuery.isEmpty) ...[
@@ -2448,7 +2042,7 @@ Widget build(BuildContext context) {
       },
       color: Colors.white,
       child: ListView.builder(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(18),
         itemCount: filteredClasses.length,
         itemBuilder: (context, index) {
           return _buildClassCard(filteredClasses[index]);
@@ -2459,6 +2053,10 @@ Widget build(BuildContext context) {
 
 
   Widget _buildClassCard(BranchClassResponse classData) {
+    final screenSize = MediaQuery.of(context).size;
+    final isLargeDevice = screenSize.width >= 800;
+    final imageHeight = (screenSize.height * 0.25).clamp(160.0, 220.0);
+
     final bookings = _getBookingsForClass(classData.id);
     final hasBookings = bookings.isNotEmpty;
     
@@ -2480,7 +2078,7 @@ Widget build(BuildContext context) {
           if (hasBookings)
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 14),
               decoration: BoxDecoration(
                 color: Colors.green.withOpacity(0.2),
                 borderRadius: const BorderRadius.only(
@@ -2493,16 +2091,16 @@ Widget build(BuildContext context) {
                   const Icon(
                     Icons.check_circle,
                     color: Colors.green,
-                    size: 20,
+                    size: 24,
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 10),
                   Text(
                     bookings.length == 1
                         ? 'You have booked this class'
                         : 'You have ${bookings.length} bookings for this class',
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: Colors.green,
-                      fontSize: 14,
+                      fontSize: isLargeDevice ? 18 : 16,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -2512,7 +2110,7 @@ Widget build(BuildContext context) {
           // Class Images
           if (classData.images.isNotEmpty) ...[
             Container(
-              height: 200,
+              height: imageHeight,
               width: double.infinity,
               decoration: const BoxDecoration(
                 borderRadius: BorderRadius.only(
@@ -2610,16 +2208,16 @@ Widget build(BuildContext context) {
           
           // Class content
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(18),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Class name
                 Text(
                   classData.name,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: Colors.white,
-                    fontSize: 20,
+                        fontSize: isLargeDevice ? 30 : 22,
                     fontWeight: FontWeight.bold,
                   ),
                   overflow: TextOverflow.ellipsis,
@@ -2632,9 +2230,9 @@ Widget build(BuildContext context) {
                 if (classData.description.isNotEmpty) ...[
                   Text(
                     classData.description,
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: Colors.white70,
-                      fontSize: 14,
+                      fontSize: isLargeDevice ? 18 : 16,
                     ),
                     overflow: TextOverflow.ellipsis,
                     maxLines: 3,
@@ -2655,11 +2253,11 @@ Widget build(BuildContext context) {
                 
                 // Schedule
                 if (classData.schedule.isNotEmpty) ...[
-                  const Text(
+                  Text(
                     'Schedule:',
                     style: TextStyle(
                       color: Colors.white,
-                      fontSize: 14,
+                      fontSize: isLargeDevice ? 18 : 16,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -2671,11 +2269,11 @@ Widget build(BuildContext context) {
                 
                 // Show existing bookings if any
                 if (hasBookings) ...[
-                  const Text(
+                  Text(
                     'Your Bookings:',
                     style: TextStyle(
                       color: Colors.white,
-                      fontSize: 14,
+                      fontSize: isLargeDevice ? 18 : 16,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -2699,18 +2297,18 @@ Widget build(BuildContext context) {
                             children: [
                               Text(
                                 DateFormat('MMM dd, yyyy').format(booking.classDate),
-                                style: const TextStyle(
+                                style: TextStyle(
                                   color: Colors.white,
-                                  fontSize: 14,
+                                  fontSize: isLargeDevice ? 18 : 16,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
                               const SizedBox(height: 4),
                               Text(
                                 '${DateFormat('HH:mm').format(booking.startTime)} - ${DateFormat('HH:mm').format(booking.endTime)}',
-                                style: const TextStyle(
+                                style: TextStyle(
                                   color: Colors.white,
-                                  fontSize: 12,
+                                  fontSize: isLargeDevice ? 16 : 14,
                                 ),
                               ),
                               if (booking.notes != null && booking.notes!.isNotEmpty) ...[
@@ -2719,7 +2317,7 @@ Widget build(BuildContext context) {
                                   booking.notes!,
                                   style: TextStyle(
                                     color: Colors.white.withOpacity(0.7),
-                                    fontSize: 11,
+                                    fontSize: isLargeDevice ? 16 : 14,
                                   ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
@@ -2729,7 +2327,7 @@ Widget build(BuildContext context) {
                           ),
                         ),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                           decoration: BoxDecoration(
                             color: _getStatusColor(booking.status).withOpacity(0.2),
                             borderRadius: BorderRadius.circular(12),
@@ -2738,19 +2336,19 @@ Widget build(BuildContext context) {
                             booking.status.toUpperCase(),
                             style: TextStyle(
                               color: _getStatusColor(booking.status),
-                              fontSize: 10,
+                              fontSize: isLargeDevice ? 14 : 12,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
                         ),
                         const SizedBox(width: 8),
                         IconButton(
-                          icon: const Icon(Icons.edit, color: Colors.white, size: 20),
+                          icon: const Icon(Icons.edit, color: Colors.white, size: 24),
                           onPressed: () => _handleUpdateBooking(booking),
                           tooltip: 'Update booking',
                         ),
                         IconButton(
-                          icon: const Icon(Icons.cancel, color: Colors.red, size: 20),
+                          icon: const Icon(Icons.cancel, color: Colors.red, size: 24),
                           onPressed: () => _handleCancelBooking(classData, booking.scheduleId),
                           tooltip: 'Cancel booking',
                         ),
@@ -2768,16 +2366,16 @@ Widget build(BuildContext context) {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.white,
                       foregroundColor: Colors.black,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),
                     ),
                     child: Text(
                       hasBookings ? 'Book Another Time' : 'Book Class',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        fontSize: 16,
+                        fontSize: isLargeDevice ? 20 : 18,
                       ),
                     ),
                   ),
@@ -2791,29 +2389,31 @@ Widget build(BuildContext context) {
   }
 
   Widget _buildDetailRow(IconData icon, String label, String value) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isLargeDevice = screenWidth >= 900;
     return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
+      padding: const EdgeInsets.only(bottom: 6),
       child: Row(
         children: [
           Icon(
             icon,
             color: Colors.white,
-            size: 16,
+            size: 20,
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 10),
           Text(
             '$label: ',
-            style: const TextStyle(
+            style: TextStyle(
               color: Colors.white70,
-              fontSize: 14,
+              fontSize: isLargeDevice ? 16 : 14,
             ),
           ),
           Expanded(
             child: Text(
               value,
-              style: const TextStyle(
+              style: TextStyle(
                 color: Colors.white,
-                fontSize: 14,
+                fontSize: isLargeDevice ? 16 : 14,
                 fontWeight: FontWeight.w500,
               ),
               overflow: TextOverflow.ellipsis,

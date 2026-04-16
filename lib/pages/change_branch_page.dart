@@ -77,7 +77,7 @@ class _ChangeBranchPageState extends State<ChangeBranchPage> {
     if (_selectedBranch == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please select a branch'),
+          content: Text('Please select a branch', style: TextStyle(color: Colors.black)),
           backgroundColor: AppColors.snackbarBackground,
         ),
       );
@@ -87,7 +87,7 @@ class _ChangeBranchPageState extends State<ChangeBranchPage> {
     if (widget.currentBranch != null && _selectedBranch!.id == widget.currentBranch!.id) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('You are already a member of this branch'),
+          content: Text('You are already a member of this branch', style: TextStyle(color: Colors.black)),
           backgroundColor: AppColors.snackbarBackground,
         ),
       );
@@ -105,7 +105,7 @@ class _ChangeBranchPageState extends State<ChangeBranchPage> {
       if (result['success']) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(result['message'] ?? 'Branch changed successfully'),
+            content: Text(result['message'] ?? 'Branch changed successfully', style: const TextStyle(color: Colors.black)),
             backgroundColor: AppColors.snackbarBackground,
             duration: const Duration(seconds: 4),
           ),
