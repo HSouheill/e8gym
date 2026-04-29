@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'services/api_service.dart';
-import 'utils/app_colors.dart';
+import '../../services/api_service.dart';
+import '../../utils/app_colors.dart';
 
 class BranchResetPasswordPage extends StatefulWidget {
   final String email;

@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
-import 'services/api_service.dart';
-import 'models/standalone_class_models.dart';
-import 'utils/app_colors.dart';
+import '../../services/api_service.dart';
+import '../../models/standalone_class_models.dart';
+import '../../utils/app_colors.dart';
 
 class CreateStandaloneClassPage extends StatefulWidget {
   final String accessToken;

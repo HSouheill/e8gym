@@ -1,21 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'dart:convert';
-import 'services/api_service.dart';
-import 'services/storage_service.dart';
-import 'services/auth_service.dart';
-import 'models/standalone_class_models.dart';
-import 'models/booking_models.dart';
-import 'models/branch_class_models.dart';
-import 'models/auth_models.dart';
-import 'widgets/user_sidebar.dart';
-import 'pages/user_profile_page.dart';
-import 'pages/change_password_page.dart';
-import 'pages/change_branch_page.dart';
-import 'main.dart';
+import '../../services/api_service.dart';
+import '../../services/storage_service.dart';
+import '../../services/auth_service.dart';
+import '../../models/standalone_class_models.dart';
+import '../../models/booking_models.dart';
+import '../../models/branch_class_models.dart';
+import '../../models/auth_models.dart';
+import '../../widgets/user_sidebar.dart';
+import 'user_profile_page.dart';
+import 'change_password_page.dart';
+import 'change_branch_page.dart';
+import '../../main.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'utils/app_colors.dart';
-import 'utils/background_image_service.dart';
+import '../../utils/app_colors.dart';
+import '../../utils/background_image_service.dart';
 
 class UserDashboard extends StatefulWidget {
   const UserDashboard({super.key});

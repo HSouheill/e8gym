@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'services/api_service.dart';
-import 'models/standalone_class_models.dart';
+import '../../services/api_service.dart';
+import '../../models/standalone_class_models.dart';
 import 'create_standalone_class_page.dart';
 import 'edit_standalone_class_page.dart';
-import 'utils/app_colors.dart';
+import '../../utils/app_colors.dart';
 
 class StandaloneClassesPage extends StatefulWidget {
   final String accessToken;

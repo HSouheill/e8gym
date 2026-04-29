@@ -1,23 +1,26 @@
 import 'package:flutter/material.dart';
-import 'services/api_service.dart';
-import 'branch_reset_password_page.dart';
-import 'utils/app_colors.dart';
+import '../../services/api_service.dart';
+import 'branch_dashboard_page.dart';
+import 'branch_forgot_password_page.dart';
+import '../../utils/app_colors.dart';
 
-class BranchForgotPasswordPage extends StatefulWidget {
-  const BranchForgotPasswordPage({super.key});
+class BranchLoginPage extends StatefulWidget {
+  const BranchLoginPage({super.key});
 
   @override
-  State<BranchForgotPasswordPage> createState() => _BranchForgotPasswordPageState();
+  State<BranchLoginPage> createState() => _BranchLoginPageState();
 }
 
-class _BranchForgotPasswordPageState extends State<BranchForgotPasswordPage> {
+class _BranchLoginPageState extends State<BranchLoginPage> {
   final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
   bool _isLoading = false;
-  bool _otpSent = false;
+  bool _obscurePassword = true;
 
   @override
   void dispose() {
     _emailController.dispose();
+    _passwordController.dispose();
     super.dispose();
   }
 
@@ -77,9 +80,9 @@ class _BranchForgotPasswordPageState extends State<BranchForgotPasswordPage> {
                   
                   const SizedBox(height: 40),
                   
-                  // Title
+                  // Branch Login title
                   const Text(
-                    'RESET PASSWORD',
+                    'BRANCH LOGIN',
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 32,
@@ -91,15 +94,15 @@ class _BranchForgotPasswordPageState extends State<BranchForgotPasswordPage> {
                   const SizedBox(height: 16),
                   
                   // Subtitle
-                  const                           Text(
-                            'Enter your email to receive reset instructions',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 18,
-                              fontWeight: FontWeight.w500,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
+                  const Text(
+                    'Access your branch dashboard',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
                   
                   const SizedBox(height: 50),
                   
@@ -148,15 +151,98 @@ class _BranchForgotPasswordPageState extends State<BranchForgotPasswordPage> {
                     ),
                   ),
                   
+                  const SizedBox(height: 24),
+                  
+                  // Password field
+                  Container(
+                    decoration: BoxDecoration(
+                      border: Border(
+                        bottom: BorderSide(
+                          color: Colors.white,
+                          width: 2,
+                        ),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [Colors.white, Colors.white70],
+                            ),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          padding: const EdgeInsets.all(8),
+                          child: const Icon(
+                            Icons.lock,
+                            color: Colors.white,
+                            size: 24,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: TextField(
+                            controller: _passwordController,
+                            obscureText: _obscurePassword,
+                            style: const TextStyle(color: Colors.white),
+                            decoration: const InputDecoration(
+                              hintText: 'Enter your password',
+                              hintStyle: TextStyle(color: Colors.white70),
+                              border: InputBorder.none,
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: () {
+                            setState(() {
+                              _obscurePassword = !_obscurePassword;
+                            });
+                          },
+                          icon: Icon(
+                            _obscurePassword ? Icons.visibility : Icons.visibility_off,
+                            color: Colors.white70,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  
+                  // Forgot Password link
+                  const SizedBox(height: 16),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: GestureDetector(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const BranchForgotPasswordPage(),
+                          ),
+                        );
+                      },
+                      child: const Text(
+                        'Forgot Password?',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          decoration: TextDecoration.underline,
+                        ),
+                      ),
+                    ),
+                  ),
+                  
                   const SizedBox(height: 40),
                   
-                  // Submit button
+                  // Login button
                   SizedBox(
                     width: MediaQuery.of(context).size.width * 0.6,
                     height: 80,
                     child: GestureDetector(
                       onTap: _isLoading ? null : () async {
-                        await _handleForgotPassword();
+                        await _handleLogin();
                       },
                       child: _isLoading
                           ? Container(
@@ -197,7 +283,7 @@ class _BranchForgotPasswordPageState extends State<BranchForgotPasswordPage> {
                               ),
                               child: const Center(
                                 child: Text(
-                                  'Submit',
+                                  'Login',
                                   style: TextStyle(
                                     color: Colors.black,
                                     fontSize: 16,
@@ -208,73 +294,6 @@ class _BranchForgotPasswordPageState extends State<BranchForgotPasswordPage> {
                             ),
                     ),
                   ),
-                  
-                  if (_otpSent) ...[
-                    const SizedBox(height: 30),
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.green.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.green),
-                      ),
-                      child: Column(
-                        children: [
-                          const Icon(
-                            Icons.check_circle,
-                            color: Colors.green,
-                            size: 48,
-                          ),
-                          const SizedBox(height: 16),
-                          const Text(
-                            'OTP Sent Successfully!',
-                            style: TextStyle(
-                              color: Colors.green,
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          const Text(
-                            'Check your email for the password reset OTP. It expires in 15 minutes.',
-                            style: TextStyle(
-                              color: Colors.green,
-                              fontSize: 14,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 20),
-                          ElevatedButton(
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => BranchResetPasswordPage(
-                                    email: _emailController.text,
-                                  ),
-                                ),
-                              );
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.green,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                            ),
-                            child: const Text(
-                              'Enter OTP & Reset Password',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
                 ],
               ),
             ),
@@ -284,10 +303,10 @@ class _BranchForgotPasswordPageState extends State<BranchForgotPasswordPage> {
     );
   }
 
-  Future<void> _handleForgotPassword() async {
-    // Validate email
-    if (_emailController.text.isEmpty) {
-      _showSnackBar('Please enter your email address');
+  Future<void> _handleLogin() async {
+    // Validate inputs
+    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
+      _showSnackBar('Please fill in all fields');
       return;
     }
 
@@ -303,19 +322,93 @@ class _BranchForgotPasswordPageState extends State<BranchForgotPasswordPage> {
     });
 
     try {
-      final result = await ApiService.branchForgotPassword(_emailController.text);
+      // Call Branch Admin login API (supports both branch admin and team member login)
+      print('Attempting Branch Admin/Team Member login for ${_emailController.text}');
+      final result = await ApiService.branchLogin(
+        _emailController.text,
+        _passwordController.text,
+      );
 
       if (result['success']) {
-        setState(() {
-          _otpSent = true;
-        });
-        _showSnackBar(result['message'] ?? 'OTP sent successfully');
+        // Login successful
+        _showSnackBar(result['message'] ?? 'Login successful!');
+        
+        // Store user data and token
+        final userData = result['data'];
+        
+        // Validate that we have the required data
+        if (userData == null || userData['branch'] == null || userData['access_token'] == null) {
+          _showSnackBar('Invalid response from server. Please try again.');
+          return;
+        }
+        
+        final branchData = userData['branch'];
+        final branchEmail = branchData['email'];
+        final loginEmail = _emailController.text.toLowerCase();
+        
+        // Determine if this is a team member login or branch admin login
+        final isTeamMemberLogin = loginEmail != branchEmail.toLowerCase();
+        
+        // Determine user role and permissions
+        bool canEdit = true; // Branch admin can always edit
+        String? userRole;
+        
+        if (isTeamMemberLogin) {
+          print('Team member login successful for: $loginEmail');
+          // Find the team member in the branch data
+          final teamMembers = branchData['team_members'] as List? ?? [];
+          try {
+            final teamMember = teamMembers.firstWhere(
+              (member) => (member['email'] as String?)?.toLowerCase() == loginEmail,
+            ) as Map<String, dynamic>?;
+            if (teamMember != null) {
+              print('Team Member Name: ${teamMember['full_name']}');
+              userRole = teamMember['role'] as String?;
+              print('Team Member Role: $userRole');
+              // Viewers cannot edit, only admins can
+              canEdit = userRole?.toLowerCase() != 'viewer';
+              print('Can Edit: $canEdit');
+            }
+          } catch (e) {
+            print('Team member not found in branch data: $e');
+            // If team member not found, default to no edit permissions
+            canEdit = false;
+          }
+        } else {
+          print('Branch admin login successful for: $branchEmail');
+          // Branch admin can always edit
+          canEdit = true;
+        }
+        
+        print('Branch Name: ${branchData['branch_name'] ?? 'Unknown'}');
+        print('Access Token: ${userData['access_token'] ?? 'No token'}');
+        
+        // Navigate to branch dashboard (works for both branch admin and team members)
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => BranchDashboardPage(
+              branchData: userData,
+              accessToken: userData['access_token'],
+              canEdit: canEdit,
+            ),
+          ),
+        );
+        
+        // Clear form
+        _emailController.clear();
+        _passwordController.clear();
       } else {
-        _showSnackBar(result['message'] ?? 'Failed to send OTP');
+        // Login failed - error message already formatted by API service
+        _showSnackBar(result['message'] ?? 'Login failed');
+        print('Login error: ${result['error']}');
+        print('Status code: ${result['statusCode']}');
       }
     } catch (e) {
       _showSnackBar('An error occurred: $e');
+      print('Exception during login: $e');
     } finally {
+      // Reset loading state
       setState(() {
         _isLoading = false;
       });

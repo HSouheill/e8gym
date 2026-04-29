@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'services/api_service.dart';
-import 'models/branch_user_models.dart';
-import 'utils/app_colors.dart';
-import 'utils/background_image_service.dart';
+import '../../services/api_service.dart';
+import '../../models/branch_user_models.dart';
+import '../../utils/app_colors.dart';
+import '../../utils/background_image_service.dart';
 
 class SuperAdminUsersPage extends StatefulWidget {
   final String accessToken;

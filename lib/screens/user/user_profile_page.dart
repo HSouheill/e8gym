@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../services/api_service.dart';
-import '../services/storage_service.dart';
-import '../models/auth_models.dart';
-import '../utils/app_colors.dart';
-import '../utils/background_image_service.dart';
+import '../../services/api_service.dart';
+import '../../services/storage_service.dart';
+import '../../models/auth_models.dart';
+import '../../utils/app_colors.dart';
+import '../../utils/background_image_service.dart';
 
 class UserProfilePage extends StatefulWidget {
   final String accessToken;

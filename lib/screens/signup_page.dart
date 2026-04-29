@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../services/auth_service.dart';
-import '../models/auth_models.dart';
-import '../utils/validation_utils.dart';
-import '../services/storage_service.dart';
-import '../services/api_service.dart';
+import '../../services/auth_service.dart';
+import '../../models/auth_models.dart';
+import '../../utils/validation_utils.dart';
+import '../../services/storage_service.dart';
+import '../../services/api_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../utils/app_colors.dart';
+import '../../utils/app_colors.dart';
 
 class SignupPage extends StatefulWidget {
   const SignupPage({super.key});

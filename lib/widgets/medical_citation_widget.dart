@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../pages/medical_citations_page.dart';
+import '../screens/user/medical_citations_page.dart';
 
 class MedicalCitationWidget extends StatelessWidget {
   final String? title;

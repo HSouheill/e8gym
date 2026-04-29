@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
-import 'services/api_service.dart';
-import 'models/auth_models.dart';
-import 'models/standalone_class_models.dart';
-import 'utils/app_colors.dart';
+import '../../services/api_service.dart';
+import '../../models/auth_models.dart';
+import '../../models/standalone_class_models.dart';
+import '../../utils/app_colors.dart';
 
 class EditBranchPage extends StatefulWidget {
   final String accessToken;

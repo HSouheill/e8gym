@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'services/api_service.dart';
-import 'branch_forgot_password_page.dart';
-import 'branch_dashboard_page.dart';
-import 'super_admin_dashboard_page.dart';
-import 'main.dart';
-import 'utils/app_colors.dart';
+import '../services/api_service.dart';
+import 'branch/branch_forgot_password_page.dart';
+import 'branch/branch_dashboard_page.dart';
+import 'super_admin/super_admin_dashboard_page.dart';
+import '../main.dart';
+import '../utils/app_colors.dart';
 
 class AdminLoginPage extends StatefulWidget {
   const AdminLoginPage({super.key});

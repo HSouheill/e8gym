@@ -3,10 +3,10 @@ import 'dart:io';
 import 'dart:convert';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'services/api_service.dart';
-import 'models/auth_models.dart';
-import 'models/standalone_class_models.dart';
-import 'utils/app_colors.dart';
+import '../../services/api_service.dart';
+import '../../models/auth_models.dart';
+import '../../models/standalone_class_models.dart';
+import '../../utils/app_colors.dart';
 
 class CreateBranchPage extends StatefulWidget {
   final String accessToken;

@@ -4,10 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 
-import 'services/api_service.dart';
-import 'models/auth_models.dart';
-import 'utils/background_image_service.dart';
-import 'utils/app_colors.dart';
+import '../../services/api_service.dart';
+import '../../models/auth_models.dart';
+import '../../utils/background_image_service.dart';
+import '../../utils/app_colors.dart';
 
 class SuperAdminSettingsPage extends StatefulWidget {
   final String accessToken;

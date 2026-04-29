@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'services/api_service.dart';
-import 'models/branch_user_models.dart';
-import 'utils/background_image_service.dart';
+import '../../services/api_service.dart';
+import '../../models/branch_user_models.dart';
+import '../../utils/background_image_service.dart';
 
 class BranchUsersPage extends StatefulWidget {
   final String accessToken;

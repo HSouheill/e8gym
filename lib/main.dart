@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'dart:async';
 import 'splash_screen.dart';
-import 'signup_page.dart';
-import 'admin_login_page.dart';
+import 'screens/signup_page.dart';
+import 'screens/admin_login_page.dart';
 import 'services/auth_service.dart';
 import 'services/storage_service.dart';
-import 'user_dashboard.dart';
+import 'screens/user/user_dashboard.dart';
 import 'models/auth_models.dart';
 import 'utils/app_colors.dart';
 

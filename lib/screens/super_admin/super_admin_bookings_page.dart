@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'services/api_service.dart';
-import 'utils/app_colors.dart';
-import 'utils/background_image_service.dart';
+import '../../services/api_service.dart';
+import '../../utils/app_colors.dart';
+import '../../utils/background_image_service.dart';
 
 class SuperAdminBookingsPage extends StatefulWidget {
   final String accessToken;

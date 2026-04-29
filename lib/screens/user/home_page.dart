@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
-import 'services/auth_service.dart';
-import 'services/storage_service.dart';
-import 'services/api_service.dart';
-import 'utils/secure_logger.dart';
-import 'utils/secure_error_handler.dart';
+import '../../services/auth_service.dart';
+import '../../services/storage_service.dart';
+import '../../services/api_service.dart';
+import '../../utils/secure_logger.dart';
+import '../../utils/secure_error_handler.dart';
 import 'user_dashboard.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'utils/app_colors.dart';
+import '../../utils/app_colors.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});

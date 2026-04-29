@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'models/auth_models.dart';
-import 'services/api_service.dart';
-import 'edit_branch_page.dart';
-import 'utils/app_colors.dart';
-import 'utils/background_image_service.dart';
+import '../../models/auth_models.dart';
+import '../../services/api_service.dart';
+import '../super_admin/edit_branch_page.dart';
+import '../../utils/app_colors.dart';
+import '../../utils/background_image_service.dart';
 import 'branch_class_detail_page.dart';
 
 class BranchDetailPage extends StatefulWidget {
