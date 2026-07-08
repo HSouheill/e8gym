@@ -1,6 +1,7 @@
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_service.dart';
 import '../config/api_config.dart';
+import 'package:flutter/foundation.dart';
 
 /// Centralized service for managing app background images
 /// Ensures consistent caching and loading across all pages
@@ -181,7 +182,7 @@ class BackgroundImageService {
         }
       }
     } catch (e) {
-      print('Error loading background image from API: $e');
+      if (kDebugMode) print('Error loading background image from API: $e');
     }
     
     // Fallback to cached value if API didn't return a background
@@ -247,7 +248,7 @@ class BackgroundImageService {
         }
       }
     } catch (e) {
-      print('Error loading background image from API: $e');
+      if (kDebugMode) print('Error loading background image from API: $e');
     }
     
     // Fallback to cached value if API didn't return a background
@@ -275,7 +276,7 @@ class BackgroundImageService {
         }
       }
     } catch (e) {
-      print('Error getting cached background URL: $e');
+      if (kDebugMode) print('Error getting cached background URL: $e');
     }
     return null;
   }
@@ -288,7 +289,7 @@ class BackgroundImageService {
       // Normalize the URL before caching to ensure correct format
       final normalizedUrl = normalizeUrl(url);
       if (normalizedUrl == null || normalizedUrl.isEmpty) {
-        print('Warning: Failed to normalize URL before caching: $url');
+        if (kDebugMode) print('Warning: Failed to normalize URL before caching: $url');
         return;
       }
       
@@ -301,7 +302,7 @@ class BackgroundImageService {
         await prefs.setString(_cacheKey, normalizedUrl);
       }
     } catch (e) {
-      print('Error setting background URL: $e');
+      if (kDebugMode) print('Error setting background URL: $e');
     }
   }
   
@@ -322,7 +323,7 @@ class BackgroundImageService {
         await prefs.remove('background_image_url'); // Also clear alternative key
       }
     } catch (e) {
-      print('Error clearing background URL: $e');
+      if (kDebugMode) print('Error clearing background URL: $e');
     }
   }
 }

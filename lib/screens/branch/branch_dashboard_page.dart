@@ -5,6 +5,7 @@ import '../../models/standalone_class_models.dart';
 import 'branch_users_page.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/background_image_service.dart';
+import 'package:flutter/foundation.dart';
 
 class BranchDashboardPage extends StatefulWidget {
   final Map<String, dynamic> branchData;
@@ -36,10 +37,10 @@ class _BranchDashboardPageState extends State<BranchDashboardPage> {
     accessToken = widget.accessToken;
     
     // Debug logging
-    print('BranchDashboardPage initialized');
-    print('Branch data keys: ${widget.branchData.keys}');
+    if (kDebugMode) print('BranchDashboardPage initialized');
+    if (kDebugMode) print('Branch data keys: ${widget.branchData.keys}');
     if (widget.branchData['branch'] != null) {
-      print('Branch data keys: ${(widget.branchData['branch'] as Map).keys}');
+      if (kDebugMode) print('Branch data keys: ${(widget.branchData['branch'] as Map).keys}');
     }
     
     // Load classes on initialization
@@ -81,19 +82,19 @@ class _BranchDashboardPageState extends State<BranchDashboardPage> {
     });
 
     try {
-      print('=== Loading Branch Classes ===');
+      if (kDebugMode) print('=== Loading Branch Classes ===');
       final result = await ApiService.getBranchClasses(accessToken);
-      print('Branch classes API response: $result');
+      if (kDebugMode) print('Branch classes API response: $result');
       
       if (result['success']) {
         final data = result['data'];
-        print('Branch classes data: $data');
+        if (kDebugMode) print('Branch classes data: $data');
         
         // Check if data contains classes field
         if (data != null) {
-          print('Data keys: ${data.keys}');
-          print('Classes field exists: ${data.containsKey('classes')}');
-          print('Classes field value: ${data['classes']}');
+          if (kDebugMode) print('Data keys: ${data.keys}');
+          if (kDebugMode) print('Classes field exists: ${data.containsKey('classes')}');
+          if (kDebugMode) print('Classes field value: ${data['classes']}');
           
           if (data['classes'] != null) {
             final classListResponse = BranchClassListResponse.fromJson(data);
@@ -101,30 +102,30 @@ class _BranchDashboardPageState extends State<BranchDashboardPage> {
               _classes = classListResponse.classes;
               _isLoadingClasses = false;
             });
-            print('Successfully loaded ${_classes.length} classes');
+            if (kDebugMode) print('Successfully loaded ${_classes.length} classes');
           } else {
-            print('Classes field is null, setting empty list');
+            if (kDebugMode) print('Classes field is null, setting empty list');
             setState(() {
               _classes = [];
               _isLoadingClasses = false;
             });
           }
         } else {
-          print('Data is null');
+          if (kDebugMode) print('Data is null');
           setState(() {
             _classes = [];
             _isLoadingClasses = false;
           });
         }
       } else {
-        print('API returned error: ${result['message']}');
+        if (kDebugMode) print('API returned error: ${result['message']}');
         setState(() {
           _errorMessage = result['message'] ?? 'Failed to load classes';
           _isLoadingClasses = false;
         });
       }
     } catch (e) {
-      print('Error loading classes: $e');
+      if (kDebugMode) print('Error loading classes: $e');
       setState(() {
         _errorMessage = 'An error occurred: $e';
         _isLoadingClasses = false;
@@ -2401,19 +2402,19 @@ class _BranchDashboardPageState extends State<BranchDashboardPage> {
       try {
         final result = await ApiService.branchLogout(accessToken);
         if (result['success']) {
-          print('Branch logout API successful');
+          if (kDebugMode) print('Branch logout API successful');
         } else {
-          print('Branch logout API failed: ${result['message']}');
+          if (kDebugMode) print('Branch logout API failed: ${result['message']}');
         }
       } catch (e) {
-        print('Branch logout API failed, but continuing with local logout: $e');
+        if (kDebugMode) print('Branch logout API failed, but continuing with local logout: $e');
       }
       
       // Always show success message and navigate back
       _showSnackBar('Logged out successfully');
       Navigator.pop(context); // Go back to login page
     } catch (e) {
-      print('Error during logout process: $e');
+      if (kDebugMode) print('Error during logout process: $e');
       // Even if there's an error, try to navigate back
       _showSnackBar('Logged out successfully');
       Navigator.pop(context);

@@ -15,7 +15,7 @@ void main() {
   FlutterError.onError = (FlutterErrorDetails details) {
     // In release mode, don't show the red screen
     if (kReleaseMode) {
-      print('Flutter error: ${details.exception}');
+      if (kDebugMode) print('Flutter error: ${details.exception}');
     } else {
       FlutterError.presentError(details);
     }
@@ -25,8 +25,8 @@ void main() {
     runApp(const MyApp());
   }, (error, stackTrace) {
     // Log error but don't crash the app
-    print('App error: $error');
-    print('Stack trace: $stackTrace');
+    if (kDebugMode) print('App error: $error');
+    if (kDebugMode) print('Stack trace: $stackTrace');
     
     // In release mode, try to recover gracefully
     if (kReleaseMode) {

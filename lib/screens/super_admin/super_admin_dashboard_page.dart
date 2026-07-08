@@ -14,6 +14,7 @@ import 'super_admin_users_page.dart';
 import 'super_admin_bookings_page.dart';
 import 'super_admin_settings_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/foundation.dart';
 
 class SuperAdminDashboardPage extends StatefulWidget {
   final String accessToken;
@@ -146,17 +147,17 @@ class _SuperAdminDashboardPageState extends State<SuperAdminDashboardPage> {
 
       if (result['success']) {
         final data = result['data'];
-        print('=== API Response Debug ===');
-        print('Raw API data: $data');
-        print('Data type: ${data.runtimeType}');
+        if (kDebugMode) print('=== API Response Debug ===');
+        if (kDebugMode) print('Raw API data: $data');
+        if (kDebugMode) print('Data type: ${data.runtimeType}');
         if (data is Map && data.containsKey('branches')) {
-          print('Branches count: ${(data['branches'] as List).length}');
+          if (kDebugMode) print('Branches count: ${(data['branches'] as List).length}');
           for (int i = 0; i < (data['branches'] as List).length; i++) {
             final branch = data['branches'][i];
-            print('Branch $i: ${branch['branch_name']} - Image: ${branch['image']}');
+            if (kDebugMode) print('Branch $i: ${branch['branch_name']} - Image: ${branch['image']}');
           }
         }
-        print('========================');
+        if (kDebugMode) print('========================');
         
         final branchListResponse = BranchListResponse.fromJson(data);
         
@@ -284,10 +285,10 @@ class _SuperAdminDashboardPageState extends State<SuperAdminDashboardPage> {
 
     try {
       // Debug: Check token before logout
-      print('=== Logout Debug ===');
-      print('Access Token from widget: ${widget.accessToken}');
-      print('Token length: ${widget.accessToken.length}');
-      print('Token starts with Bearer: ${widget.accessToken.startsWith('Bearer ')}');
+      if (kDebugMode) print('=== Logout Debug ===');
+      if (kDebugMode) print('Access Token from widget: ${widget.accessToken}');
+      if (kDebugMode) print('Token length: ${widget.accessToken.length}');
+      if (kDebugMode) print('Token starts with Bearer: ${widget.accessToken.startsWith('Bearer ')}');
       
       // Get stored token for comparison
       final storedToken = await _storageService.getAccessToken();
@@ -302,14 +303,14 @@ class _SuperAdminDashboardPageState extends State<SuperAdminDashboardPage> {
       // Try to call logout API, but don't fail if it doesn't work
       try {
         final result = await ApiService.superAdminLogout(tokenToUse);
-        print('Logout API result: ${result['success']}');
+        if (kDebugMode) print('Logout API result: ${result['success']}');
       } catch (e) {
-        print('Logout API failed, but continuing with local logout: $e');
+        if (kDebugMode) print('Logout API failed, but continuing with local logout: $e');
       }
       
       // Always clear stored auth data regardless of API response
       await _storageService.clearAuthData();
-      print('Local auth data cleared successfully');
+      if (kDebugMode) print('Local auth data cleared successfully');
       
       if (mounted) {
         // Navigate back to admin login page
@@ -321,7 +322,7 @@ class _SuperAdminDashboardPageState extends State<SuperAdminDashboardPage> {
         );
       }
     } catch (e) {
-      print('Error during logout process: $e');
+      if (kDebugMode) print('Error during logout process: $e');
       // Even if there's an error, try to clear local data and navigate
       try {
         await _storageService.clearAuthData();
@@ -334,7 +335,7 @@ class _SuperAdminDashboardPageState extends State<SuperAdminDashboardPage> {
           );
         }
       } catch (clearError) {
-        print('Error clearing auth data: $clearError');
+        if (kDebugMode) print('Error clearing auth data: $clearError');
         if (mounted) {
           _showSnackBar('An error occurred during logout: $e');
         }
@@ -1108,14 +1109,14 @@ class _SuperAdminDashboardPageState extends State<SuperAdminDashboardPage> {
     final screenWidth = MediaQuery.of(context).size.width;
     final isLargeDevice = screenWidth >= 800;
     // Debug: Print branch image information
-    print('=== Branch Image Debug ===');
-    print('Branch Name: ${branch.branchName}');
-    print('Branch ID: ${branch.branchId}');
-    print('Image URL: ${branch.image}');
-    print('Image is null: ${branch.image == null}');
-    print('Image is empty: ${branch.image?.isEmpty ?? true}');
-    print('Image length: ${branch.image?.length ?? 0}');
-    print('========================');
+    if (kDebugMode) print('=== Branch Image Debug ===');
+    if (kDebugMode) print('Branch Name: ${branch.branchName}');
+    if (kDebugMode) print('Branch ID: ${branch.branchId}');
+    if (kDebugMode) print('Image URL: ${branch.image}');
+    if (kDebugMode) print('Image is null: ${branch.image == null}');
+    if (kDebugMode) print('Image is empty: ${branch.image?.isEmpty ?? true}');
+    if (kDebugMode) print('Image length: ${branch.image?.length ?? 0}');
+    if (kDebugMode) print('========================');
     
     // Normalize image URL
     final normalizedImageUrl = branch.image != null && branch.image!.isNotEmpty
@@ -1165,13 +1166,13 @@ class _SuperAdminDashboardPageState extends State<SuperAdminDashboardPage> {
                             );
                           },
                           errorBuilder: (context, error, stackTrace) {
-                            print('=== Image Error Debug ===');
-                            print('Branch: ${branch.branchName}');
-                            print('Original Image URL: ${branch.image}');
-                            print('Normalized Image URL: $normalizedImageUrl');
-                            print('Error: $error');
-                            print('Stack Trace: $stackTrace');
-                            print('========================');
+                            if (kDebugMode) print('=== Image Error Debug ===');
+                            if (kDebugMode) print('Branch: ${branch.branchName}');
+                            if (kDebugMode) print('Original Image URL: ${branch.image}');
+                            if (kDebugMode) print('Normalized Image URL: $normalizedImageUrl');
+                            if (kDebugMode) print('Error: $error');
+                            if (kDebugMode) print('Stack Trace: $stackTrace');
+                            if (kDebugMode) print('========================');
                             return Container(
                               color: Colors.white.withValues(alpha: 0.3),
                               child: const Icon(
@@ -1183,17 +1184,17 @@ class _SuperAdminDashboardPageState extends State<SuperAdminDashboardPage> {
                           },
                           loadingBuilder: (context, child, loadingProgress) {
                             if (loadingProgress == null) {
-                              print('=== Image Loaded Successfully ===');
-                              print('Branch: ${branch.branchName}');
-                              print('Normalized Image URL: $normalizedImageUrl');
-                              print('================================');
+                              if (kDebugMode) print('=== Image Loaded Successfully ===');
+                              if (kDebugMode) print('Branch: ${branch.branchName}');
+                              if (kDebugMode) print('Normalized Image URL: $normalizedImageUrl');
+                              if (kDebugMode) print('================================');
                               return child;
                             }
-                            print('=== Image Loading ===');
-                            print('Branch: ${branch.branchName}');
-                            print('Normalized Image URL: $normalizedImageUrl');
-                            print('Progress: ${loadingProgress.cumulativeBytesLoaded}/${loadingProgress.expectedTotalBytes}');
-                            print('====================');
+                            if (kDebugMode) print('=== Image Loading ===');
+                            if (kDebugMode) print('Branch: ${branch.branchName}');
+                            if (kDebugMode) print('Normalized Image URL: $normalizedImageUrl');
+                            if (kDebugMode) print('Progress: ${loadingProgress.cumulativeBytesLoaded}/${loadingProgress.expectedTotalBytes}');
+                            if (kDebugMode) print('====================');
                             return Container(
                               color: Colors.white.withValues(alpha: 0.1),
                               child: const Center(

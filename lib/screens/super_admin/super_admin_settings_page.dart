@@ -8,6 +8,7 @@ import '../../services/api_service.dart';
 import '../../models/auth_models.dart';
 import '../../utils/background_image_service.dart';
 import '../../utils/app_colors.dart';
+import 'package:flutter/foundation.dart';
 
 class SuperAdminSettingsPage extends StatefulWidget {
   final String accessToken;
@@ -360,8 +361,8 @@ class _SuperAdminSettingsPageState extends State<SuperAdminSettingsPage> {
             });
           } else {
             // If URL extraction failed, show error but keep the selected file
-            print('Failed to extract image URL. Response data: ${resp['data']}');
-            print('Background path extracted: $backgroundPath');
+            if (kDebugMode) print('Failed to extract image URL. Response data: ${resp['data']}');
+            if (kDebugMode) print('Background path extracted: $backgroundPath');
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text('Upload succeeded but failed to extract image URL. Please try again.', style: const TextStyle(color: Colors.black)),
@@ -723,7 +724,7 @@ class _SuperAdminSettingsPageState extends State<SuperAdminSettingsPage> {
                     selectedFile, 
                     fit: BoxFit.cover,
                     errorBuilder: (context, error, stackTrace) {
-                      print('Error loading selected file: $error');
+                      if (kDebugMode) print('Error loading selected file: $error');
                       return Container(
                         color: Colors.grey.shade100,
                         child: const Center(
@@ -750,7 +751,7 @@ class _SuperAdminSettingsPageState extends State<SuperAdminSettingsPage> {
                           );
                         },
                         errorBuilder: (context, error, stackTrace) {
-                          print('Error loading network image from $currentBackgroundUrl: $error');
+                          if (kDebugMode) print('Error loading network image from $currentBackgroundUrl: $error');
                           return Container(
                             color: Colors.grey.shade100,
                             child: Column(

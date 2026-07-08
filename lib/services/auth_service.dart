@@ -4,6 +4,7 @@ import '../models/auth_models.dart';
 import '../utils/api_config.dart';
 import '../utils/secure_logger.dart';
 import 'security_service.dart';
+import 'package:flutter/foundation.dart';
 
 class AuthService {
   static final AuthService _instance = AuthService._internal();
@@ -252,9 +253,9 @@ class AuthService {
         );
       }
       
-      print('=== AuthService Logout Debug ===');
-      print('Original token: ${token.isNotEmpty ? token.substring(0, 20) + '...' : 'empty'}');
-      print('Clean token: ${cleanToken.isNotEmpty ? cleanToken.substring(0, 20) + '...' : 'empty'}');
+      if (kDebugMode) print('=== AuthService Logout Debug ===');
+      if (kDebugMode) print('Original token: ${token.isNotEmpty ? token.substring(0, 20) + '...' : 'empty'}');
+      if (kDebugMode) print('Clean token: ${cleanToken.isNotEmpty ? cleanToken.substring(0, 20) + '...' : 'empty'}');
       
       // Update security headers
       await _updateSecurityHeaders();
@@ -264,8 +265,8 @@ class AuthService {
         headers: _headers,
       );
 
-      print('Logout response status: ${response.statusCode}');
-      print('Logout response body: ${response.body}');
+      if (kDebugMode) print('Logout response status: ${response.statusCode}');
+      if (kDebugMode) print('Logout response body: ${response.body}');
 
       if (response.statusCode == 200) {
         // Success - clear auth token
@@ -279,7 +280,7 @@ class AuthService {
              responseData['message']?.toString().contains('expired') == true ||
              responseData['error']?.toString().contains('invalid') == true ||
              responseData['message']?.toString().contains('invalid') == true)) {
-          print('Token expired or invalid, treating as successful logout');
+          if (kDebugMode) print('Token expired or invalid, treating as successful logout');
           clearAuthToken();
           return;
         }
@@ -292,7 +293,7 @@ class AuthService {
       }
     } catch (e) {
       // Even if there's an error, clear the auth token to ensure logout
-      print('Logout error, but clearing auth token: $e');
+      if (kDebugMode) print('Logout error, but clearing auth token: $e');
       clearAuthToken();
       
       if (e is AuthException) {

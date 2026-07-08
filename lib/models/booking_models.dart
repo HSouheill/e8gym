@@ -162,9 +162,9 @@ class BookingListResponse {
 
   factory BookingListResponse.fromJson(Map<String, dynamic> json) {
     return BookingListResponse(
-      bookings: (json['bookings'] as List)
-          .map((booking) => BookingResponse.fromJson(booking))
-          .toList(),
+      bookings: (json['bookings'] as List?)
+          ?.map((booking) => BookingResponse.fromJson(booking))
+          .toList() ?? [],
       total: json['total'] ?? 0,
       page: json['page'] ?? 1,
       limit: json['limit'] ?? 20,

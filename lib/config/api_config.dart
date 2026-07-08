@@ -1,42 +1,12 @@
 class ApiConfig {
-  // Base URLs for different environments
-  // 
-  // IMPORTANT: Choose the correct URL based on your setup:
-  // 
-  // 1. Android Emulator: Use 'http://10.0.2.2:8080'
-  //    - 10.0.2.2 is a special IP that maps to your host machine's localhost
-  //    - This works when running Flutter app on Android emulator
-  // 
-  // 2. iOS Simulator: Use 'https://e8gym.online'
-  //    - localhost works directly on iOS simulator
-  // 
-  // 3. Physical Device: Use your computer's local IP address
-  //    - Find your computer's IP: ifconfig (Mac/Linux) or ipconfig (Windows)
-  //    - Example: 'http://192.168.1.100:8080'
-  //    - Make sure your device is on the same WiFi network
-  // 
-  // 4. Production: Use your actual backend domain with HTTPS
-  //    - Example: 'https://api.yourapp.com'
+
+  static const String productionBaseUrl = 'https://e8gym.online'; 
   
-  // static const String devBaseUrl = 'http://10.0.2.2:8080'; // For Android emulator
-  // static const String localBaseUrl = 'https://e8gym.online'; // For iOS simulator
-  // static const String networkBaseUrl = 'http://192.168.0.239:8080'; // For physical device on same network
-  static const String productionBaseUrl = 'https://e8gym.online'; // Production URL with HTTPS
-  
-  // Current environment (change this as needed)
-  // Options: 'dev', 'local', 'network', 'production'
+
   static const String currentEnvironment = 'production';
   
-  // Get the appropriate base URL based on current environment
   static String baseUrl = productionBaseUrl;
-  // {
-  //   switch (currentEnvironment) {
-  //     case 'production':
-  //       return productionBaseUrl;
-  //     default:
-  //       return productionBaseUrl; // Default to production for safety
-  //   }
-  // }
+
   
   // API Endpoints
   static const String superAdminLogin = '/superadmin/login';

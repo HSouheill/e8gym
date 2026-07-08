@@ -62,11 +62,14 @@ class _SuperAdminBookingsPageState extends State<SuperAdminBookingsPage> {
       if (result['success']) {
         final data = result['data'];
         if (data != null) {
-          final classes = (data['classes'] as List).cast<Map<String, dynamic>>();
-          
-          final total = data['total'] ?? 0;
-          final page = data['page'] ?? 1;
-          final limit = data['limit'] ?? 20;
+          // Support both flat and 'data'-wrapped response shapes, and a null
+          // 'classes' field (backend returns null when there are no bookings)
+          final payload = (data is Map && data['data'] is Map) ? data['data'] : data;
+          final classes = (payload['classes'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+
+          final total = payload['total'] ?? 0;
+          final page = payload['page'] ?? 1;
+          final limit = payload['limit'] ?? 20;
 
           setState(() {
             if (refresh) {

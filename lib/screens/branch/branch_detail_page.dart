@@ -5,6 +5,7 @@ import '../super_admin/edit_branch_page.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/background_image_service.dart';
 import 'branch_class_detail_page.dart';
+import 'package:flutter/foundation.dart';
 
 class BranchDetailPage extends StatefulWidget {
   final String accessToken;
@@ -128,7 +129,7 @@ class _BranchDetailPageState extends State<BranchDetailPage> {
       
       if (branchIdentifier.isNotEmpty) {
         // Super admin endpoint: /api/branch/classes/{classId}/toggle-visibility?branch_id={branchId}
-        print('Using super admin endpoint with branch ID: $branchIdentifier');
+        if (kDebugMode) print('Using super admin endpoint with branch ID: $branchIdentifier');
         result = await ApiService.toggleBranchClassVisibilityForSuperAdmin(
           branchIdentifier,
           classId,
@@ -136,7 +137,7 @@ class _BranchDetailPageState extends State<BranchDetailPage> {
         );
       } else {
         // Branch admin endpoint: /api/branch/classes/{classId}/toggle-visibility
-        print('Using branch admin endpoint (no branch ID available)');
+        if (kDebugMode) print('Using branch admin endpoint (no branch ID available)');
         result = await ApiService.toggleBranchClassVisibility(
           classId,
           widget.accessToken,
@@ -191,10 +192,10 @@ class _BranchDetailPageState extends State<BranchDetailPage> {
         // Show detailed error message for debugging
         final errorMessage = result['message'] ?? 'Failed to toggle class visibility';
         final errorDetails = result['error'] ?? '';
-        print('Toggle visibility error: $errorMessage');
-        print('Error details: $errorDetails');
-        print('Branch ID: ${_branch.branchId}');
-        print('Branch ID (id field): ${_branch.id}');
+        if (kDebugMode) print('Toggle visibility error: $errorMessage');
+        if (kDebugMode) print('Error details: $errorDetails');
+        if (kDebugMode) print('Branch ID: ${_branch.branchId}');
+        if (kDebugMode) print('Branch ID (id field): ${_branch.id}');
         
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

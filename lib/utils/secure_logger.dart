@@ -4,51 +4,51 @@ class SecureLogger {
   /// Log debug information only in debug mode
   static void debug(String message, {Map<String, dynamic>? data}) {
     if (kDebugMode) {
-      print('[DEBUG] $message');
+      if (kDebugMode) print('[DEBUG] $message');
       if (data != null) {
-        print('[DEBUG DATA] $data');
+        if (kDebugMode) print('[DEBUG DATA] $data');
       }
     }
   }
 
   /// Log info messages (always logged)
   static void info(String message) {
-    print('[INFO] $message');
+    if (kDebugMode) print('[INFO] $message');
   }
 
   /// Log warning messages (always logged)
   static void warning(String message) {
-    print('[WARNING] $message');
+    if (kDebugMode) print('[WARNING] $message');
   }
 
   /// Log error messages (always logged)
   static void error(String message, {Object? error, StackTrace? stackTrace}) {
-    print('[ERROR] $message');
+    if (kDebugMode) print('[ERROR] $message');
     if (error != null) {
-      print('[ERROR DETAILS] $error');
+      if (kDebugMode) print('[ERROR DETAILS] $error');
     }
     if (stackTrace != null && kDebugMode) {
-      print('[STACK TRACE] $stackTrace');
+      if (kDebugMode) print('[STACK TRACE] $stackTrace');
     }
   }
 
   /// Log security events (always logged, sanitized)
   static void security(String event, {Map<String, dynamic>? details}) {
-    print('[SECURITY] $event');
+    if (kDebugMode) print('[SECURITY] $event');
     if (details != null && kDebugMode) {
       // Sanitize sensitive data
       final sanitizedDetails = _sanitizeDetails(details);
-      print('[SECURITY DETAILS] $sanitizedDetails');
+      if (kDebugMode) print('[SECURITY DETAILS] $sanitizedDetails');
     }
   }
 
   /// Log API requests (debug mode only, sanitized)
   static void apiRequest(String method, String url, {Map<String, dynamic>? body}) {
     if (kDebugMode) {
-      print('[API REQUEST] $method $url');
+      if (kDebugMode) print('[API REQUEST] $method $url');
       if (body != null) {
         final sanitizedBody = _sanitizeRequestBody(body);
-        print('[API BODY] $sanitizedBody');
+        if (kDebugMode) print('[API BODY] $sanitizedBody');
       }
     }
   }
@@ -56,10 +56,10 @@ class SecureLogger {
   /// Log API responses (debug mode only, sanitized)
   static void apiResponse(int statusCode, String url, {String? body}) {
     if (kDebugMode) {
-      print('[API RESPONSE] $statusCode $url');
+      if (kDebugMode) print('[API RESPONSE] $statusCode $url');
       if (body != null) {
         final sanitizedBody = _sanitizeResponseBody(body);
-        print('[API RESPONSE BODY] $sanitizedBody');
+        if (kDebugMode) print('[API RESPONSE BODY] $sanitizedBody');
       }
     }
   }

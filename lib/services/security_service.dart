@@ -6,6 +6,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:http/http.dart' as http;
+import 'package:flutter/foundation.dart';
 
 class SecurityService {
   static const FlutterSecureStorage _secureStorage = FlutterSecureStorage(
@@ -157,7 +158,7 @@ class SecurityService {
   /// Log security events (for monitoring)
   static void logSecurityEvent(String event, {Map<String, dynamic>? details}) {
     // In production, this should send to a secure logging service
-    print('SECURITY_EVENT: $event ${details != null ? jsonEncode(details) : ''}');
+    if (kDebugMode) print('SECURITY_EVENT: $event ${details != null ? jsonEncode(details) : ''}');
   }
 
   /// Validate input data for security

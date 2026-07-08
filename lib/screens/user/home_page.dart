@@ -265,7 +265,7 @@ class _HomePageState extends State<HomePage> {
                                 },
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: Colors.white,
-                                  foregroundColor: Colors.white,
+                                  foregroundColor: Colors.black,
                                   padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(25),
@@ -282,7 +282,7 @@ class _HomePageState extends State<HomePage> {
                                 },
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: Colors.white,
-                                  foregroundColor: Colors.white,
+                                  foregroundColor: Colors.black,
                                   padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(25),

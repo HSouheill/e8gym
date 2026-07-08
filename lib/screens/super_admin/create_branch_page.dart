@@ -7,6 +7,7 @@ import '../../services/api_service.dart';
 import '../../models/auth_models.dart';
 import '../../models/standalone_class_models.dart';
 import '../../utils/app_colors.dart';
+import 'package:flutter/foundation.dart';
 
 class CreateBranchPage extends StatefulWidget {
   final String accessToken;
@@ -122,7 +123,7 @@ class _CreateBranchPageState extends State<CreateBranchPage> {
         });
       }
     } catch (e) {
-      print('Error loading background image: $e');
+      if (kDebugMode) print('Error loading background image: $e');
       // Fallback to cached URL
       final prefs = await SharedPreferences.getInstance();
       final cachedUrl = prefs.getString('background_image_url');
@@ -174,14 +175,14 @@ class _CreateBranchPageState extends State<CreateBranchPage> {
               _availableClasses = classListResponse.classes.where((c) => c.isActive).toList();
             });
           } catch (parseError) {
-            print('Error parsing class data: $parseError');
+            if (kDebugMode) print('Error parsing class data: $parseError');
             _showSnackBar('Error parsing class data. Please try again.', isError: true);
             setState(() {
               _availableClasses = [];
             });
           }
         } else {
-          print('API returned null data for classes');
+          if (kDebugMode) print('API returned null data for classes');
           setState(() {
             _availableClasses = [];
           });
@@ -193,7 +194,7 @@ class _CreateBranchPageState extends State<CreateBranchPage> {
         });
       }
     } catch (e) {
-      print('Exception in _loadAvailableClasses: $e');
+      if (kDebugMode) print('Exception in _loadAvailableClasses: $e');
       _showSnackBar('An error occurred while loading classes: $e', isError: true);
       setState(() {
         _availableClasses = [];
@@ -1292,28 +1293,28 @@ class _CreateBranchPageState extends State<CreateBranchPage> {
       );
 
       // Debug: Print the posted data
-      print('=== Branch Creation Debug ===');
-      print('Team Members Count: ${_teamMembers.length}');
+      if (kDebugMode) print('=== Branch Creation Debug ===');
+      if (kDebugMode) print('Team Members Count: ${_teamMembers.length}');
       for (int i = 0; i < _teamMembers.length; i++) {
         final memberJson = _teamMembers[i].toJson();
-        print('Team Member $i: $memberJson');
-        print('  - Has password field: ${memberJson.containsKey('password')}');
-        print('  - Password value: ${memberJson['password']}');
-        print('  - Password is empty: ${memberJson['password']?.toString().isEmpty ?? true}');
+        if (kDebugMode) print('Team Member $i: $memberJson');
+        if (kDebugMode) print('  - Has password field: ${memberJson.containsKey('password')}');
+        if (kDebugMode) print('  - Password value: ${memberJson['password']}');
+        if (kDebugMode) print('  - Password is empty: ${memberJson['password']?.toString().isEmpty ?? true}');
       }
-      print('Branch Data JSON:');
+      if (kDebugMode) print('Branch Data JSON:');
       final branchJson = branchData.toJson();
-      print(jsonEncode(branchJson));
+      if (kDebugMode) print(jsonEncode(branchJson));
       // Also check team_members in the final JSON
       if (branchJson['team_members'] != null) {
         final teamMembersList = branchJson['team_members'] as List;
         for (int i = 0; i < teamMembersList.length; i++) {
           final member = teamMembersList[i] as Map<String, dynamic>;
-          print('Final JSON Team Member $i password: ${member['password']}');
-          print('Final JSON Team Member $i has password key: ${member.containsKey('password')}');
+          if (kDebugMode) print('Final JSON Team Member $i password: ${member['password']}');
+          if (kDebugMode) print('Final JSON Team Member $i has password key: ${member.containsKey('password')}');
         }
       }
-      print('============================');
+      if (kDebugMode) print('============================');
 
       // Call API to create branch
       final result = await ApiService.createBranch(
@@ -1325,7 +1326,11 @@ class _CreateBranchPageState extends State<CreateBranchPage> {
         _showSnackBar(result['message'] ?? 'Branch created successfully!');
         
         // Get the created branch ID for image uploads
-        final branchId = result['data']['id'] ?? result['data']['_id'];
+        // (guard against a null/absent 'data' field in the response)
+        final responseData = result['data'];
+        final branchId = responseData is Map
+            ? (responseData['id'] ?? responseData['_id'])
+            : null;
         
         // Upload branch image if selected
         if (_branchImageFile != null && branchId != null) {
@@ -1335,7 +1340,9 @@ class _CreateBranchPageState extends State<CreateBranchPage> {
         // Upload team member images if selected
         if (_teamMemberImages.isNotEmpty && branchId != null) {
           // Get the created team members from the response
-          final createdTeamMembers = result['data']['team_members'] as List<dynamic>? ?? [];
+          final createdTeamMembers = responseData is Map
+              ? (responseData['team_members'] as List<dynamic>? ?? [])
+              : <dynamic>[];
           
           for (int i = 0; i < _teamMemberImages.length && i < createdTeamMembers.length; i++) {
             final tempId = 'temp_$i';
@@ -1378,11 +1385,11 @@ class _CreateBranchPageState extends State<CreateBranchPage> {
         Navigator.pop(context, true);
       } else {
         _showSnackBar(result['message'] ?? 'Failed to create branch', isError: true);
-        print('Branch creation error: ${result['error']}');
+        if (kDebugMode) print('Branch creation error: ${result['error']}');
       }
     } catch (e) {
       _showSnackBar('An error occurred: $e', isError: true);
-      print('Exception during branch creation: $e');
+      if (kDebugMode) print('Exception during branch creation: $e');
     } finally {
       // Reset loading state
       setState(() {
@@ -1589,12 +1596,12 @@ class _CreateBranchPageState extends State<CreateBranchPage> {
     );
     
     // Debug: Verify password is included
-    print('=== Team Member Creation Debug ===');
-    print('Team Member JSON: ${teamMember.toJson()}');
-    print('Password in JSON: ${teamMember.toJson()['password']}');
-    print('Password length: ${password.length}');
-    print('Password is empty: ${password.isEmpty}');
-    print('==================================');
+    if (kDebugMode) print('=== Team Member Creation Debug ===');
+    if (kDebugMode) print('Team Member JSON: ${teamMember.toJson()}');
+    if (kDebugMode) print('Password in JSON: ${teamMember.toJson()['password']}');
+    if (kDebugMode) print('Password length: ${password.length}');
+    if (kDebugMode) print('Password is empty: ${password.isEmpty}');
+    if (kDebugMode) print('==================================');
 
     setState(() {
       _teamMembers.add(teamMember);

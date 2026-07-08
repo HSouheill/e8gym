@@ -10,6 +10,7 @@ import '../utils/secure_logger.dart';
 import '../utils/secure_error_handler.dart';
 import 'security_service.dart';
 import '../config/api_config.dart' as cfg;
+import 'package:flutter/foundation.dart';
 
 class ApiService {
   
@@ -243,7 +244,7 @@ class ApiService {
       }
     } catch (e) {
       SecurityService.logSecurityEvent('login_exception', details: {'error': e.toString()});
-      print('Exception in superAdminLogin: $e');
+      if (kDebugMode) print('Exception in superAdminLogin: $e');
       return {
         'success': false,
         'message': 'Network error: $e',
@@ -442,7 +443,7 @@ class ApiService {
         if (response.statusCode == 401 && 
             (errorData['error']?.toString().contains('expired') == true ||
              errorData['message']?.toString().contains('expired') == true)) {
-          print('Token expired, treating as successful logout');
+          if (kDebugMode) print('Token expired, treating as successful logout');
           return {
             'success': true,
             'message': 'Logged out successfully (token was expired)',
@@ -684,9 +685,9 @@ class ApiService {
       final headers = SecurityService.getSecurityHeaders(accessToken);
       headers['X-Device-ID'] = deviceId;
       
-      print('=== API Service Create Branch Debug ===');
-      print('URL: ${ApiConfig.baseUrl}${ApiConfig.createBranch}');
-      print('Request data: ${jsonEncode(branchData)}');
+      if (kDebugMode) print('=== API Service Create Branch Debug ===');
+      if (kDebugMode) print('URL: ${ApiConfig.baseUrl}${ApiConfig.createBranch}');
+      if (kDebugMode) print('Request data: ${jsonEncode(branchData)}');
       
       final response = await http.post(
         Uri.parse('${ApiConfig.baseUrl}${ApiConfig.createBranch}'),
@@ -694,8 +695,8 @@ class ApiService {
         body: jsonEncode(branchData),
       );
       
-      print('Response status: ${response.statusCode}');
-      print('Response body: ${response.body}');
+      if (kDebugMode) print('Response status: ${response.statusCode}');
+      if (kDebugMode) print('Response body: ${response.body}');
 
       if (response.statusCode == 201) {
         final data = jsonDecode(response.body);
@@ -1055,18 +1056,18 @@ class ApiService {
           }
         }
         
-        print('=== API Service Update Branch Debug (Multipart) ===');
-        print('URL: ${request.url}');
-        print('Branch ID: $branchId');
-        print('Form fields: ${request.fields}');
-        print('Image files: ${imageFile != null ? 1 : 0} single, ${imageFiles?.length ?? 0} multiple');
+        if (kDebugMode) print('=== API Service Update Branch Debug (Multipart) ===');
+        if (kDebugMode) print('URL: ${request.url}');
+        if (kDebugMode) print('Branch ID: $branchId');
+        if (kDebugMode) print('Form fields: ${request.fields}');
+        if (kDebugMode) print('Image files: ${imageFile != null ? 1 : 0} single, ${imageFiles?.length ?? 0} multiple');
         
         // Send request
         final streamedResponse = await request.send();
         final response = await http.Response.fromStream(streamedResponse);
         
-        print('Response status: ${response.statusCode}');
-        print('Response body: ${response.body}');
+        if (kDebugMode) print('Response status: ${response.statusCode}');
+        if (kDebugMode) print('Response body: ${response.body}');
         
         if (response.statusCode == 200) {
           final data = jsonDecode(response.body);
@@ -1085,9 +1086,9 @@ class ApiService {
         }
       } else {
         // Use JSON request (no images)
-        print('=== API Service Update Branch Debug (JSON) ===');
-        print('URL: ${ApiConfig.baseUrl}${ApiConfig.updateBranch}/$branchId');
-        print('Request data: ${jsonEncode(updateData)}');
+        if (kDebugMode) print('=== API Service Update Branch Debug (JSON) ===');
+        if (kDebugMode) print('URL: ${ApiConfig.baseUrl}${ApiConfig.updateBranch}/$branchId');
+        if (kDebugMode) print('Request data: ${jsonEncode(updateData)}');
       
       final response = await http.put(
         Uri.parse('${ApiConfig.baseUrl}${ApiConfig.updateBranch}/$branchId'),
@@ -1095,8 +1096,8 @@ class ApiService {
         body: jsonEncode(updateData),
       );
       
-      print('Response status: ${response.statusCode}');
-      print('Response body: ${response.body}');
+      if (kDebugMode) print('Response status: ${response.statusCode}');
+      if (kDebugMode) print('Response body: ${response.body}');
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -1218,10 +1219,10 @@ class ApiService {
       final headers = SecurityService.getSecurityHeaders(accessToken);
       headers['X-Device-ID'] = deviceId;
       
-      print('=== API Service Add Team Member Debug ===');
-      print('URL: $url');
-      print('Branch ID: $branchId');
-      print('Request data: ${jsonEncode(teamMemberData)}');
+      if (kDebugMode) print('=== API Service Add Team Member Debug ===');
+      if (kDebugMode) print('URL: $url');
+      if (kDebugMode) print('Branch ID: $branchId');
+      if (kDebugMode) print('Request data: ${jsonEncode(teamMemberData)}');
       
       final response = await http.post(
         Uri.parse(url),
@@ -1229,8 +1230,8 @@ class ApiService {
         body: jsonEncode(teamMemberData),
       );
       
-      print('Response status: ${response.statusCode}');
-      print('Response body: ${response.body}');
+      if (kDebugMode) print('Response status: ${response.statusCode}');
+      if (kDebugMode) print('Response body: ${response.body}');
 
       if (response.statusCode == 201) {
         final data = jsonDecode(response.body);
@@ -1295,11 +1296,11 @@ class ApiService {
       final headers = SecurityService.getSecurityHeaders(accessToken);
       headers['X-Device-ID'] = deviceId;
       
-      print('=== API Service Update Team Member Debug ===');
-      print('URL: $url');
-      print('Branch ID: $branchId');
-      print('Team Member ID: $teamMemberId');
-      print('Request data: ${jsonEncode(updateData)}');
+      if (kDebugMode) print('=== API Service Update Team Member Debug ===');
+      if (kDebugMode) print('URL: $url');
+      if (kDebugMode) print('Branch ID: $branchId');
+      if (kDebugMode) print('Team Member ID: $teamMemberId');
+      if (kDebugMode) print('Request data: ${jsonEncode(updateData)}');
       
       final response = await http.put(
         Uri.parse(url),
@@ -1307,8 +1308,8 @@ class ApiService {
         body: jsonEncode(updateData),
       );
       
-      print('Response status: ${response.statusCode}');
-      print('Response body: ${response.body}');
+      if (kDebugMode) print('Response status: ${response.statusCode}');
+      if (kDebugMode) print('Response body: ${response.body}');
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -1372,18 +1373,18 @@ class ApiService {
       final headers = SecurityService.getSecurityHeaders(accessToken);
       headers['X-Device-ID'] = deviceId;
       
-      print('=== API Service Delete Team Member Debug ===');
-      print('URL: $url');
-      print('Branch ID: $branchId');
-      print('Team Member ID: $teamMemberId');
+      if (kDebugMode) print('=== API Service Delete Team Member Debug ===');
+      if (kDebugMode) print('URL: $url');
+      if (kDebugMode) print('Branch ID: $branchId');
+      if (kDebugMode) print('Team Member ID: $teamMemberId');
       
       final response = await http.delete(
         Uri.parse(url),
         headers: headers,
       );
       
-      print('Response status: ${response.statusCode}');
-      print('Response body: ${response.body}');
+      if (kDebugMode) print('Response status: ${response.statusCode}');
+      if (kDebugMode) print('Response body: ${response.body}');
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -1505,21 +1506,21 @@ class ApiService {
           request.files.add(multipartFile);
         }
         
-        print('=== CreateStandaloneClass Debug (Multipart) ===');
-        print('Name: ${classData.name}');
-        print('Description: ${classData.description}');
-        print('Instructor: ${classData.instructor}');
-        print('Capacity: ${classData.capacity}');
-        print('Duration: ${classData.duration}');
-        print('Schedule: ${request.fields['schedule']}');
-        print('Image files: ${imageFiles.length}');
+        if (kDebugMode) print('=== CreateStandaloneClass Debug (Multipart) ===');
+        if (kDebugMode) print('Name: ${classData.name}');
+        if (kDebugMode) print('Description: ${classData.description}');
+        if (kDebugMode) print('Instructor: ${classData.instructor}');
+        if (kDebugMode) print('Capacity: ${classData.capacity}');
+        if (kDebugMode) print('Duration: ${classData.duration}');
+        if (kDebugMode) print('Schedule: ${request.fields['schedule']}');
+        if (kDebugMode) print('Image files: ${imageFiles.length}');
         
         // Send request
         final streamedResponse = await request.send();
         final response = await http.Response.fromStream(streamedResponse);
         
-        print('Response status: ${response.statusCode}');
-        print('Response body: ${response.body}');
+        if (kDebugMode) print('Response status: ${response.statusCode}');
+        if (kDebugMode) print('Response body: ${response.body}');
         
         if (response.statusCode == 201) {
           final data = jsonDecode(response.body);
@@ -1539,8 +1540,8 @@ class ApiService {
       } else {
         // Use JSON request (no images)
         final requestBody = classData.toJson();
-        print('=== CreateStandaloneClass Debug (JSON) ===');
-        print('Request body: ${jsonEncode(requestBody)}');
+        if (kDebugMode) print('=== CreateStandaloneClass Debug (JSON) ===');
+        if (kDebugMode) print('Request body: ${jsonEncode(requestBody)}');
       
       final response = await http.post(
         Uri.parse('${ApiConfig.baseUrl}${ApiConfig.createStandaloneClass}'),
@@ -1548,8 +1549,8 @@ class ApiService {
         body: jsonEncode(requestBody),
       );
 
-      print('Response status: ${response.statusCode}');
-      print('Response body: ${response.body}');
+      if (kDebugMode) print('Response status: ${response.statusCode}');
+      if (kDebugMode) print('Response body: ${response.body}');
       
       if (response.statusCode == 201) {
         final data = jsonDecode(response.body);
@@ -1686,7 +1687,7 @@ class ApiService {
             }
           } catch (e) {
             // If filtering fails, return original data
-            print('Error filtering classes by visibility: $e');
+            if (kDebugMode) print('Error filtering classes by visibility: $e');
           }
         }
         
@@ -1885,18 +1886,18 @@ class ApiService {
           request.files.add(multipartFile);
         }
         
-        print('=== API Service Update Standalone Class Debug (Multipart) ===');
-        print('URL: ${request.url}');
-        print('Class ID: $classId');
-        print('Form fields: ${request.fields}');
-        print('Image files: ${imageFiles.length}');
+        if (kDebugMode) print('=== API Service Update Standalone Class Debug (Multipart) ===');
+        if (kDebugMode) print('URL: ${request.url}');
+        if (kDebugMode) print('Class ID: $classId');
+        if (kDebugMode) print('Form fields: ${request.fields}');
+        if (kDebugMode) print('Image files: ${imageFiles.length}');
         
         // Send request
         final streamedResponse = await request.send();
         final response = await http.Response.fromStream(streamedResponse);
         
-        print('Response status: ${response.statusCode}');
-        print('Response body: ${response.body}');
+        if (kDebugMode) print('Response status: ${response.statusCode}');
+        if (kDebugMode) print('Response body: ${response.body}');
         
         if (response.statusCode == 200) {
           final data = jsonDecode(response.body);
@@ -1916,10 +1917,10 @@ class ApiService {
       } else {
         // Use JSON request (no images)
         final requestBody = jsonEncode(updateData.toJson());
-        print('=== API Request Debug (JSON) ===');
-        print('URL: ${ApiConfig.baseUrl}${ApiConfig.updateStandaloneClass}/$classId');
-        print('Headers: $headers');
-        print('Request Body: $requestBody');
+        if (kDebugMode) print('=== API Request Debug (JSON) ===');
+        if (kDebugMode) print('URL: ${ApiConfig.baseUrl}${ApiConfig.updateStandaloneClass}/$classId');
+        if (kDebugMode) print('Headers: $headers');
+        if (kDebugMode) print('Request Body: $requestBody');
         
         final response = await http.put(
           Uri.parse('${ApiConfig.baseUrl}${ApiConfig.updateStandaloneClass}/$classId'),
@@ -1927,9 +1928,9 @@ class ApiService {
           body: requestBody,
         );
         
-        print('=== API Response Debug ===');
-        print('Status Code: ${response.statusCode}');
-        print('Response Body: ${response.body}');
+        if (kDebugMode) print('=== API Response Debug ===');
+        if (kDebugMode) print('Status Code: ${response.statusCode}');
+        if (kDebugMode) print('Response Body: ${response.body}');
 
         if (response.statusCode == 200) {
           final data = jsonDecode(response.body);
@@ -2038,22 +2039,22 @@ class ApiService {
         };
       }
       
-      print('=== SuperAdmin Logout Debug ===');
-      print('URL: ${ApiConfig.baseUrl}${ApiConfig.superAdminLogout}');
-      print('Token received: ${accessToken.substring(0, 20)}...');
-      print('Token length: ${accessToken.length}');
+      if (kDebugMode) print('=== SuperAdmin Logout Debug ===');
+      if (kDebugMode) print('URL: ${ApiConfig.baseUrl}${ApiConfig.superAdminLogout}');
+      if (kDebugMode) print('Token received: ${accessToken.substring(0, 20)}...');
+      if (kDebugMode) print('Token length: ${accessToken.length}');
       
       // Ensure token doesn't already have Bearer prefix
       final cleanToken = accessToken.startsWith('Bearer ') 
           ? accessToken.substring(7) 
           : accessToken;
-      print('Clean token: ${cleanToken.substring(0, 20)}...');
-      print('Authorization header: Bearer ${cleanToken.substring(0, 20)}...');
+      if (kDebugMode) print('Clean token: ${cleanToken.substring(0, 20)}...');
+      if (kDebugMode) print('Authorization header: Bearer ${cleanToken.substring(0, 20)}...');
       
       final deviceId = await SecurityService.getDeviceId();
       final headers = SecurityService.getSecurityHeaders(cleanToken);
       headers['X-Device-ID'] = deviceId;
-      print('Headers: $headers');
+      if (kDebugMode) print('Headers: $headers');
       
       // Try the main logout endpoint first
       var response = await http.post(
@@ -2061,12 +2062,12 @@ class ApiService {
         headers: headers,
       );
 
-      print('Response status: ${response.statusCode}');
-      print('Response body: ${response.body}');
+      if (kDebugMode) print('Response status: ${response.statusCode}');
+      if (kDebugMode) print('Response body: ${response.body}');
 
       // If the main endpoint fails, try alternative endpoints
       if (response.statusCode != 200) {
-        print('Main logout endpoint failed, trying alternatives...');
+        if (kDebugMode) print('Main logout endpoint failed, trying alternatives...');
         
         // Try superadmin-specific logout endpoint
         final alternativeEndpoints = [
@@ -2076,20 +2077,20 @@ class ApiService {
         ];
         
         for (final endpoint in alternativeEndpoints) {
-          print('Trying endpoint: $endpoint');
+          if (kDebugMode) print('Trying endpoint: $endpoint');
           try {
             response = await http.post(
               Uri.parse('${ApiConfig.baseUrl}$endpoint'),
               headers: headers,
             );
             
-            print('Alternative endpoint $endpoint response: ${response.statusCode}');
+            if (kDebugMode) print('Alternative endpoint $endpoint response: ${response.statusCode}');
             if (response.statusCode == 200) {
-              print('Alternative endpoint $endpoint succeeded!');
+              if (kDebugMode) print('Alternative endpoint $endpoint succeeded!');
               break;
             }
           } catch (e) {
-            print('Alternative endpoint $endpoint failed: $e');
+            if (kDebugMode) print('Alternative endpoint $endpoint failed: $e');
           }
         }
       }
@@ -2102,13 +2103,13 @@ class ApiService {
         };
       } else {
         final errorData = jsonDecode(response.body);
-        print('Error response: $errorData');
+        if (kDebugMode) print('Error response: $errorData');
         
         // If token is expired, consider this a successful logout
         if (response.statusCode == 401 && 
             (errorData['error']?.toString().contains('expired') == true ||
              errorData['message']?.toString().contains('expired') == true)) {
-          print('Token expired, treating as successful logout');
+          if (kDebugMode) print('Token expired, treating as successful logout');
           return {
             'success': true,
             'message': 'Logged out successfully (token was expired)',
@@ -2169,7 +2170,7 @@ class ApiService {
         };
       }
       
-      print('=== Get SuperAdmin Users Debug ===');
+      if (kDebugMode) print('=== Get SuperAdmin Users Debug ===');
       
       // Build query parameters
       final queryParams = <String, String>{
@@ -2188,20 +2189,20 @@ class ApiService {
       }
       
       final uri = Uri.parse('${ApiConfig.baseUrl}/superadmin/users').replace(queryParameters: queryParams);
-      print('URL: $uri');
+      if (kDebugMode) print('URL: $uri');
       
       final deviceId = await SecurityService.getDeviceId();
       final headers = SecurityService.getSecurityHeaders(accessToken);
       headers['X-Device-ID'] = deviceId;
-      print('Headers: $headers');
+      if (kDebugMode) print('Headers: $headers');
       
       final response = await http.get(
         uri,
         headers: headers,
       );
 
-      print('Response status: ${response.statusCode}');
-      print('Response body: ${response.body}');
+      if (kDebugMode) print('Response status: ${response.statusCode}');
+      if (kDebugMode) print('Response body: ${response.body}');
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -2219,7 +2220,7 @@ class ApiService {
         };
       }
     } catch (e) {
-      print('Exception in getSuperAdminUsers: $e');
+      if (kDebugMode) print('Exception in getSuperAdminUsers: $e');
       return {
         'success': false,
         'message': 'Network error: $e',
@@ -2265,7 +2266,7 @@ class ApiService {
         };
       }
       
-      print('=== Get Branches With Users Debug ===');
+      if (kDebugMode) print('=== Get Branches With Users Debug ===');
       
       // Build query parameters
       final queryParams = <String, String>{
@@ -2278,20 +2279,20 @@ class ApiService {
       }
       
       final uri = Uri.parse('${ApiConfig.baseUrl}/api/branches/with-users').replace(queryParameters: queryParams);
-      print('URL: $uri');
+      if (kDebugMode) print('URL: $uri');
       
       final deviceId = await SecurityService.getDeviceId();
       final headers = SecurityService.getSecurityHeaders(accessToken);
       headers['X-Device-ID'] = deviceId;
-      print('Headers: $headers');
+      if (kDebugMode) print('Headers: $headers');
       
       final response = await http.get(
         uri,
         headers: headers,
       );
 
-      print('Response status: ${response.statusCode}');
-      print('Response body: ${response.body}');
+      if (kDebugMode) print('Response status: ${response.statusCode}');
+      if (kDebugMode) print('Response body: ${response.body}');
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -2309,7 +2310,7 @@ class ApiService {
         };
       }
     } catch (e) {
-      print('Exception in getBranchesWithUsers: $e');
+      if (kDebugMode) print('Exception in getBranchesWithUsers: $e');
       return {
         'success': false,
         'message': 'Network error: $e',
@@ -2345,7 +2346,7 @@ class ApiService {
         };
       }
       
-      print('=== Get Admin Bookings Debug ===');
+      if (kDebugMode) print('=== Get Admin Bookings Debug ===');
       
       // Build query parameters
       final queryParams = <String, String>{
@@ -2354,20 +2355,20 @@ class ApiService {
       };
       
       final uri = Uri.parse('${ApiConfig.baseUrl}/api/admin/bookings/classes-with-users').replace(queryParameters: queryParams);
-      print('URL: $uri');
+      if (kDebugMode) print('URL: $uri');
       
       final deviceId = await SecurityService.getDeviceId();
       final headers = SecurityService.getSecurityHeaders(accessToken);
       headers['X-Device-ID'] = deviceId;
-      print('Headers: $headers');
+      if (kDebugMode) print('Headers: $headers');
       
       final response = await http.get(
         uri,
         headers: headers,
       );
 
-      print('Response status: ${response.statusCode}');
-      print('Response body: ${response.body}');
+      if (kDebugMode) print('Response status: ${response.statusCode}');
+      if (kDebugMode) print('Response body: ${response.body}');
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -2385,7 +2386,7 @@ class ApiService {
         };
       }
     } catch (e) {
-      print('Exception in getAdminBookings: $e');
+      if (kDebugMode) print('Exception in getAdminBookings: $e');
       return {
         'success': false,
         'message': 'Network error: $e',
@@ -2864,14 +2865,14 @@ class ApiService {
         };
       }
       
-      print('=== Update Branch Class Schedule Debug ===');
-      print('URL: ${ApiConfig.baseUrl}${ApiConfig.updateBranchClassSchedule}/$classId/schedule');
-      print('Request body: ${jsonEncode(scheduleData.toJson())}');
-      print('Schedule count: ${scheduleData.schedule.length}');
+      if (kDebugMode) print('=== Update Branch Class Schedule Debug ===');
+      if (kDebugMode) print('URL: ${ApiConfig.baseUrl}${ApiConfig.updateBranchClassSchedule}/$classId/schedule');
+      if (kDebugMode) print('Request body: ${jsonEncode(scheduleData.toJson())}');
+      if (kDebugMode) print('Schedule count: ${scheduleData.schedule.length}');
       for (int i = 0; i < scheduleData.schedule.length; i++) {
         final schedule = scheduleData.schedule[i];
-        print('Schedule $i: dayOfWeek=${schedule.dayOfWeek}, date=${schedule.date}, startTime=${schedule.startTime}, endTime=${schedule.endTime}');
-        print('Schedule $i JSON: ${jsonEncode(schedule.toJson())}');
+        if (kDebugMode) print('Schedule $i: dayOfWeek=${schedule.dayOfWeek}, date=${schedule.date}, startTime=${schedule.startTime}, endTime=${schedule.endTime}');
+        if (kDebugMode) print('Schedule $i JSON: ${jsonEncode(schedule.toJson())}');
       }
       
       final deviceId = await SecurityService.getDeviceId();
@@ -2884,17 +2885,17 @@ class ApiService {
         body: jsonEncode(scheduleData.toJson()),
       );
       
-      print('Response status: ${response.statusCode}');
-      print('Response body: ${response.body}');
+      if (kDebugMode) print('Response status: ${response.statusCode}');
+      if (kDebugMode) print('Response body: ${response.body}');
       
       if (response.statusCode != 200) {
-        print('=== Error Details ===');
+        if (kDebugMode) print('=== Error Details ===');
         try {
           final errorData = jsonDecode(response.body);
-          print('Error message: ${errorData['message']}');
-          print('Error details: ${errorData['error']}');
+          if (kDebugMode) print('Error message: ${errorData['message']}');
+          if (kDebugMode) print('Error details: ${errorData['error']}');
         } catch (e) {
-          print('Failed to parse error response: $e');
+          if (kDebugMode) print('Failed to parse error response: $e');
         }
       }
 
@@ -2949,10 +2950,10 @@ class ApiService {
         };
       }
       
-      print('=== Update Branch Class Instructor Debug ===');
-      print('URL: ${ApiConfig.baseUrl}${ApiConfig.updateBranchClassInstructor}/$classId/instructor');
-      print('Request body: ${jsonEncode(instructorData.toJson())}');
-      print('Instructor: ${instructorData.instructor}');
+      if (kDebugMode) print('=== Update Branch Class Instructor Debug ===');
+      if (kDebugMode) print('URL: ${ApiConfig.baseUrl}${ApiConfig.updateBranchClassInstructor}/$classId/instructor');
+      if (kDebugMode) print('Request body: ${jsonEncode(instructorData.toJson())}');
+      if (kDebugMode) print('Instructor: ${instructorData.instructor}');
       
       final deviceId = await SecurityService.getDeviceId();
       final headers = SecurityService.getSecurityHeaders(accessToken);
@@ -2964,17 +2965,17 @@ class ApiService {
         body: jsonEncode(instructorData.toJson()),
       );
       
-      print('Response status: ${response.statusCode}');
-      print('Response body: ${response.body}');
+      if (kDebugMode) print('Response status: ${response.statusCode}');
+      if (kDebugMode) print('Response body: ${response.body}');
       
       if (response.statusCode != 200) {
-        print('=== Error Details ===');
+        if (kDebugMode) print('=== Error Details ===');
         try {
           final errorData = jsonDecode(response.body);
-          print('Error message: ${errorData['message']}');
-          print('Error details: ${errorData['error']}');
+          if (kDebugMode) print('Error message: ${errorData['message']}');
+          if (kDebugMode) print('Error details: ${errorData['error']}');
         } catch (e) {
-          print('Failed to parse error response: $e');
+          if (kDebugMode) print('Failed to parse error response: $e');
         }
       }
 
@@ -3039,9 +3040,9 @@ class ApiService {
         };
       }
       
-      print('=== Update Branch Class Debug ===');
-      print('URL: $url');
-      print('Request body: ${jsonEncode(updateData.toJson())}');
+      if (kDebugMode) print('=== Update Branch Class Debug ===');
+      if (kDebugMode) print('URL: $url');
+      if (kDebugMode) print('Request body: ${jsonEncode(updateData.toJson())}');
       
       final deviceId = await SecurityService.getDeviceId();
       final headers = SecurityService.getSecurityHeaders(accessToken);
@@ -3053,17 +3054,17 @@ class ApiService {
         body: jsonEncode(updateData.toJson()),
       );
       
-      print('Response status: ${response.statusCode}');
-      print('Response body: ${response.body}');
+      if (kDebugMode) print('Response status: ${response.statusCode}');
+      if (kDebugMode) print('Response body: ${response.body}');
       
       if (response.statusCode != 200) {
-        print('=== Error Details ===');
+        if (kDebugMode) print('=== Error Details ===');
         try {
           final errorData = jsonDecode(response.body);
-          print('Error message: ${errorData['message']}');
-          print('Error details: ${errorData['error']}');
+          if (kDebugMode) print('Error message: ${errorData['message']}');
+          if (kDebugMode) print('Error details: ${errorData['error']}');
         } catch (e) {
-          print('Failed to parse error response: $e');
+          if (kDebugMode) print('Failed to parse error response: $e');
         }
       }
 
@@ -3128,12 +3129,12 @@ class ApiService {
         };
       }
       
-      print('=== Update Branch Class Recurring Schedule Debug ===');
-      print('URL: $url');
-      print('Request body: ${jsonEncode(recurringData.toJson())}');
-      print('Day of Week: ${recurringData.dayOfWeek}');
-      print('New Start Time: ${recurringData.newStartTime}');
-      print('New End Time: ${recurringData.newEndTime}');
+      if (kDebugMode) print('=== Update Branch Class Recurring Schedule Debug ===');
+      if (kDebugMode) print('URL: $url');
+      if (kDebugMode) print('Request body: ${jsonEncode(recurringData.toJson())}');
+      if (kDebugMode) print('Day of Week: ${recurringData.dayOfWeek}');
+      if (kDebugMode) print('New Start Time: ${recurringData.newStartTime}');
+      if (kDebugMode) print('New End Time: ${recurringData.newEndTime}');
       
       final deviceId = await SecurityService.getDeviceId();
       final headers = SecurityService.getSecurityHeaders(accessToken);
@@ -3145,17 +3146,17 @@ class ApiService {
         body: jsonEncode(recurringData.toJson()),
       );
       
-      print('Response status: ${response.statusCode}');
-      print('Response body: ${response.body}');
+      if (kDebugMode) print('Response status: ${response.statusCode}');
+      if (kDebugMode) print('Response body: ${response.body}');
       
       if (response.statusCode != 200) {
-        print('=== Error Details ===');
+        if (kDebugMode) print('=== Error Details ===');
         try {
           final errorData = jsonDecode(response.body);
-          print('Error message: ${errorData['message']}');
-          print('Error details: ${errorData['error']}');
+          if (kDebugMode) print('Error message: ${errorData['message']}');
+          if (kDebugMode) print('Error details: ${errorData['error']}');
         } catch (e) {
-          print('Failed to parse error response: $e');
+          if (kDebugMode) print('Failed to parse error response: $e');
         }
       }
 
@@ -3216,12 +3217,12 @@ class ApiService {
         };
       }
 
-      print('=== Bulk Update Class Time Debug ===');
-      print('URL: $url');
-      print('Request body: ${jsonEncode(bulkUpdateData.toJson())}');
-      print('Day of Week: ${bulkUpdateData.dayOfWeek}');
-      print('New Start Time: ${bulkUpdateData.newStartTime}');
-      print('New End Time: ${bulkUpdateData.newEndTime}');
+      if (kDebugMode) print('=== Bulk Update Class Time Debug ===');
+      if (kDebugMode) print('URL: $url');
+      if (kDebugMode) print('Request body: ${jsonEncode(bulkUpdateData.toJson())}');
+      if (kDebugMode) print('Day of Week: ${bulkUpdateData.dayOfWeek}');
+      if (kDebugMode) print('New Start Time: ${bulkUpdateData.newStartTime}');
+      if (kDebugMode) print('New End Time: ${bulkUpdateData.newEndTime}');
 
       final deviceId = await SecurityService.getDeviceId();
       final headers = SecurityService.getSecurityHeaders(accessToken);
@@ -3234,17 +3235,17 @@ class ApiService {
         body: jsonEncode(bulkUpdateData.toJson()),
       );
 
-      print('Response status: ${response.statusCode}');
-      print('Response body: ${response.body}');
+      if (kDebugMode) print('Response status: ${response.statusCode}');
+      if (kDebugMode) print('Response body: ${response.body}');
 
       if (response.statusCode != 200) {
-        print('=== Error Details ===');
+        if (kDebugMode) print('=== Error Details ===');
         try {
           final errorData = jsonDecode(response.body);
-          print('Error message: ${errorData['message']}');
-          print('Error details: ${errorData['error']}');
+          if (kDebugMode) print('Error message: ${errorData['message']}');
+          if (kDebugMode) print('Error details: ${errorData['error']}');
         } catch (e) {
-          print('Failed to parse error response: $e');
+          if (kDebugMode) print('Failed to parse error response: $e');
         }
       }
 
@@ -3412,10 +3413,10 @@ class ApiService {
       // Super admin endpoint: /api/branches/:branchId/classes/:classId/toggle-visibility
       final url = '${ApiConfig.baseUrl}/api/branches/$branchId/classes/$classId/toggle-visibility';
       
-      print('=== Toggle Branch Class Visibility (Super Admin) ===');
-      print('URL: $url');
-      print('Branch ID: $branchId');
-      print('Class ID: $classId');
+      if (kDebugMode) print('=== Toggle Branch Class Visibility (Super Admin) ===');
+      if (kDebugMode) print('URL: $url');
+      if (kDebugMode) print('Branch ID: $branchId');
+      if (kDebugMode) print('Class ID: $classId');
       
       if (!SecurityService.validateSSLCertificate(url)) {
         SecurityService.logSecurityEvent('invalid_ssl_certificate', details: {'url': url});
@@ -3430,16 +3431,16 @@ class ApiService {
       final headers = SecurityService.getSecurityHeaders(accessToken);
       headers['X-Device-ID'] = deviceId;
       
-      print('Headers: ${headers.keys}');
-      print('Request method: PATCH');
+      if (kDebugMode) print('Headers: ${headers.keys}');
+      if (kDebugMode) print('Request method: PATCH');
       
       final response = await http.patch(
         Uri.parse(url),
         headers: headers,
       );
       
-      print('Response status: ${response.statusCode}');
-      print('Response body: ${response.body}');
+      if (kDebugMode) print('Response status: ${response.statusCode}');
+      if (kDebugMode) print('Response body: ${response.body}');
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -4182,9 +4183,9 @@ class ApiService {
         };
       }
       
-      print('=== Upload SuperAdmin Image Debug ===');
-      print('Image file path: ${imageFile.path}');
-      print('Image file exists: ${await imageFile.exists()}');
+      if (kDebugMode) print('=== Upload SuperAdmin Image Debug ===');
+      if (kDebugMode) print('Image file path: ${imageFile.path}');
+      if (kDebugMode) print('Image file exists: ${await imageFile.exists()}');
       
       // Check if file exists
       if (!await imageFile.exists()) {
@@ -4197,7 +4198,7 @@ class ApiService {
       
       // Get file size
       final fileSize = await imageFile.length();
-      print('File size: ${fileSize} bytes');
+      if (kDebugMode) print('File size: ${fileSize} bytes');
       
       // Validate file size (max 5MB)
       if (fileSize > 5 * 1024 * 1024) {
@@ -4230,15 +4231,15 @@ class ApiService {
         ),
       );
       
-      print('Sending request to: ${request.url}');
-      print('Headers: ${request.headers}');
+      if (kDebugMode) print('Sending request to: ${request.url}');
+      if (kDebugMode) print('Headers: ${request.headers}');
       
       // Send request
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
       
-      print('Response status: ${response.statusCode}');
-      print('Response body: ${response.body}');
+      if (kDebugMode) print('Response status: ${response.statusCode}');
+      if (kDebugMode) print('Response body: ${response.body}');
       
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -4256,7 +4257,7 @@ class ApiService {
         };
       }
     } catch (e) {
-      print('Exception in uploadSuperAdminImage: $e');
+      if (kDebugMode) print('Exception in uploadSuperAdminImage: $e');
       return {
         'success': false,
         'message': 'Network error: $e',
@@ -4292,10 +4293,10 @@ class ApiService {
         };
       }
       
-      print('=== Upload Branch Image Debug ===');
-      print('Branch ID: $branchId');
-      print('Image file path: ${imageFile.path}');
-      print('Image file exists: ${await imageFile.exists()}');
+      if (kDebugMode) print('=== Upload Branch Image Debug ===');
+      if (kDebugMode) print('Branch ID: $branchId');
+      if (kDebugMode) print('Image file path: ${imageFile.path}');
+      if (kDebugMode) print('Image file exists: ${await imageFile.exists()}');
       
       // Check if file exists
       if (!await imageFile.exists()) {
@@ -4308,7 +4309,7 @@ class ApiService {
       
       // Get file size
       final fileSize = await imageFile.length();
-      print('File size: ${fileSize} bytes');
+      if (kDebugMode) print('File size: ${fileSize} bytes');
       
       // Validate file size (max 5MB)
       if (fileSize > 5 * 1024 * 1024) {
@@ -4343,15 +4344,15 @@ class ApiService {
         ),
       );
       
-      print('Sending request to: ${request.url}');
-      print('Headers: ${request.headers}');
+      if (kDebugMode) print('Sending request to: ${request.url}');
+      if (kDebugMode) print('Headers: ${request.headers}');
       
       // Send request
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
       
-      print('Response status: ${response.statusCode}');
-      print('Response body: ${response.body}');
+      if (kDebugMode) print('Response status: ${response.statusCode}');
+      if (kDebugMode) print('Response body: ${response.body}');
       
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -4369,7 +4370,7 @@ class ApiService {
         };
       }
     } catch (e) {
-      print('Exception in uploadBranchImage: $e');
+      if (kDebugMode) print('Exception in uploadBranchImage: $e');
       return {
         'success': false,
         'message': 'Network error: $e',
@@ -4412,11 +4413,11 @@ class ApiService {
         };
       }
       
-      print('=== Upload Team Member Image Debug ===');
-      print('Branch ID: $branchId');
-      print('Team Member ID: $teamMemberId');
-      print('Image file path: ${imageFile.path}');
-      print('Image file exists: ${await imageFile.exists()}');
+      if (kDebugMode) print('=== Upload Team Member Image Debug ===');
+      if (kDebugMode) print('Branch ID: $branchId');
+      if (kDebugMode) print('Team Member ID: $teamMemberId');
+      if (kDebugMode) print('Image file path: ${imageFile.path}');
+      if (kDebugMode) print('Image file exists: ${await imageFile.exists()}');
       
       // Check if file exists
       if (!await imageFile.exists()) {
@@ -4429,7 +4430,7 @@ class ApiService {
       
       // Get file size
       final fileSize = await imageFile.length();
-      print('File size: ${fileSize} bytes');
+      if (kDebugMode) print('File size: ${fileSize} bytes');
       
       // Validate file size (max 5MB)
       if (fileSize > 5 * 1024 * 1024) {
@@ -4462,15 +4463,15 @@ class ApiService {
         ),
       );
       
-      print('Sending request to: ${request.url}');
-      print('Headers: ${request.headers}');
+      if (kDebugMode) print('Sending request to: ${request.url}');
+      if (kDebugMode) print('Headers: ${request.headers}');
       
       // Send request
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
       
-      print('Response status: ${response.statusCode}');
-      print('Response body: ${response.body}');
+      if (kDebugMode) print('Response status: ${response.statusCode}');
+      if (kDebugMode) print('Response body: ${response.body}');
       
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -4488,7 +4489,7 @@ class ApiService {
         };
       }
     } catch (e) {
-      print('Exception in uploadTeamMemberImage: $e');
+      if (kDebugMode) print('Exception in uploadTeamMemberImage: $e');
       return {
         'success': false,
         'message': 'Network error: $e',
@@ -4562,9 +4563,9 @@ class ApiService {
         }
       }
 
-      print('=== Upload Standalone Class Images Debug ===');
-      print('Class ID: $classId');
-      print('Number of images: ${imageFiles.length}');
+      if (kDebugMode) print('=== Upload Standalone Class Images Debug ===');
+      if (kDebugMode) print('Class ID: $classId');
+      if (kDebugMode) print('Number of images: ${imageFiles.length}');
 
       final deviceId = await SecurityService.getDeviceId();
       final headers = SecurityService.getSecurityHeaders(accessToken);
@@ -4591,18 +4592,18 @@ class ApiService {
         request.files.add(multipartFile);
       }
 
-      print('=== Sending Request ===');
-      print('URL: ${request.url}');
-      print('Headers: ${request.headers}');
-      print('Files: ${request.files.length}');
+      if (kDebugMode) print('=== Sending Request ===');
+      if (kDebugMode) print('URL: ${request.url}');
+      if (kDebugMode) print('Headers: ${request.headers}');
+      if (kDebugMode) print('Files: ${request.files.length}');
 
       // Send request
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
 
-      print('=== Response Debug ===');
-      print('Status Code: ${response.statusCode}');
-      print('Response Body: ${response.body}');
+      if (kDebugMode) print('=== Response Debug ===');
+      if (kDebugMode) print('Status Code: ${response.statusCode}');
+      if (kDebugMode) print('Response Body: ${response.body}');
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -4620,7 +4621,7 @@ class ApiService {
         };
       }
     } catch (e) {
-      print('Exception in uploadStandaloneClassImages: $e');
+      if (kDebugMode) print('Exception in uploadStandaloneClassImages: $e');
       return {
         'success': false,
         'message': 'Network error: $e',
@@ -4662,9 +4663,9 @@ class ApiService {
         };
       }
 
-      print('=== Calculate BMI Debug ===');
-      print('Height: $height cm');
-      print('Weight: $weight kg');
+      if (kDebugMode) print('=== Calculate BMI Debug ===');
+      if (kDebugMode) print('Height: $height cm');
+      if (kDebugMode) print('Weight: $weight kg');
 
       final deviceId = await SecurityService.getDeviceId();
       final headers = SecurityService.getSecurityHeaders('');
@@ -4679,8 +4680,8 @@ class ApiService {
         }),
       );
 
-      print('Response status: ${response.statusCode}');
-      print('Response body: ${response.body}');
+      if (kDebugMode) print('Response status: ${response.statusCode}');
+      if (kDebugMode) print('Response body: ${response.body}');
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -4698,7 +4699,7 @@ class ApiService {
         };
       }
     } catch (e) {
-      print('Exception in calculateBMI: $e');
+      if (kDebugMode) print('Exception in calculateBMI: $e');
       return {
         'success': false,
         'message': 'Network error: $e',
@@ -4749,9 +4750,9 @@ class ApiService {
         };
       }
 
-      print('=== Update User BMI Debug ===');
-      print('Height: $height cm');
-      print('Weight: $weight kg');
+      if (kDebugMode) print('=== Update User BMI Debug ===');
+      if (kDebugMode) print('Height: $height cm');
+      if (kDebugMode) print('Weight: $weight kg');
 
       final deviceId = await SecurityService.getDeviceId();
       final headers = SecurityService.getSecurityHeaders(accessToken);
@@ -4766,8 +4767,8 @@ class ApiService {
         }),
       );
 
-      print('Response status: ${response.statusCode}');
-      print('Response body: ${response.body}');
+      if (kDebugMode) print('Response status: ${response.statusCode}');
+      if (kDebugMode) print('Response body: ${response.body}');
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -4785,7 +4786,7 @@ class ApiService {
         };
       }
     } catch (e) {
-      print('Exception in updateUserBMI: $e');
+      if (kDebugMode) print('Exception in updateUserBMI: $e');
       return {
         'success': false,
         'message': 'Network error: $e',
@@ -4818,7 +4819,7 @@ class ApiService {
         };
       }
 
-      print('=== Get User BMI Debug ===');
+      if (kDebugMode) print('=== Get User BMI Debug ===');
 
       final deviceId = await SecurityService.getDeviceId();
       final headers = SecurityService.getSecurityHeaders(accessToken);
@@ -4829,8 +4830,8 @@ class ApiService {
         headers: headers,
       );
 
-      print('Response status: ${response.statusCode}');
-      print('Response body: ${response.body}');
+      if (kDebugMode) print('Response status: ${response.statusCode}');
+      if (kDebugMode) print('Response body: ${response.body}');
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -4848,7 +4849,7 @@ class ApiService {
         };
       }
     } catch (e) {
-      print('Exception in getUserBMI: $e');
+      if (kDebugMode) print('Exception in getUserBMI: $e');
       return {
         'success': false,
         'message': 'Network error: $e',
@@ -4990,8 +4991,8 @@ class ApiService {
       );
 
       // Log response for debugging
-      print('Update user data response status: ${response.statusCode}');
-      print('Update user data response body: ${response.body}');
+      if (kDebugMode) print('Update user data response status: ${response.statusCode}');
+      if (kDebugMode) print('Update user data response body: ${response.body}');
 
       // Parse response
       final responseData = jsonDecode(response.body);
@@ -5010,7 +5011,7 @@ class ApiService {
         };
       }
     } catch (e) {
-      print('Error updating user data: $e');
+      if (kDebugMode) print('Error updating user data: $e');
       SecurityService.logSecurityEvent('api_error', details: {'error': e.toString(), 'endpoint': 'update_user_data'});
       return {
         'success': false,
@@ -5047,8 +5048,8 @@ class ApiService {
       );
 
       // Log response for debugging
-      print('Change password response status: ${response.statusCode}');
-      print('Change password response body: ${response.body}');
+      if (kDebugMode) print('Change password response status: ${response.statusCode}');
+      if (kDebugMode) print('Change password response body: ${response.body}');
 
       // Parse response
       final responseData = jsonDecode(response.body);
@@ -5067,7 +5068,7 @@ class ApiService {
         };
       }
     } catch (e) {
-      print('Error changing password: $e');
+      if (kDebugMode) print('Error changing password: $e');
       SecurityService.logSecurityEvent('api_error', details: {'error': e.toString(), 'endpoint': 'change_password'});
       return {
         'success': false,
@@ -5108,13 +5109,13 @@ class ApiService {
           ? accessToken.substring(7) 
           : accessToken;
       
-      print('=== Change SuperAdmin Password Debug ===');
-      print('Clean token: ${cleanToken.substring(0, cleanToken.length > 20 ? 20 : cleanToken.length)}...');
+      if (kDebugMode) print('=== Change SuperAdmin Password Debug ===');
+      if (kDebugMode) print('Clean token: ${cleanToken.substring(0, cleanToken.length > 20 ? 20 : cleanToken.length)}...');
       
       final deviceId = await SecurityService.getDeviceId();
       final headers = SecurityService.getSecurityHeaders(cleanToken);
       headers['X-Device-ID'] = deviceId;
-      print('Headers: ${headers.keys.toList()}');
+      if (kDebugMode) print('Headers: ${headers.keys.toList()}');
 
       // Make API call
       final response = await http.post(
@@ -5180,8 +5181,8 @@ class ApiService {
       );
 
       // Log response for debugging
-      print('Change branch response status: ${response.statusCode}');
-      print('Change branch response body: ${response.body}');
+      if (kDebugMode) print('Change branch response status: ${response.statusCode}');
+      if (kDebugMode) print('Change branch response body: ${response.body}');
 
       // Parse response
       final responseData = jsonDecode(response.body);
@@ -5200,7 +5201,7 @@ class ApiService {
         };
       }
     } catch (e) {
-      print('Error changing branch: $e');
+      if (kDebugMode) print('Error changing branch: $e');
       SecurityService.logSecurityEvent('api_error', details: {'error': e.toString(), 'endpoint': 'change_branch'});
       return {
         'success': false,
@@ -5237,8 +5238,8 @@ class ApiService {
       );
 
       // Log response for debugging
-      print('Get all branches response status: ${response.statusCode}');
-      print('Get all branches response body: ${response.body}');
+      if (kDebugMode) print('Get all branches response status: ${response.statusCode}');
+      if (kDebugMode) print('Get all branches response body: ${response.body}');
 
       // Parse response
       final responseData = jsonDecode(response.body);
@@ -5257,7 +5258,7 @@ class ApiService {
         };
       }
     } catch (e) {
-      print('Error getting branches: $e');
+      if (kDebugMode) print('Error getting branches: $e');
       SecurityService.logSecurityEvent('api_error', details: {'error': e.toString(), 'endpoint': 'get_all_branches'});
       return {
         'success': false,

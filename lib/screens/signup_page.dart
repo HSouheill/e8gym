@@ -7,6 +7,7 @@ import '../../services/storage_service.dart';
 import '../../services/api_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../utils/app_colors.dart';
+import 'package:flutter/foundation.dart';
 
 class SignupPage extends StatefulWidget {
   const SignupPage({super.key});
@@ -130,39 +131,24 @@ class _SignupPageState extends State<SignupPage> {
     });
 
     try {
-      print('=== Loading Branches for Signup ===');
+      if (kDebugMode) print('=== Loading Branches for Signup ===');
       final response = await ApiService.getBranchesForSignup();
-      print('Branch API response: $response');
+      if (kDebugMode) print('Branch API response: $response');
       
       if (response['success'] == true && response['data'] != null) {
-        final branchesData = response['data']['branches'] as List<dynamic>;
-        print('Found ${branchesData.length} branches');
+        final branchesData = response['data']['branches'] as List<dynamic>? ?? [];
+        if (kDebugMode) print('Found ${branchesData.length} branches');
         setState(() {
           _branches = branchesData.map((branch) => BranchResponse.fromJson(branch)).toList();
         });
-        print('Branches loaded successfully: ${_branches.map((b) => b.branchName).toList()}');
+        if (kDebugMode) print('Branches loaded successfully: ${_branches.map((b) => b.branchName).toList()}');
       } else {
-        print('Failed to load branches: ${response['message']}');
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Failed to load branches: ${response['message']}', style: const TextStyle(color: Colors.black)),
-              backgroundColor: AppColors.snackbarBackground,
-            
-            )
-          );
-        }
+        if (kDebugMode) print('Failed to load branches: ${response['message']}');
+        _showSnackBar('Failed to load branches: ${response['message'] ?? 'Please try again later'}');
       }
     } catch (e) {
-      print('Error loading branches: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error loading branches: $e', style: const TextStyle(color: Colors.black)),
-            backgroundColor: AppColors.snackbarBackground,
-          ),
-        );
-      }
+      if (kDebugMode) print('Error loading branches: $e');
+      _showSnackBar('Could not load branches. Check your connection and try again.');
     } finally {
       setState(() {
         _isLoadingBranches = false;
@@ -176,20 +162,10 @@ class _SignupPageState extends State<SignupPage> {
       if (await canLaunchUrl(uri)) {
         await launchUrl(uri, mode: LaunchMode.externalApplication);
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Could not open $url', style: const TextStyle(color: Colors.black)),
-            backgroundColor: AppColors.snackbarBackground,
-          ),
-        );
+        _showSnackBar('Could not open $url');
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error opening link: $e', style: const TextStyle(color: Colors.black)),
-          backgroundColor: AppColors.snackbarBackground,
-        ),
-      );
+      _showSnackBar('Error opening link: $e');
     }
   }
 
@@ -231,19 +207,25 @@ class _SignupPageState extends State<SignupPage> {
     }
   }
 
+  void _showSnackBar(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message, style: const TextStyle(color: Colors.black)),
+        backgroundColor: AppColors.snackbarBackground,
+      ),
+    );
+  }
+
   /// Handle signup process
   Future<void> _handleSignup() async {
     if (!_formKey.currentState!.validate()) {
+      _showSnackBar('Please fix the highlighted fields before signing up');
       return;
     }
 
     if (!_acceptPolicies) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please accept the Privacy Policy and Terms & Conditions to continue', style: TextStyle(color: Colors.black)),
-          backgroundColor: AppColors.snackbarBackground,
-        ),
-      );
+      _showSnackBar('Please accept the Privacy Policy and Terms & Conditions to continue');
       return;
     }
 
@@ -254,9 +236,9 @@ class _SignupPageState extends State<SignupPage> {
     try {
       // Debug: Print the date being sent if available
       if (_parsedDateOfBirth != null) {
-        print('Date being sent: ${_parsedDateOfBirth!.toUtc().toIso8601String()}');
+        if (kDebugMode) print('Date being sent: ${_parsedDateOfBirth!.toUtc().toIso8601String()}');
       } else {
-        print('No date of birth provided');
+        if (kDebugMode) print('No date of birth provided');
       }
       
       final signupRequest = SignupRequest(
@@ -319,12 +301,7 @@ class _SignupPageState extends State<SignupPage> {
           ? '$errorMessage\n$errorDetails'
           : errorMessage;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(displayMessage, style: const TextStyle(color: Colors.black)),
-          backgroundColor: AppColors.snackbarBackground,
-        ),
-      );
+      _showSnackBar(displayMessage);
     }
   }
 
@@ -812,94 +789,113 @@ class _SignupPageState extends State<SignupPage> {
             ? screenWidth * 0.025  // 2.5% for large devices
             : screenWidth * 0.03; // 3% for medium devices
 
-    return Container(
-      decoration: const BoxDecoration(
-        border: Border(
-          bottom: BorderSide(
-            color: Colors.white,
-            width: 2,
-          ),
-        ),
-      ),
-      child: Row(
+    return FormField<String>(
+      validator: (_) {
+        final value = controller.text;
+        if (value.trim().isEmpty) {
+          return '$label is required';
+        }
+
+        switch (label.toLowerCase()) {
+          case 'full name':
+            if (!ValidationUtils.isValidFullName(value.trim())) {
+              return 'Full name must be between 2 and 100 characters';
+            }
+            break;
+          case 'email':
+            if (!ValidationUtils.isValidEmail(value.trim())) {
+              return 'Please enter a valid email address';
+            }
+            break;
+          case 'password':
+            if (!ValidationUtils.isValidPassword(value)) {
+              return 'Password must be 8+ characters with:\n• Uppercase letter (A-Z)\n• Lowercase letter (a-z)\n• Number (0-9)';
+            }
+            break;
+        }
+        return null;
+      },
+      builder: (field) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            decoration: BoxDecoration(
-                                    color: Colors.white,
-              borderRadius: BorderRadius.circular(6),
+            decoration: const BoxDecoration(
+              border: Border(
+                bottom: BorderSide(
+                  color: Colors.white,
+                  width: 2,
+                ),
+              ),
             ),
-            padding: EdgeInsets.all(padding),
-            child: Icon(
-              icon,
-              color: Colors.black,
-              size: iconSizeMedium,
+            child: Row(
+              children: [
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  padding: EdgeInsets.all(padding),
+                  child: Icon(
+                    icon,
+                    color: Colors.black,
+                    size: iconSizeMedium,
+                  ),
+                ),
+                SizedBox(width: spacing),
+                Expanded(
+                  child: TextField(
+                    controller: controller,
+                    obscureText: isPassword ? _obscurePassword : false,
+                    style: TextStyle(color: Colors.white, fontSize: fontSizeSmall),
+                    onChanged: (_) {
+                      // Re-validate live once an error is showing
+                      if (field.hasError) field.validate();
+                    },
+                    decoration: InputDecoration(
+                      hintText: label,
+                      hintStyle: TextStyle(color: Colors.white70, fontSize: fontSizeSmall),
+                      border: InputBorder.none,
+                    ),
+                  ),
+                ),
+                if (isPassword) ...[
+                  SizedBox(width: spacing),
+                  GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _obscurePassword = !_obscurePassword;
+                      });
+                    },
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      padding: EdgeInsets.all(padding),
+                      child: Icon(
+                        _obscurePassword ? Icons.visibility : Icons.visibility_off,
+                        color: Colors.black,
+                        size: iconSizeMedium,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
             ),
           ),
-          SizedBox(width: spacing),
-          Expanded(
-            child: TextFormField(
-              controller: controller,
-              obscureText: isPassword ? _obscurePassword : false,
-              style: TextStyle(color: Colors.white, fontSize: fontSizeSmall),
-              decoration: InputDecoration(
-                hintText: label,
-                hintStyle: TextStyle(color: Colors.white70, fontSize: fontSizeSmall),
-                border: InputBorder.none,
-                errorStyle: TextStyle(
-                  color: Colors.black,
+          if (field.hasError)
+            Padding(
+              padding: EdgeInsets.only(top: spacing * 0.4),
+              child: Text(
+                field.errorText!,
+                style: TextStyle(
+                  color: Colors.redAccent,
                   fontSize: fontSizeSmall * 0.75,
                   height: 1.4,
                 ),
-                errorMaxLines: 4,
-              ),
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return '$label is required';
-                }
-                
-                switch (label.toLowerCase()) {
-                  case 'full name':
-                    if (!ValidationUtils.isValidFullName(value.trim())) {
-                      return 'Full name must be between 2 and 100 characters';
-                    }
-                    break;
-                  case 'email':
-                    if (!ValidationUtils.isValidEmail(value.trim())) {
-                      return 'Please enter a valid email address';
-                    }
-                    break;
-                  case 'password':
-                    if (!ValidationUtils.isValidPassword(value)) {
-                      return 'Password must be 8+ characters with:\n• Uppercase letter (A-Z)\n• Lowercase letter (a-z)\n• Number (0-9)';
-                    }
-                    break;
-                }
-                return null;
-              },
-            ),
-          ),
-          if (isPassword) ...[
-            SizedBox(width: spacing),
-            GestureDetector(
-              onTap: () {
-                setState(() {
-                  _obscurePassword = !_obscurePassword;
-                });
-              },
-              child: Container(
-                decoration: BoxDecoration(
-                                    color: Colors.white,
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                padding: EdgeInsets.all(padding),
-                child: Icon(
-                  _obscurePassword ? Icons.visibility : Icons.visibility_off,
-                  color: Colors.black,
-                  size: iconSizeMedium,
-                ),
               ),
             ),
-          ],
         ],
       ),
     );
@@ -925,84 +921,93 @@ class _SignupPageState extends State<SignupPage> {
             ? screenWidth * 0.025  // 2.5% for large devices
             : screenWidth * 0.03; // 3% for medium devices
 
-    return Container(
-      decoration: const BoxDecoration(
-        border: Border(
-          bottom: BorderSide(
-            color: Colors.white,
-            width: 2,
-          ),
-        ),
-      ),
-      child: Row(
+    return FormField<String>(
+      validator: (_) {
+        final countryCode = _countryCodeController.text.trim();
+        if (countryCode.isNotEmpty && !ValidationUtils.isValidCountryCode(countryCode)) {
+          return 'Please enter a valid country code (e.g., +961)';
+        }
+        final phone = _phoneController.text.trim();
+        if (phone.isNotEmpty && !ValidationUtils.isValidPhoneNumber(phone)) {
+          return 'Please enter a valid phone number';
+        }
+        return null; // Both fields are optional
+      },
+      builder: (field) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            decoration: BoxDecoration(
-                                    color: Colors.white,
-              borderRadius: BorderRadius.circular(6),
+            decoration: const BoxDecoration(
+              border: Border(
+                bottom: BorderSide(
+                  color: Colors.white,
+                  width: 2,
+                ),
+              ),
             ),
-            padding: EdgeInsets.all(padding),
-            child: Icon(
-              Icons.flag,
-              color: Colors.black,
-              size: iconSizeMedium,
+            child: Row(
+              children: [
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  padding: EdgeInsets.all(padding),
+                  child: Icon(
+                    Icons.flag,
+                    color: Colors.black,
+                    size: iconSizeMedium,
+                  ),
+                ),
+                SizedBox(width: spacing),
+                // Country code field
+                SizedBox(
+                  width: countryCodeWidth,
+                  child: TextField(
+                    controller: _countryCodeController,
+                    style: TextStyle(color: Colors.white, fontSize: fontSizeSmall),
+                    onChanged: (_) {
+                      if (field.hasError) field.validate();
+                    },
+                    decoration: InputDecoration(
+                      hintText: '+961',
+                      hintStyle: TextStyle(color: Colors.white70, fontSize: fontSizeSmall),
+                      border: InputBorder.none,
+                    ),
+                  ),
+                ),
+                SizedBox(width: spacing),
+                // Phone number field
+                Expanded(
+                  child: TextField(
+                    controller: _phoneController,
+                    style: TextStyle(color: Colors.white, fontSize: fontSizeSmall),
+                    onChanged: (_) {
+                      if (field.hasError) field.validate();
+                    },
+                    decoration: InputDecoration(
+                      hintText: 'Phone number (Optional)',
+                      hintStyle: TextStyle(color: Colors.white70, fontSize: fontSizeSmall),
+                      border: InputBorder.none,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-          SizedBox(width: spacing),
-          // Country code field
-          SizedBox(
-            width: countryCodeWidth,
-            child: TextFormField(
-              controller: _countryCodeController,
-              style: TextStyle(color: Colors.white, fontSize: fontSizeSmall),
-              decoration: InputDecoration(
-                hintText: '+961',
-                hintStyle: TextStyle(color: Colors.white70, fontSize: fontSizeSmall),
-                border: InputBorder.none,
-                errorStyle: TextStyle(
-                  color: Colors.black,
+          if (field.hasError)
+            Padding(
+              padding: EdgeInsets.only(top: spacing * 0.4),
+              child: Text(
+                field.errorText!,
+                style: TextStyle(
+                  color: Colors.redAccent,
                   fontSize: fontSizeSmall * 0.8,
                   height: 1.2,
                 ),
               ),
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return null; // Optional field
-                }
-                if (!ValidationUtils.isValidCountryCode(value.trim())) {
-                  return 'Please enter a valid country code (e.g., +961)';
-                }
-                return null;
-              },
             ),
-          ),
-          SizedBox(width: spacing),
-          // Phone number field
-          Expanded(
-            child: TextFormField(
-              controller: _phoneController,
-              style: TextStyle(color: Colors.white, fontSize: fontSizeSmall),
-              decoration: InputDecoration(
-                hintText: 'Phone number (Optional)',
-                hintStyle: TextStyle(color: Colors.white70, fontSize: fontSizeSmall),
-                border: InputBorder.none,
-                errorStyle: TextStyle(
-                  color: Colors.black,
-                  fontSize: fontSizeSmall * 0.8,
-                  height: 1.2,
-                ),
-              ),
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return null; // Optional field
-                }
-                if (!ValidationUtils.isValidPhoneNumber(value.trim())) {
-                  return 'Please enter a valid phone number';
-                }
-                return null;
-              },
-            ),
-          ),
         ],
       ),
     );
@@ -1027,64 +1032,82 @@ class _SignupPageState extends State<SignupPage> {
             ? screenWidth * 0.025  // 2.5% for large devices
             : screenWidth * 0.03; // 3% for medium devices
 
-    return Container(
-      decoration: const BoxDecoration(
-        border: Border(
-          bottom: BorderSide(
-            color: Colors.white,
-            width: 2,
-          ),
-        ),
-      ),
-      child: Row(
+    return FormField<String>(
+      validator: (_) {
+        if (_dateOfBirthController.text.trim().isEmpty) {
+          return null; // Optional field
+        }
+        if (_parsedDateOfBirth == null) {
+          return 'Please select a valid date of birth';
+        }
+        if (!ValidationUtils.isValidDateOfBirth(_parsedDateOfBirth!)) {
+          return 'You must be at least 13 years old to register';
+        }
+        return null;
+      },
+      builder: (field) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            decoration: BoxDecoration(
-                                    color: Colors.white,
-              borderRadius: BorderRadius.circular(6),
-            ),
-            padding: EdgeInsets.all(padding),
-            child: Icon(
-              Icons.calendar_today,
-              color: Colors.black,
-              size: iconSizeMedium,
-            ),
-          ),
-          SizedBox(width: spacing),
-          Expanded(
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: _selectDate,
-              child: IgnorePointer(
-                child: TextFormField(
-                  controller: _dateOfBirthController,
-                  style: TextStyle(color: Colors.white, fontSize: fontSizeSmall),
-                  decoration: InputDecoration(
-                    hintText: 'Date of Birth (Optional)',
-                    hintStyle: TextStyle(color: Colors.white70, fontSize: fontSizeSmall),
-                    border: InputBorder.none,
-                    errorStyle: TextStyle(
-                      color: Colors.black,
-                      fontSize: fontSizeSmall * 0.8,
-                      height: 1.2,
-                    ),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return null; // Optional field
-                    }
-                    if (_parsedDateOfBirth == null) {
-                      return 'Please select a valid date of birth';
-                    }
-                    if (!ValidationUtils.isValidDateOfBirth(_parsedDateOfBirth!)) {
-                      return 'You must be at least 13 years old to register';
-                    }
-                    return null;
-                  },
+            decoration: const BoxDecoration(
+              border: Border(
+                bottom: BorderSide(
+                  color: Colors.white,
+                  width: 2,
                 ),
               ),
             ),
+            child: Row(
+              children: [
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  padding: EdgeInsets.all(padding),
+                  child: Icon(
+                    Icons.calendar_today,
+                    color: Colors.black,
+                    size: iconSizeMedium,
+                  ),
+                ),
+                SizedBox(width: spacing),
+                Expanded(
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () async {
+                      await _selectDate();
+                      if (field.hasError) field.validate();
+                    },
+                    child: IgnorePointer(
+                      child: TextField(
+                        controller: _dateOfBirthController,
+                        style: TextStyle(color: Colors.white, fontSize: fontSizeSmall),
+                        decoration: InputDecoration(
+                          hintText: 'Date of Birth (Optional)',
+                          hintStyle: TextStyle(color: Colors.white70, fontSize: fontSizeSmall),
+                          border: InputBorder.none,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
+          if (field.hasError)
+            Padding(
+              padding: EdgeInsets.only(top: spacing * 0.4),
+              child: Text(
+                field.errorText!,
+                style: TextStyle(
+                  color: Colors.redAccent,
+                  fontSize: fontSizeSmall * 0.8,
+                  height: 1.2,
+                ),
+              ),
+            ),
         ],
       ),
     );

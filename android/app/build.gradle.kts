@@ -58,18 +58,13 @@ android {
 
     buildTypes {
         release {
-            // Use release signing configuration
             signingConfig = signingConfigs.getByName("release")
-            
-            // Temporarily disable minification to avoid R8 issues
-            isMinifyEnabled = false
-            isShrinkResources = false
-            
-            // ProGuard rules for code obfuscation (disabled for now)
-            // proguardFiles(
-            //     getDefaultProguardFile("proguard-android-optimize.txt"),
-            //     "proguard-rules.pro"
-            // )
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
         }
         
         debug {

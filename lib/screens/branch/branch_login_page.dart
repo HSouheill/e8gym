@@ -3,6 +3,7 @@ import '../../services/api_service.dart';
 import 'branch_dashboard_page.dart';
 import 'branch_forgot_password_page.dart';
 import '../../utils/app_colors.dart';
+import 'package:flutter/foundation.dart';
 
 class BranchLoginPage extends StatefulWidget {
   const BranchLoginPage({super.key});
@@ -323,7 +324,7 @@ class _BranchLoginPageState extends State<BranchLoginPage> {
 
     try {
       // Call Branch Admin login API (supports both branch admin and team member login)
-      print('Attempting Branch Admin/Team Member login for ${_emailController.text}');
+      if (kDebugMode) print('Attempting Branch Admin/Team Member login for ${_emailController.text}');
       final result = await ApiService.branchLogin(
         _emailController.text,
         _passwordController.text,
@@ -354,7 +355,7 @@ class _BranchLoginPageState extends State<BranchLoginPage> {
         String? userRole;
         
         if (isTeamMemberLogin) {
-          print('Team member login successful for: $loginEmail');
+          if (kDebugMode) print('Team member login successful for: $loginEmail');
           // Find the team member in the branch data
           final teamMembers = branchData['team_members'] as List? ?? [];
           try {
@@ -362,26 +363,26 @@ class _BranchLoginPageState extends State<BranchLoginPage> {
               (member) => (member['email'] as String?)?.toLowerCase() == loginEmail,
             ) as Map<String, dynamic>?;
             if (teamMember != null) {
-              print('Team Member Name: ${teamMember['full_name']}');
+              if (kDebugMode) print('Team Member Name: ${teamMember['full_name']}');
               userRole = teamMember['role'] as String?;
-              print('Team Member Role: $userRole');
+              if (kDebugMode) print('Team Member Role: $userRole');
               // Viewers cannot edit, only admins can
               canEdit = userRole?.toLowerCase() != 'viewer';
-              print('Can Edit: $canEdit');
+              if (kDebugMode) print('Can Edit: $canEdit');
             }
           } catch (e) {
-            print('Team member not found in branch data: $e');
+            if (kDebugMode) print('Team member not found in branch data: $e');
             // If team member not found, default to no edit permissions
             canEdit = false;
           }
         } else {
-          print('Branch admin login successful for: $branchEmail');
+          if (kDebugMode) print('Branch admin login successful for: $branchEmail');
           // Branch admin can always edit
           canEdit = true;
         }
         
-        print('Branch Name: ${branchData['branch_name'] ?? 'Unknown'}');
-        print('Access Token: ${userData['access_token'] ?? 'No token'}');
+        if (kDebugMode) print('Branch Name: ${branchData['branch_name'] ?? 'Unknown'}');
+        if (kDebugMode) print('Access Token: ${userData['access_token'] ?? 'No token'}');
         
         // Navigate to branch dashboard (works for both branch admin and team members)
         Navigator.pushReplacement(
@@ -401,12 +402,12 @@ class _BranchLoginPageState extends State<BranchLoginPage> {
       } else {
         // Login failed - error message already formatted by API service
         _showSnackBar(result['message'] ?? 'Login failed');
-        print('Login error: ${result['error']}');
-        print('Status code: ${result['statusCode']}');
+        if (kDebugMode) print('Login error: ${result['error']}');
+        if (kDebugMode) print('Status code: ${result['statusCode']}');
       }
     } catch (e) {
       _showSnackBar('An error occurred: $e');
-      print('Exception during login: $e');
+      if (kDebugMode) print('Exception during login: $e');
     } finally {
       // Reset loading state
       setState(() {

@@ -5,6 +5,7 @@ import 'branch/branch_dashboard_page.dart';
 import 'super_admin/super_admin_dashboard_page.dart';
 import '../main.dart';
 import '../utils/app_colors.dart';
+import 'package:flutter/foundation.dart';
 
 class AdminLoginPage extends StatefulWidget {
   const AdminLoginPage({super.key});
@@ -181,18 +182,14 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
             ),
             // Main content
             SafeArea(
-              child: SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
+              child: Padding(
                 padding: EdgeInsets.only(
                   left: horizontalPadding,
                   right: horizontalPadding,
                   top: 0,
-                  bottom: MediaQuery.of(context).viewInsets.bottom + 50,
+                  bottom: 50,
                 ),
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(
-                    minHeight: MediaQuery.of(context).size.height - MediaQuery.of(context).padding.top - MediaQuery.of(context).padding.bottom,
-                  ),
+                child: SingleChildScrollView(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.start,
                     children: [
@@ -602,7 +599,7 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
                     
                     // Extra spacing for better scrolling - Responsive sizing
                     SizedBox(height: spacingLarge * 2),
-                    
+
                     ],
                   ),
                 ),
@@ -632,10 +629,10 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
       
       if (_selectedAdminType == 'Super Admin') {
         // Add debug logging for SuperAdmin login
-        print('=== SuperAdmin Login Debug ===');
-        print('Username/Email: ${_usernameController.text}');
-        print('Password: ${_passwordController.text.isNotEmpty ? '[HIDDEN]' : '[EMPTY]'}');
-        print('Calling ApiService.superAdminLogin...');
+        if (kDebugMode) print('=== SuperAdmin Login Debug ===');
+        if (kDebugMode) print('Username/Email: ${_usernameController.text}');
+        if (kDebugMode) print('Password: ${_passwordController.text.isNotEmpty ? '[HIDDEN]' : '[EMPTY]'}');
+        if (kDebugMode) print('Calling ApiService.superAdminLogin...');
         
         // Call SuperAdmin login API
         result = await ApiService.superAdminLogin(
@@ -643,10 +640,10 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
           _passwordController.text,
         );
         
-        print('SuperAdmin login result: $result');
+        if (kDebugMode) print('SuperAdmin login result: $result');
       } else if (isBranchRelatedLogin) {
         // Call Branch Admin login API (supports both branch admin and team member login)
-        print('Attempting Branch Admin/Team Member login for ${_usernameController.text}');
+        if (kDebugMode) print('Attempting Branch Admin/Team Member login for ${_usernameController.text}');
         result = await ApiService.branchLogin(
           _usernameController.text,
           _passwordController.text,
@@ -654,25 +651,25 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
         
         // Log additional details for debugging
         if (result['success']) {
-          print('Branch login successful');
+          if (kDebugMode) print('Branch login successful');
           final branchData = result['data'];
           if (branchData != null && branchData['branch'] != null) {
             final branch = branchData['branch'];
-            print('Branch Name: ${branch['branch_name']}');
-            print('Branch Email: ${branch['email']}');
+            if (kDebugMode) print('Branch Name: ${branch['branch_name']}');
+            if (kDebugMode) print('Branch Email: ${branch['email']}');
             // Check if this is a team member login by comparing login email with branch email
             final loginEmail = _usernameController.text.toLowerCase();
             final branchEmail = (branch['email'] as String?)?.toLowerCase() ?? '';
             if (loginEmail != branchEmail) {
-              print('Login as team member: $loginEmail');
+              if (kDebugMode) print('Login as team member: $loginEmail');
             } else {
-              print('Login as branch admin: $loginEmail');
+              if (kDebugMode) print('Login as branch admin: $loginEmail');
             }
           }
         } else {
-          print('Branch login failed: ${result['message']}');
-          print('Error details: ${result['error']}');
-          print('Status code: ${result['statusCode']}');
+          if (kDebugMode) print('Branch login failed: ${result['message']}');
+          if (kDebugMode) print('Error details: ${result['error']}');
+          if (kDebugMode) print('Status code: ${result['statusCode']}');
         }
       } else {
         // Call regular admin login API
@@ -702,7 +699,7 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
           String? userRole;
           
           if (isTeamMemberLogin) {
-            print('Team member login successful for: $loginEmail');
+            if (kDebugMode) print('Team member login successful for: $loginEmail');
             // Find the team member in the branch data
             final teamMembers = branchData['team_members'] as List? ?? [];
             try {
@@ -710,26 +707,26 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
                 (member) => (member['email'] as String?)?.toLowerCase() == loginEmail,
               ) as Map<String, dynamic>?;
               if (teamMember != null) {
-                print('Team Member Name: ${teamMember['full_name']}');
+                if (kDebugMode) print('Team Member Name: ${teamMember['full_name']}');
                 userRole = teamMember['role'] as String?;
-                print('Team Member Role: $userRole');
+                if (kDebugMode) print('Team Member Role: $userRole');
                 // Viewers cannot edit, only admins can
                 canEdit = userRole?.toLowerCase() != 'viewer';
-                print('Can Edit: $canEdit');
+                if (kDebugMode) print('Can Edit: $canEdit');
               }
             } catch (e) {
-              print('Team member not found in branch data: $e');
+              if (kDebugMode) print('Team member not found in branch data: $e');
               // If team member not found, default to no edit permissions
               canEdit = false;
             }
           } else {
-            print('Branch admin login successful for: $branchEmail');
+            if (kDebugMode) print('Branch admin login successful for: $branchEmail');
             // Branch admin can always edit
             canEdit = true;
           }
           
-          print('Branch Name: ${branchData['branch_name']}');
-          print('Access Token: ${userData['access_token']}');
+          if (kDebugMode) print('Branch Name: ${branchData['branch_name']}');
+          if (kDebugMode) print('Access Token: ${userData['access_token']}');
           
           // Navigate to branch dashboard (works for both branch admin and team members)
           Navigator.push(
@@ -743,8 +740,8 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
             ),
           );
         } else if (_selectedAdminType == 'Super Admin') {
-          print('Super Admin login successful for: ${userData['user']['email']}');
-          print('Access Token: ${userData['access_token']}');
+          if (kDebugMode) print('Super Admin login successful for: ${userData['user']['email']}');
+          if (kDebugMode) print('Access Token: ${userData['access_token']}');
           
           // Navigate to SuperAdmin dashboard
           Navigator.push(
@@ -757,8 +754,8 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
             ),
           );
         } else {
-          print('Regular admin login successful for: ${userData['user']['email']}');
-          print('Access Token: ${userData['access_token']}');
+          if (kDebugMode) print('Regular admin login successful for: ${userData['user']['email']}');
+          if (kDebugMode) print('Access Token: ${userData['access_token']}');
         }
         
         // Clear form
@@ -767,11 +764,11 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
       } else {
         // Login failed
         _showSnackBar(result['message'] ?? 'Login failed');
-        print('Login error: ${result['error']}');
+        if (kDebugMode) print('Login error: ${result['error']}');
       }
     } catch (e) {
       _showSnackBar('An error occurred: $e');
-      print('Exception during login: $e');
+      if (kDebugMode) print('Exception during login: $e');
     } finally {
       // Reset loading state
       setState(() {

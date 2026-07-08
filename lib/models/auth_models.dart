@@ -1,4 +1,5 @@
 import 'standalone_class_models.dart';
+import 'package:flutter/foundation.dart';
 
 /// Signup request model
 class SignupRequest {
@@ -332,15 +333,15 @@ class BranchResponse {
   });
 
   factory BranchResponse.fromJson(Map<String, dynamic> json) {
-    print('=== BranchResponse.fromJson Debug ===');
-    print('Branch Name: ${json['branch_name']}');
-    print('Branch ID: ${json['branch_id']}');
-    print('Image field: ${json['image']}');
-    print('Image URL field: ${json['image_url']}');
-    print('Image type: ${json['image'].runtimeType}');
-    print('Image is null: ${json['image'] == null}');
-    print('Image is empty: ${json['image']?.toString().isEmpty ?? true}');
-    print('====================================');
+    if (kDebugMode) print('=== BranchResponse.fromJson Debug ===');
+    if (kDebugMode) print('Branch Name: ${json['branch_name']}');
+    if (kDebugMode) print('Branch ID: ${json['branch_id']}');
+    if (kDebugMode) print('Image field: ${json['image']}');
+    if (kDebugMode) print('Image URL field: ${json['image_url']}');
+    if (kDebugMode) print('Image type: ${json['image'].runtimeType}');
+    if (kDebugMode) print('Image is null: ${json['image'] == null}');
+    if (kDebugMode) print('Image is empty: ${json['image']?.toString().isEmpty ?? true}');
+    if (kDebugMode) print('====================================');
     
     // Construct full image URL from image_url field (API response field)
     String? imageUrl;
@@ -350,14 +351,14 @@ class BranchResponse {
     if (imageUrlValue != null && imageUrlValue.toString().trim().isNotEmpty) {
       final imagePath = imageUrlValue.toString().trim();
       imageUrl = _normalizeImageUrl(imagePath);
-      print('=== BranchResponse Image URL ===');
-      print('API image_url field: $imagePath');
-      print('Normalized URL: $imageUrl');
-      print('================================');
+      if (kDebugMode) print('=== BranchResponse Image URL ===');
+      if (kDebugMode) print('API image_url field: $imagePath');
+      if (kDebugMode) print('Normalized URL: $imageUrl');
+      if (kDebugMode) print('================================');
     } else {
-      print('=== BranchResponse Image URL ===');
-      print('No image_url found or empty');
-      print('================================');
+      if (kDebugMode) print('=== BranchResponse Image URL ===');
+      if (kDebugMode) print('No image_url found or empty');
+      if (kDebugMode) print('================================');
     }
     
     // Safely parse classes list
@@ -368,7 +369,7 @@ class BranchResponse {
             .map((c) => ClassModel.fromJson(c))
             .toList();
       } catch (e) {
-        print('Error parsing classes: $e');
+        if (kDebugMode) print('Error parsing classes: $e');
         classesList = [];
       }
     }
@@ -381,7 +382,7 @@ class BranchResponse {
             .map((t) => TeamMemberModel.fromJson(t))
             .toList();
       } catch (e) {
-        print('Error parsing team_members: $e');
+        if (kDebugMode) print('Error parsing team_members: $e');
         teamMembersList = [];
       }
     }

@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../services/api_service.dart';
 import '../../models/standalone_class_models.dart';
 import '../../utils/app_colors.dart';
+import 'package:flutter/foundation.dart';
 
 class _TimeSlotEntry {
   TimeOfDay startTime;
@@ -391,29 +392,29 @@ class _EditStandaloneClassPageState extends State<EditStandaloneClassPage> {
         return;
       }
 
-      print('=== Form Submission Debug ===');
-      print('Fields being updated:');
-      print('Name: ${request.name != null ? "Updated to: ${request.name}" : "No change"}');
-      print('Description: ${request.description != null ? "Updated to: ${request.description}" : "No change"}');
-      print('Instructor: ${request.instructor != null ? "Updated to: ${request.instructor}" : "No change"}');
-      print('Capacity: ${request.capacity != null ? "Updated to: ${request.capacity}" : "No change"}');
-      print('Duration: ${request.duration != null ? "Updated to: ${request.duration}" : "No change"}');
-      print('Schedule: ${request.schedule != null ? "Updated (${request.schedule!.length} schedules)" : "No change"}');
-      print('IsActive: ${request.isActive != null ? "Updated to: ${request.isActive}" : "No change"}');
+      if (kDebugMode) print('=== Form Submission Debug ===');
+      if (kDebugMode) print('Fields being updated:');
+      if (kDebugMode) print('Name: ${request.name != null ? "Updated to: ${request.name}" : "No change"}');
+      if (kDebugMode) print('Description: ${request.description != null ? "Updated to: ${request.description}" : "No change"}');
+      if (kDebugMode) print('Instructor: ${request.instructor != null ? "Updated to: ${request.instructor}" : "No change"}');
+      if (kDebugMode) print('Capacity: ${request.capacity != null ? "Updated to: ${request.capacity}" : "No change"}');
+      if (kDebugMode) print('Duration: ${request.duration != null ? "Updated to: ${request.duration}" : "No change"}');
+      if (kDebugMode) print('Schedule: ${request.schedule != null ? "Updated (${request.schedule!.length} schedules)" : "No change"}');
+      if (kDebugMode) print('IsActive: ${request.isActive != null ? "Updated to: ${request.isActive}" : "No change"}');
       
       if (request.schedule != null) {
-        print('Schedule details:');
+        if (kDebugMode) print('Schedule details:');
         for (int i = 0; i < request.schedule!.length; i++) {
           final schedule = request.schedule![i];
           final days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
           final dayName = days[schedule.dayOfWeek];
-          print('Schedule $i: Day $dayName (${schedule.dayOfWeek}), Date: ${schedule.date.toIso8601String()}, Start: ${schedule.startTime.toIso8601String()}, End: ${schedule.endTime.toIso8601String()}');
-          print('Schedule $i JSON: ${schedule.toJson()}');
+          if (kDebugMode) print('Schedule $i: Day $dayName (${schedule.dayOfWeek}), Date: ${schedule.date.toIso8601String()}, Start: ${schedule.startTime.toIso8601String()}, End: ${schedule.endTime.toIso8601String()}');
+          if (kDebugMode) print('Schedule $i JSON: ${schedule.toJson()}');
         }
       }
       
-      print('Full request JSON: ${request.toJson()}');
-      print('Selected images: ${_selectedImages.length}');
+      if (kDebugMode) print('Full request JSON: ${request.toJson()}');
+      if (kDebugMode) print('Selected images: ${_selectedImages.length}');
 
       // Call API to update class with image files if provided
       final result = await ApiService.updateStandaloneClass(

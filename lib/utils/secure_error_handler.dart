@@ -13,7 +13,7 @@ class SecureErrorHandler {
     
     // Log full error details for debugging (but don't show to user)
     if (error != null) {
-      print('[SECURITY] Full error details logged: $error');
+      if (kDebugMode) print('[SECURITY] Full error details logged: $error');
     }
     
     return sanitizedMessage;
@@ -204,18 +204,18 @@ class SecureErrorHandler {
     Map<String, dynamic>? additionalData,
   }) {
     if (kDebugMode) {
-      print('[ERROR] Context: $context');
-      print('[ERROR] Error: $error');
+      if (kDebugMode) print('[ERROR] Context: $context');
+      if (kDebugMode) print('[ERROR] Error: $error');
       if (stackTrace != null) {
-        print('[ERROR] Stack trace: $stackTrace');
+        if (kDebugMode) print('[ERROR] Stack trace: $stackTrace');
       }
       if (additionalData != null) {
-        print('[ERROR] Additional data: $additionalData');
+        if (kDebugMode) print('[ERROR] Additional data: $additionalData');
       }
     } else {
       // In production, log minimal information
-      print('[ERROR] Context: $context');
-      print('[ERROR] Error type: ${error.runtimeType}');
+      if (kDebugMode) print('[ERROR] Context: $context');
+      if (kDebugMode) print('[ERROR] Error type: ${error.runtimeType}');
     }
   }
 }

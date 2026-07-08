@@ -3,6 +3,8 @@ import 'package:intl/intl.dart';
 import '../../services/api_service.dart';
 import '../../models/branch_user_models.dart';
 import '../../utils/background_image_service.dart';
+import '../../utils/app_colors.dart';
+import 'package:flutter/foundation.dart';
 
 class BranchUsersPage extends StatefulWidget {
   final String accessToken;
@@ -92,7 +94,7 @@ class _BranchUsersPageState extends State<BranchUsersPage> {
 
       if (result['success']) {
         try {
-          print('API Response data: ${result['data']}');
+          if (kDebugMode) print('API Response data: ${result['data']}');
           final userListResponse = BranchUserListResponse.fromJson(result['data']);
           
           setState(() {
@@ -136,26 +138,26 @@ class _BranchUsersPageState extends State<BranchUsersPage> {
       
       if (result['success']) {
         try {
-          print('Stats API Response data: ${result['data']}');
+          if (kDebugMode) print('Stats API Response data: ${result['data']}');
           final stats = BranchUserStatsResponse.fromJson(result['data']);
           setState(() {
             _stats = stats;
             _isLoadingStats = false;
           });
         } catch (parseError) {
-          print('Failed to parse stats data: $parseError');
+          if (kDebugMode) print('Failed to parse stats data: $parseError');
           setState(() {
             _isLoadingStats = false;
           });
         }
       } else {
-        print('Failed to load stats: ${result['message']}');
+        if (kDebugMode) print('Failed to load stats: ${result['message']}');
         setState(() {
           _isLoadingStats = false;
         });
       }
     } catch (e) {
-      print('Network error loading stats: $e');
+      if (kDebugMode) print('Network error loading stats: $e');
       setState(() {
         _isLoadingStats = false;
       });
@@ -763,6 +765,7 @@ class BranchUserDetailPage extends StatefulWidget {
 class _BranchUserDetailPageState extends State<BranchUserDetailPage> {
   String? _backgroundImageUrl;
   List<BranchUserBooking> _bookings = [];
+  String? _bookingsErrorMessage;
   int _currentPage = 1;
   int _totalPages = 1;
   bool _hasMoreBookings = true;
@@ -807,8 +810,9 @@ class _BranchUserDetailPageState extends State<BranchUserDetailPage> {
 
       if (result['success']) {
         final bookingListResponse = BranchUserBookingListResponse.fromJson(result['data']);
-        
+
         setState(() {
+          _bookingsErrorMessage = null;
           if (refresh) {
             _bookings = bookingListResponse.bookings;
           } else {
@@ -817,9 +821,31 @@ class _BranchUserDetailPageState extends State<BranchUserDetailPage> {
           _totalPages = (bookingListResponse.total / _limit).ceil();
           _hasMoreBookings = _currentPage < _totalPages;
         });
+      } else {
+        setState(() {
+          _bookingsErrorMessage = result['message'] ?? 'Failed to load bookings';
+        });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(_bookingsErrorMessage!, style: const TextStyle(color: Colors.black)),
+              backgroundColor: AppColors.snackbarBackground,
+            ),
+          );
+        }
       }
     } catch (e) {
-      // Handle error silently for bookings
+      setState(() {
+        _bookingsErrorMessage = 'Network error while loading bookings';
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Network error while loading bookings: $e', style: const TextStyle(color: Colors.black)),
+            backgroundColor: AppColors.snackbarBackground,
+          ),
+        );
+      }
     }
   }
 
@@ -1024,33 +1050,44 @@ class _BranchUserDetailPageState extends State<BranchUserDetailPage> {
         const SizedBox(height: 16),
         Expanded(
           child: _bookings.isEmpty
-              ? const Center(
+              ? Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(
-                        Icons.bookmark_outline,
-                        color: Colors.white,
+                        _bookingsErrorMessage != null ? Icons.error_outline : Icons.bookmark_outline,
+                        color: _bookingsErrorMessage != null ? Colors.red : Colors.white,
                         size: 64,
                       ),
-                      SizedBox(height: 16),
+                      const SizedBox(height: 16),
                       Text(
-                        'No bookings found',
-                        style: TextStyle(
+                        _bookingsErrorMessage != null ? 'Failed to load bookings' : 'No bookings found',
+                        style: const TextStyle(
                           color: Colors.white,
                           fontSize: 18,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
-                      SizedBox(height: 8),
+                      const SizedBox(height: 8),
                       Text(
-                        'This user hasn\'t made any bookings yet',
-                        style: TextStyle(
+                        _bookingsErrorMessage ?? 'This user hasn\'t made any bookings yet',
+                        style: const TextStyle(
                           color: Colors.white70,
                           fontSize: 14,
                         ),
                         textAlign: TextAlign.center,
                       ),
+                      if (_bookingsErrorMessage != null) ...[
+                        const SizedBox(height: 16),
+                        ElevatedButton(
+                          onPressed: () => _loadUserBookings(refresh: true),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            foregroundColor: Colors.black,
+                          ),
+                          child: const Text('Retry'),
+                        ),
+                      ],
                     ],
                   ),
                 )

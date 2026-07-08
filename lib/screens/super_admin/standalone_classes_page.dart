@@ -4,6 +4,7 @@ import '../../models/standalone_class_models.dart';
 import 'create_standalone_class_page.dart';
 import 'edit_standalone_class_page.dart';
 import '../../utils/app_colors.dart';
+import 'package:flutter/foundation.dart';
 
 class StandaloneClassesPage extends StatefulWidget {
   final String accessToken;
@@ -65,7 +66,7 @@ class _StandaloneClassesPageState extends State<StandaloneClassesPage> {
               _applyFilters();
             });
           } catch (parseError) {
-            print('Error parsing class data: $parseError');
+            if (kDebugMode) print('Error parsing class data: $parseError');
             if (!refresh) {
               _showSnackBar('Error parsing class data. Please try again.');
             }
@@ -75,7 +76,7 @@ class _StandaloneClassesPageState extends State<StandaloneClassesPage> {
             });
           }
         } else {
-          print('API returned null data for classes');
+          if (kDebugMode) print('API returned null data for classes');
           setState(() {
             _classes = [];
             _filteredClasses = [];
@@ -1343,22 +1344,22 @@ class _StandaloneClassesPageState extends State<StandaloneClassesPage> {
 
   Future<void> _deleteClass(StandaloneClassResponse classData) async {
     // Log deletion initiation
-    print('=== Standalone Class Deletion Initiated ===');
-    print('Class ID: ${classData.id}');
-    print('Class Name: ${classData.name}');
-    print('Instructor: ${classData.instructor}');
-    print('Is Active: ${classData.isActive}');
-    print('Is Visible: ${classData.isVisible ?? true}');
-    print('Is Expired: ${classData.isExpired}');
-    print('Total Classes in List: ${_classes.length}');
-    print('Filtered Classes Count: ${_filteredClasses.length}');
+    if (kDebugMode) print('=== Standalone Class Deletion Initiated ===');
+    if (kDebugMode) print('Class ID: ${classData.id}');
+    if (kDebugMode) print('Class Name: ${classData.name}');
+    if (kDebugMode) print('Instructor: ${classData.instructor}');
+    if (kDebugMode) print('Is Active: ${classData.isActive}');
+    if (kDebugMode) print('Is Visible: ${classData.isVisible ?? true}');
+    if (kDebugMode) print('Is Expired: ${classData.isExpired}');
+    if (kDebugMode) print('Total Classes in List: ${_classes.length}');
+    if (kDebugMode) print('Filtered Classes Count: ${_filteredClasses.length}');
     
     // Find class index in the list
     final classIndex = _classes.indexWhere((c) => c.id == classData.id);
     if (classIndex != -1) {
-      print('Class found at index: $classIndex');
+      if (kDebugMode) print('Class found at index: $classIndex');
     } else {
-      print('WARNING: Class not found in classes list');
+      if (kDebugMode) print('WARNING: Class not found in classes list');
     }
     
     // Show confirmation dialog
@@ -1370,14 +1371,14 @@ class _StandaloneClassesPageState extends State<StandaloneClassesPage> {
         actions: [
           TextButton(
             onPressed: () {
-              print('Deletion cancelled by user');
+              if (kDebugMode) print('Deletion cancelled by user');
               Navigator.of(context).pop(false);
             },
             child: const Text('Cancel'),
           ),
           TextButton(
             onPressed: () {
-              print('Deletion confirmed by user');
+              if (kDebugMode) print('Deletion confirmed by user');
               Navigator.of(context).pop(true);
             },
             style: TextButton.styleFrom(foregroundColor: Colors.red),
@@ -1388,8 +1389,8 @@ class _StandaloneClassesPageState extends State<StandaloneClassesPage> {
     );
 
     if (confirmed == true) {
-      print('Proceeding with class deletion...');
-      print('Sending delete request to API for class ID: ${classData.id}');
+      if (kDebugMode) print('Proceeding with class deletion...');
+      if (kDebugMode) print('Sending delete request to API for class ID: ${classData.id}');
       
       try {
         final result = await ApiService.deleteStandaloneClass(
@@ -1398,7 +1399,7 @@ class _StandaloneClassesPageState extends State<StandaloneClassesPage> {
         );
 
         if (result['success']) {
-          print('✓ API deletion request successful');
+          if (kDebugMode) print('✓ API deletion request successful');
           
           // Extract response data if available
           final responseData = result['data'];
@@ -1406,15 +1407,15 @@ class _StandaloneClassesPageState extends State<StandaloneClassesPage> {
           
           if (responseData != null && responseData is Map) {
             bookingsDeleted = responseData['bookings_deleted'] ?? 0;
-            print('Bookings deleted from server: $bookingsDeleted');
+            if (kDebugMode) print('Bookings deleted from server: $bookingsDeleted');
           }
           
           // Verify class removal from local list
           final stillInList = _classes.any((c) => c.id == classData.id);
           if (stillInList) {
-            print('WARNING: Class still exists in local list before refresh');
+            if (kDebugMode) print('WARNING: Class still exists in local list before refresh');
           } else {
-            print('✓ Class already removed from local list');
+            if (kDebugMode) print('✓ Class already removed from local list');
           }
           
           // Update UI state
@@ -1422,7 +1423,7 @@ class _StandaloneClassesPageState extends State<StandaloneClassesPage> {
             _classesModified = true;
           });
           
-          print('Refreshing classes list to verify deletion...');
+          if (kDebugMode) print('Refreshing classes list to verify deletion...');
           
           // Refresh the classes list
           await _loadClasses(refresh: true);
@@ -1430,47 +1431,47 @@ class _StandaloneClassesPageState extends State<StandaloneClassesPage> {
           // Verify deletion after refresh
           final verifyStillExists = _classes.any((c) => c.id == classData.id);
           if (verifyStillExists) {
-            print('ERROR: VERIFICATION FAILED - Class ${classData.id} still exists after refresh!');
+            if (kDebugMode) print('ERROR: VERIFICATION FAILED - Class ${classData.id} still exists after refresh!');
           } else {
-            print('✓ Verification successful: Class ${classData.id} confirmed deleted from list');
+            if (kDebugMode) print('✓ Verification successful: Class ${classData.id} confirmed deleted from list');
           }
           
           // Summary log
-          print('=== Standalone Class Deletion Summary ===');
-          print('Class ID: ${classData.id}');
-          print('Class Name: ${classData.name}');
-          print('Instructor: ${classData.instructor}');
-          print('✓ Removed from standalone classes collection');
-          print('✓ Deleted $bookingsDeleted related booking(s) from bookings collection');
-          print('✓ All references removed from database collections');
-          print('✓ UI updated and list refreshed');
-          print('=========================================');
+          if (kDebugMode) print('=== Standalone Class Deletion Summary ===');
+          if (kDebugMode) print('Class ID: ${classData.id}');
+          if (kDebugMode) print('Class Name: ${classData.name}');
+          if (kDebugMode) print('Instructor: ${classData.instructor}');
+          if (kDebugMode) print('✓ Removed from standalone classes collection');
+          if (kDebugMode) print('✓ Deleted $bookingsDeleted related booking(s) from bookings collection');
+          if (kDebugMode) print('✓ All references removed from database collections');
+          if (kDebugMode) print('✓ UI updated and list refreshed');
+          if (kDebugMode) print('=========================================');
           
           // _showSnackBar('Class deleted successfully');
         } else {
           final errorMessage = result['message'] ?? 'Failed to delete class';
           final errorDetails = result['error'];
           
-          print('ERROR: API deletion request failed');
-          print('Error Message: $errorMessage');
+          if (kDebugMode) print('ERROR: API deletion request failed');
+          if (kDebugMode) print('Error Message: $errorMessage');
           if (errorDetails != null) {
-            print('Error Details: $errorDetails');
+            if (kDebugMode) print('Error Details: $errorDetails');
           }
           
           // _showSnackBar(errorMessage);
         }
       } catch (e, stackTrace) {
-        print('EXCEPTION: Error occurred during class deletion');
-        print('Exception Type: ${e.runtimeType}');
-        print('Exception Message: $e');
-        print('Stack Trace: $stackTrace');
-        print('Class ID: ${classData.id}');
-        print('Class Name: ${classData.name}');
+        if (kDebugMode) print('EXCEPTION: Error occurred during class deletion');
+        if (kDebugMode) print('Exception Type: ${e.runtimeType}');
+        if (kDebugMode) print('Exception Message: $e');
+        if (kDebugMode) print('Stack Trace: $stackTrace');
+        if (kDebugMode) print('Class ID: ${classData.id}');
+        if (kDebugMode) print('Class Name: ${classData.name}');
         
         // _showSnackBar('An error occurred: $e');
       }
     } else {
-      print('Deletion aborted - user cancelled');
+      if (kDebugMode) print('Deletion aborted - user cancelled');
     }
   }
 

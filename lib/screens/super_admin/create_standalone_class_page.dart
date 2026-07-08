@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../services/api_service.dart';
 import '../../models/standalone_class_models.dart';
 import '../../utils/app_colors.dart';
+import 'package:flutter/foundation.dart';
 
 class CreateStandaloneClassPage extends StatefulWidget {
   final String accessToken;
@@ -553,14 +554,14 @@ class _CreateStandaloneClassPageState extends State<CreateStandaloneClassPage> {
         isVisible: true,
       );
 
-      print('=== Form Submission Debug ===');
-      print('Regular Schedules count: ${_schedules.length}');
+      if (kDebugMode) print('=== Form Submission Debug ===');
+      if (kDebugMode) print('Regular Schedules count: ${_schedules.length}');
       for (int i = 0; i < _schedules.length; i++) {
         final schedule = _schedules[i];
-        print('Schedule $i: Day ${schedule.dayOfWeek}, Start: ${schedule.startTime}, End: ${schedule.endTime}');
+        if (kDebugMode) print('Schedule $i: Day ${schedule.dayOfWeek}, Start: ${schedule.startTime}, End: ${schedule.endTime}');
       }
-      print('Duration: $duration minutes');
-      print('Selected images: ${_selectedImages.length}');
+      if (kDebugMode) print('Duration: $duration minutes');
+      if (kDebugMode) print('Selected images: ${_selectedImages.length}');
 
       // Set uploading state if images are selected
       if (_selectedImages.isNotEmpty) {

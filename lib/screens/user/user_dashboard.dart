@@ -16,6 +16,7 @@ import '../../main.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/background_image_service.dart';
+import 'package:flutter/foundation.dart';
 
 class UserDashboard extends StatefulWidget {
   const UserDashboard({super.key});
@@ -146,10 +147,10 @@ class _UserDashboardState extends State<UserDashboard> {
           await _handleUnauthorized();
           return;
         }
-        print('Failed to load user profile: ${result['message']}');
+        if (kDebugMode) print('Failed to load user profile: ${result['message']}');
       }
     } catch (e) {
-      print('Error loading current user: $e');
+      if (kDebugMode) print('Error loading current user: $e');
     }
   }
 
@@ -196,7 +197,7 @@ class _UserDashboardState extends State<UserDashboard> {
         await _loadBookedClassesFromStorage();
       }
     } catch (e) {
-      print('Error loading user bookings: $e');
+      if (kDebugMode) print('Error loading user bookings: $e');
       // Fallback to local storage
       await _loadBookedClassesFromStorage();
     }
@@ -214,7 +215,7 @@ class _UserDashboardState extends State<UserDashboard> {
         });
       }
     } catch (e) {
-      print('Error loading booked classes from storage: $e');
+      if (kDebugMode) print('Error loading booked classes from storage: $e');
     }
   }
 
@@ -223,7 +224,7 @@ class _UserDashboardState extends State<UserDashboard> {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('booking_key_to_id_map', jsonEncode(_bookingKeyToBookingId));
     } catch (e) {
-      print('Error saving booked classes to storage: $e');
+      if (kDebugMode) print('Error saving booked classes to storage: $e');
     }
   }
 
@@ -548,16 +549,16 @@ class _UserDashboardState extends State<UserDashboard> {
     }
 
     try {
-      print('=== Loading User Branch Classes ===');
+      if (kDebugMode) print('=== Loading User Branch Classes ===');
       final result = await ApiService.getUserBranchClasses(_accessToken!);
-      print('User branch classes response: $result');
-      print('Response success: ${result['success']}');
-      print('Response data: ${result['data']}');
+      if (kDebugMode) print('User branch classes response: $result');
+      if (kDebugMode) print('Response success: ${result['success']}');
+      if (kDebugMode) print('Response data: ${result['data']}');
 
       if (result['success']) {
         final data = result['data'];
-        print('Data type: ${data.runtimeType}');
-        print('Data keys: ${data is Map ? data.keys.toList() : 'Not a map'}');
+        if (kDebugMode) print('Data type: ${data.runtimeType}');
+        if (kDebugMode) print('Data keys: ${data is Map ? data.keys.toList() : 'Not a map'}');
         
         if (data == null) {
           setState(() {
@@ -580,11 +581,11 @@ class _UserDashboardState extends State<UserDashboard> {
           location = data['location'] ?? data['Location'];
           classesList = data['classes'] is List ? data['classes'] as List : null;
           
-          print('Branch ID: $branchId');
-          print('Branch Name: $branchName');
-          print('Location: $location');
-          print('Classes list: $classesList');
-          print('Classes count: ${classesList?.length ?? 0}');
+          if (kDebugMode) print('Branch ID: $branchId');
+          if (kDebugMode) print('Branch Name: $branchName');
+          if (kDebugMode) print('Location: $location');
+          if (kDebugMode) print('Classes list: $classesList');
+          if (kDebugMode) print('Classes count: ${classesList?.length ?? 0}');
         }
         
         // Create branch response from the data
@@ -609,13 +610,13 @@ class _UserDashboardState extends State<UserDashboard> {
           for (var i = 0; i < classesList.length; i++) {
             try {
               final classData = classesList[i];
-              print('Parsing class $i: $classData');
+              if (kDebugMode) print('Parsing class $i: $classData');
               final branchClass = BranchClassResponse.fromJson(classData);
               classes.add(branchClass);
-              print('Successfully parsed class: ${branchClass.name}');
+              if (kDebugMode) print('Successfully parsed class: ${branchClass.name}');
             } catch (e) {
-              print('Error parsing class $i: $e');
-              print('Class data: ${classesList[i]}');
+              if (kDebugMode) print('Error parsing class $i: $e');
+              if (kDebugMode) print('Class data: ${classesList[i]}');
             }
           }
         }
@@ -627,14 +628,14 @@ class _UserDashboardState extends State<UserDashboard> {
           _errorMessage = null;
         });
         
-        print('User branch loaded: ${branch.branchName} with ${classes.length} classes');
+        if (kDebugMode) print('User branch loaded: ${branch.branchName} with ${classes.length} classes');
       } else {
         if (result['statusCode'] == 401) {
           await _handleUnauthorized();
           return;
         }
         final errorMsg = result['message'] ?? 'Failed to load your branch classes';
-        print('Failed to load classes: $errorMsg');
+        if (kDebugMode) print('Failed to load classes: $errorMsg');
         setState(() {
           _errorMessage = errorMsg;
           _isLoading = false;
@@ -642,8 +643,8 @@ class _UserDashboardState extends State<UserDashboard> {
         });
       }
     } catch (e, stackTrace) {
-      print('Exception loading user branch classes: $e');
-      print('Stack trace: $stackTrace');
+      if (kDebugMode) print('Exception loading user branch classes: $e');
+      if (kDebugMode) print('Stack trace: $stackTrace');
       setState(() {
         _errorMessage = 'Network error: $e';
         _isLoading = false;
@@ -718,7 +719,7 @@ class _UserDashboardState extends State<UserDashboard> {
       try {
         await _storageService.clearAuthData();
       } catch (clearError) {
-        print('Error clearing auth data: $clearError');
+        if (kDebugMode) print('Error clearing auth data: $clearError');
       }
       
       if (mounted) {

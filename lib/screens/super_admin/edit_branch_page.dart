@@ -6,6 +6,7 @@ import '../../services/api_service.dart';
 import '../../models/auth_models.dart';
 import '../../models/standalone_class_models.dart';
 import '../../utils/app_colors.dart';
+import 'package:flutter/foundation.dart';
 
 class EditBranchPage extends StatefulWidget {
   final String accessToken;
@@ -90,13 +91,13 @@ class _EditBranchPageState extends State<EditBranchPage> {
         .toSet();
     
     // Debug: Log team members initialization
-    print('=== Edit Branch Page - Team Members Debug ===');
-    print('Branch: ${widget.branch.branchName}');
-    print('Team Members Count: ${widget.branch.teamMembers.length}');
-    print('Team Members: ${widget.branch.teamMembers.map((m) => m.fullName).toList()}');
-    print('Original Team Member Emails: $_originalTeamMemberEmails');
-    print('Initialized Team Members Count: ${_teamMembers.length}');
-    print('=============================================');
+    if (kDebugMode) print('=== Edit Branch Page - Team Members Debug ===');
+    if (kDebugMode) print('Branch: ${widget.branch.branchName}');
+    if (kDebugMode) print('Team Members Count: ${widget.branch.teamMembers.length}');
+    if (kDebugMode) print('Team Members: ${widget.branch.teamMembers.map((m) => m.fullName).toList()}');
+    if (kDebugMode) print('Original Team Member Emails: $_originalTeamMemberEmails');
+    if (kDebugMode) print('Initialized Team Members Count: ${_teamMembers.length}');
+    if (kDebugMode) print('=============================================');
     
     // Initialize selected classes will be done after loading available classes
     _selectedClasses = [];
@@ -126,14 +127,14 @@ class _EditBranchPageState extends State<EditBranchPage> {
               _initializeSelectedClassesFromBranch();
             });
           } catch (parseError) {
-            print('Error parsing class data: $parseError');
+            if (kDebugMode) print('Error parsing class data: $parseError');
             _showSnackBar('Error parsing class data. Please try again.');
             setState(() {
               _availableClasses = [];
             });
           }
         } else {
-          print('API returned null data for classes');
+          if (kDebugMode) print('API returned null data for classes');
           setState(() {
             _availableClasses = [];
           });
@@ -161,7 +162,7 @@ class _EditBranchPageState extends State<EditBranchPage> {
         _selectedClasses.add(matchingStandaloneClass);
       } catch (e) {
         // If no matching class found, skip it
-        print('No matching standalone class found for: ${branchClass.name}');
+        if (kDebugMode) print('No matching standalone class found for: ${branchClass.name}');
       }
     }
   }
@@ -613,10 +614,10 @@ class _EditBranchPageState extends State<EditBranchPage> {
     
     // Debug logging
     if (widget.branch.image != null) {
-      print('=== Edit Branch Image Debug ===');
-      print('Original branch.image: ${widget.branch.image}');
-      print('Normalized URL: $normalizedImageUrl');
-      print('================================');
+      if (kDebugMode) print('=== Edit Branch Image Debug ===');
+      if (kDebugMode) print('Original branch.image: ${widget.branch.image}');
+      if (kDebugMode) print('Normalized URL: $normalizedImageUrl');
+      if (kDebugMode) print('================================');
     }
     
     return Container(
@@ -736,11 +737,11 @@ class _EditBranchPageState extends State<EditBranchPage> {
                               );
                             },
                             errorBuilder: (context, error, stackTrace) {
-                              print('=== Image Network Error ===');
-                              print('URL: $normalizedImageUrl');
-                              print('Error: $error');
-                              print('Stack: $stackTrace');
-                              print('==========================');
+                              if (kDebugMode) print('=== Image Network Error ===');
+                              if (kDebugMode) print('URL: $normalizedImageUrl');
+                              if (kDebugMode) print('Error: $error');
+                              if (kDebugMode) print('Stack: $stackTrace');
+                              if (kDebugMode) print('==========================');
                               return Container(
                                 color: Colors.grey[200],
                                 child: Column(
@@ -771,9 +772,9 @@ class _EditBranchPageState extends State<EditBranchPage> {
                             },
                             loadingBuilder: (context, child, loadingProgress) {
                               if (loadingProgress == null) {
-                                print('=== Image Loaded Successfully ===');
-                                print('URL: $normalizedImageUrl');
-                                print('==================================');
+                                if (kDebugMode) print('=== Image Loaded Successfully ===');
+                                if (kDebugMode) print('URL: $normalizedImageUrl');
+                                if (kDebugMode) print('==================================');
                                 return child;
                               }
                               return Container(
@@ -1390,13 +1391,13 @@ class _EditBranchPageState extends State<EditBranchPage> {
       final updateRequestJson = updateRequest.toJson();
 
       // Debug: Print the request data
-      print('=== Update Branch Debug ===');
-      print('Branch ID: ${widget.branch.id}');
-      print('Total Team Members: ${_teamMembers.length}');
-      print('Original Team Members: ${_originalTeamMemberEmails.length}');
-      print('New Team Members (with passwords): ${newTeamMembers.length}');
-      print('Has new image file: ${_branchImageFile != null}');
-      print('Request data: ${jsonEncode(updateRequestJson)}');
+      if (kDebugMode) print('=== Update Branch Debug ===');
+      if (kDebugMode) print('Branch ID: ${widget.branch.id}');
+      if (kDebugMode) print('Total Team Members: ${_teamMembers.length}');
+      if (kDebugMode) print('Original Team Members: ${_originalTeamMemberEmails.length}');
+      if (kDebugMode) print('New Team Members (with passwords): ${newTeamMembers.length}');
+      if (kDebugMode) print('Has new image file: ${_branchImageFile != null}');
+      if (kDebugMode) print('Request data: ${jsonEncode(updateRequestJson)}');
       
       // Call API to update branch with image file if provided
       final result = await ApiService.updateBranch(
@@ -1454,11 +1455,11 @@ class _EditBranchPageState extends State<EditBranchPage> {
                 }
               } else {
                 failCount++;
-                print('Failed to add team member ${member.email}: ${addResult['message']}');
+                if (kDebugMode) print('Failed to add team member ${member.email}: ${addResult['message']}');
               }
             } catch (e) {
               failCount++;
-              print('Error adding team member ${member.email}: $e');
+              if (kDebugMode) print('Error adding team member ${member.email}: $e');
             }
           }
           

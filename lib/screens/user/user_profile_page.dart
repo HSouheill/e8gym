@@ -5,6 +5,7 @@ import '../../services/storage_service.dart';
 import '../../models/auth_models.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/background_image_service.dart';
+import 'package:flutter/foundation.dart';
 
 class UserProfilePage extends StatefulWidget {
   final String accessToken;
@@ -49,6 +50,16 @@ class _UserProfilePageState extends State<UserProfilePage> {
     _loadUserProfile();
   }
   
+  void _showSnackBar(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message, style: const TextStyle(color: Colors.black)),
+        backgroundColor: AppColors.snackbarBackground,
+      ),
+    );
+  }
+
   Future<void> _loadUserProfile() async {
     // If we already have user data from widget, initialize fields first
     if (_currentUser != null) {
@@ -76,16 +87,20 @@ class _UserProfilePageState extends State<UserProfilePage> {
             _currentUser = widget.currentUser;
           });
           _initializeFields();
+        } else if (_currentUser == null) {
+          _showSnackBar(result['message'] ?? 'Failed to load your profile');
         }
       }
     } catch (e) {
-      print('Error loading user profile: $e');
+      if (kDebugMode) print('Error loading user profile: $e');
       // If API call fails but we have widget.currentUser, use that
       if (_currentUser == null && widget.currentUser != null) {
         setState(() {
           _currentUser = widget.currentUser;
         });
         _initializeFields();
+      } else if (_currentUser == null) {
+        _showSnackBar('Could not load your profile. Check your connection and try again.');
       }
     } finally {
       setState(() {

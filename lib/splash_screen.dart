@@ -73,7 +73,7 @@ class _SplashScreenState extends State<SplashScreen>
         onTimeout: () {
           // If storage init times out, continue without it
           if (kDebugMode) {
-            print('Storage initialization timed out');
+            if (kDebugMode) print('Storage initialization timed out');
           }
         },
       );
@@ -87,7 +87,7 @@ class _SplashScreenState extends State<SplashScreen>
       } catch (e) {
         // If getting stored data fails, continue without it
         if (kDebugMode) {
-          print('Error getting stored data: $e');
+          if (kDebugMode) print('Error getting stored data: $e');
         }
         accessToken = null;
         userData = null;
@@ -105,7 +105,7 @@ class _SplashScreenState extends State<SplashScreen>
     } catch (e) {
       // If there's any error, navigate to login
       if (kDebugMode) {
-        print('Splash screen error: $e');
+        if (kDebugMode) print('Splash screen error: $e');
       }
       if (mounted) {
         Navigator.pushReplacementNamed(context, '/login');
