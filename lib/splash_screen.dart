@@ -153,21 +153,21 @@ class _SplashScreenState extends State<SplashScreen>
                           child: const Icon(
                             Icons.fitness_center,
                             size: 60,
-                            color: Colors.white,
+                            color: Colors.black,
                           ),
                         );
                       },
                     ),
-                    
+
                     const SizedBox(height: 30),
-                    
+
                     // App Name
                     const Text(
                       'E8Gym',
                       style: TextStyle(
                         fontSize: 32,
                         fontWeight: FontWeight.bold,
-                        color: Colors.white,
+                        color: Colors.black,
                         letterSpacing: 2.0,
                       ),
                     ),
@@ -191,7 +191,7 @@ class _SplashScreenState extends State<SplashScreen>
                       width: 40,
                       height: 40,
                       child: CircularProgressIndicator(
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.black),
                         strokeWidth: 3,
                       ),
                     ),
@@ -208,7 +208,7 @@ class _SplashScreenState extends State<SplashScreen>
                     Icon(
                       Icons.fitness_center,
                       size: 80,
-                      color: Colors.white,
+                      color: Colors.black,
                     ),
                     SizedBox(height: 20),
                     Text(
@@ -216,12 +216,12 @@ class _SplashScreenState extends State<SplashScreen>
                       style: TextStyle(
                         fontSize: 32,
                         fontWeight: FontWeight.bold,
-                        color: Colors.white,
+                        color: Colors.black,
                       ),
                     ),
                     SizedBox(height: 10),
                     CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.black),
                     ),
                   ],
                 ),

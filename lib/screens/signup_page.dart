@@ -260,6 +260,7 @@ class _SignupPageState extends State<SignupPage> {
       await storageService.saveAuthTokens(
         accessToken: response.accessToken,
         refreshToken: response.refreshToken,
+        expiresIn: response.expiresIn,
       );
       await storageService.saveUserData(response.user);
       
@@ -404,6 +405,7 @@ class _SignupPageState extends State<SignupPage> {
             : screenWidth * 0.18; // 18% for medium devices
 
     return Scaffold(
+    resizeToAvoidBottomInset: true,
     body: Container(
       decoration: const BoxDecoration(
         color: Colors.black,
@@ -452,6 +454,9 @@ class _SignupPageState extends State<SignupPage> {
             child: Padding(
               padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
               child: SingleChildScrollView(
+                padding: EdgeInsets.only(
+                  bottom: MediaQuery.of(context).viewInsets.bottom,
+                ),
                 child: Form(
                   key: _formKey,
                   child: Column(

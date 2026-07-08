@@ -109,6 +109,7 @@ class _LoginPageState extends State<LoginPage> {
       await _storageService.saveAuthTokens(
         accessToken: response.accessToken,
         refreshToken: response.refreshToken,
+        expiresIn: response.expiresIn,
       );
       await _storageService.saveUserData(response.user);
 
@@ -168,6 +169,7 @@ class _LoginPageState extends State<LoginPage> {
     final buttonWidth = screenWidth * 0.6;
 
     return Scaffold(
+      resizeToAvoidBottomInset: true,
       body: Stack(
         children: [
           Container(
@@ -211,6 +213,9 @@ class _LoginPageState extends State<LoginPage> {
           ),
           SafeArea(
             child: SingleChildScrollView(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom,
+              ),
               child: Padding(
                 padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
                 child: Column(

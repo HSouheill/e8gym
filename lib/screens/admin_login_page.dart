@@ -190,6 +190,9 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
                   bottom: 50,
                 ),
                 child: SingleChildScrollView(
+                  padding: EdgeInsets.only(
+                    bottom: MediaQuery.of(context).viewInsets.bottom,
+                  ),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.start,
                     children: [
