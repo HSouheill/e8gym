@@ -70,6 +70,18 @@ dev_dependencies:
 # The following section is specific to Flutter packages.
 flutter:
 
+  # Runner.xcodeproj is CocoaPods-only (no Package.swift / Swift Package
+  # Manager integration in the pbxproj). Some Flutter-team plugins (e.g.
+  # image_picker_ios, url_launcher_ios, path_provider_foundation,
+  # shared_preferences_foundation) now ship a Package.swift, and if the
+  # Flutter tool's Swift Package Manager support is enabled it skips those
+  # plugins from CocoaPods entirely, expecting SPM to pick them up. Since this
+  # project isn't wired for SPM, that leaves them installed nowhere and the
+  # iOS build fails with "Module 'X' not found". Force CocoaPods-only plugin
+  # resolution until this project migrates to Swift Package Manager.
+  config:
+    enable-swift-package-manager: false
+
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in
   # the material Icons class.
