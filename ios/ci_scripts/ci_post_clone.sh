@@ -16,30 +16,55 @@ cd "$(dirname "$0")/../.."
 git clone https://github.com/flutter/flutter.git --depth 1 -b stable "$HOME/flutter"
 export PATH="$PATH:$HOME/flutter/bin"
 
-# Force a clean regeneration of plugin registration files. A plain `pub get`
-# has been observed to write an incomplete .flutter-plugins-dependencies on
-# first run in CI (missing some federated iOS plugins such as image_picker_ios),
-# which then makes the Podfile skip those pods and the build fails later with
-# "Module 'X' not found". `flutter clean` removes the generated files so the
-# next `pub get` rebuilds the plugin list from scratch.
-flutter clean
+# Federated plugins whose iOS implementation pod has, on past runs, been
+# silently dropped from .flutter-plugins-dependencies by a cold-cache
+# `flutter pub get` in a fresh CI container. When that happens the Podfile
+# skips the pod entirely and xcodebuild fails much later with a confusing
+# "Module 'X' not found" instead of a clear dependency-resolution error here.
+# Running pub get/pod install twice was tried before as a workaround but is
+# not reliable, so this script verifies the result and retries a clean
+# resolution if any expected pod is still missing.
+expected_ios_pods=(image_picker_ios url_launcher_ios path_provider_foundation shared_preferences_foundation)
 
-# Pre-cache the iOS platform artifacts and fetch Dart dependencies.
-flutter precache --ios
-flutter pub get
+resolve_and_install() {
+  flutter clean
+  flutter precache --ios
+  flutter pub get
 
-# .flutter-plugins-dependencies (which the Podfile reads to decide which iOS
-# pods to install) has been observed to come out incomplete after the very
-# first `pub get` in a fresh CI environment, silently dropping federated
-# plugins like image_picker_ios and failing the build much later at compile
-# time with a confusing "Module 'X' not found" error. Re-running pub get is
-# idempotent and cheap, and reliably regenerates the file in full.
-flutter pub get
+  # Xcode Cloud images ship with CocoaPods, but keep this in case that changes.
+  HOMEBREW_NO_AUTO_UPDATE=1 brew install cocoapods || true
 
-# Xcode Cloud images ship with CocoaPods, but keep this in case that changes.
-HOMEBREW_NO_AUTO_UPDATE=1 brew install cocoapods || true
+  # Generate ios/Pods and the Pods-Runner-*.xcfilelist files xcodebuild needs.
+  (cd ios && pod install)
+}
 
-# Generate ios/Pods and the Pods-Runner-*.xcfilelist files xcodebuild needs.
-cd ios && pod install
+resolve_and_install
+
+attempt=1
+max_attempts=3
+while true; do
+  missing=()
+  for pod_name in "${expected_ios_pods[@]}"; do
+    if [ ! -d "ios/Pods/${pod_name}" ]; then
+      missing+=("$pod_name")
+    fi
+  done
+
+  if [ ${#missing[@]} -eq 0 ]; then
+    break
+  fi
+
+  echo "warning: pod install produced an incomplete Pods/ directory, missing: ${missing[*]} (attempt $attempt/$max_attempts)"
+  if [ "$attempt" -ge "$max_attempts" ]; then
+    echo "error: ios/Pods is still missing pods after $max_attempts attempts: ${missing[*]}"
+    exit 1
+  fi
+
+  # Force a fully clean plugin/pod re-resolution rather than trusting the
+  # stale generated files, then retry.
+  rm -rf .dart_tool .flutter-plugins .flutter-plugins-dependencies ios/Podfile.lock ios/Pods ios/.symlinks
+  attempt=$((attempt + 1))
+  resolve_and_install
+done
 
 exit 0
