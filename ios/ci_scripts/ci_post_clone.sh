@@ -8,8 +8,9 @@ set -e
 #
 # Docs: https://developer.apple.com/documentation/xcode/build-and-test-flutter-apps
 
-# ci_post_clone.sh runs with CWD set to ios/ci_scripts, so move to the repo root.
-cd "$CI_WORKSPACE/repository"
+# ci_post_clone.sh runs with CWD set to ios/ci_scripts. $CI_WORKSPACE isn't
+# reliably set, so resolve the repo root relative to this script instead.
+cd "$(dirname "$0")/../.."
 
 # Install Flutter via git (Xcode Cloud images do not ship with Flutter).
 git clone https://github.com/flutter/flutter.git --depth 1 -b stable "$HOME/flutter"
