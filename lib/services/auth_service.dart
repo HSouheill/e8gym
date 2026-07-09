@@ -49,13 +49,13 @@ class AuthService {
       // Sanitize input
       final sanitizedEmail = SecurityService.sanitizeInput(request.email);
       
-      // Validate SSL certificate
-      if (!SecurityService.validateSSLCertificate('$_baseUrl/api/auth/signup')) {
-        SecurityService.logSecurityEvent('invalid_ssl_certificate', details: {'url': '$_baseUrl/api/auth/signup'});
+      // Validate production URL
+      if (!SecurityService.isAllowedProductionUrl('$_baseUrl/api/auth/signup')) {
+        SecurityService.logSecurityEvent('invalid_production_url', details: {'url': '$_baseUrl/api/auth/signup'});
         throw AuthException(
           message: 'Security validation failed',
           statusCode: 400,
-          details: 'Invalid SSL certificate',
+          details: 'Invalid or non-production URL',
         );
       }
       
@@ -122,13 +122,13 @@ class AuthService {
       // Sanitize input
       final sanitizedEmail = SecurityService.sanitizeInput(request.email);
       
-      // Validate SSL certificate
-      if (!SecurityService.validateSSLCertificate('$_baseUrl/api/auth/login')) {
-        SecurityService.logSecurityEvent('invalid_ssl_certificate', details: {'url': '$_baseUrl/api/auth/login'});
+      // Validate production URL
+      if (!SecurityService.isAllowedProductionUrl('$_baseUrl/api/auth/login')) {
+        SecurityService.logSecurityEvent('invalid_production_url', details: {'url': '$_baseUrl/api/auth/login'});
         throw AuthException(
           message: 'Security validation failed',
           statusCode: 400,
-          details: 'Invalid SSL certificate',
+          details: 'Invalid or non-production URL',
         );
       }
       
@@ -182,13 +182,13 @@ class AuthService {
         );
       }
       
-      // Validate SSL certificate
-      if (!SecurityService.validateSSLCertificate('$_baseUrl/api/auth/refresh')) {
-        SecurityService.logSecurityEvent('invalid_ssl_certificate', details: {'url': '$_baseUrl/api/auth/refresh'});
+      // Validate production URL
+      if (!SecurityService.isAllowedProductionUrl('$_baseUrl/api/auth/refresh')) {
+        SecurityService.logSecurityEvent('invalid_production_url', details: {'url': '$_baseUrl/api/auth/refresh'});
         throw AuthException(
           message: 'Security validation failed',
           statusCode: 400,
-          details: 'Invalid SSL certificate',
+          details: 'Invalid or non-production URL',
         );
       }
       
@@ -243,13 +243,13 @@ class AuthService {
         );
       }
       
-      // Validate SSL certificate
-      if (!SecurityService.validateSSLCertificate('$_baseUrl/api/auth/logout')) {
-        SecurityService.logSecurityEvent('invalid_ssl_certificate', details: {'url': '$_baseUrl/api/auth/logout'});
+      // Validate production URL
+      if (!SecurityService.isAllowedProductionUrl('$_baseUrl/api/auth/logout')) {
+        SecurityService.logSecurityEvent('invalid_production_url', details: {'url': '$_baseUrl/api/auth/logout'});
         throw AuthException(
           message: 'Security validation failed',
           statusCode: 400,
-          details: 'Invalid SSL certificate',
+          details: 'Invalid or non-production URL',
         );
       }
       

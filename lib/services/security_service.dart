@@ -23,7 +23,6 @@ class SecurityService {
 
   // Network security
   static const String _productionDomain = 'e8gym.online';
-  static const String _productionUrl = 'https://e8gym.online';
 
   /// Store access token securely
   static Future<void> storeAccessToken(String token) async {
@@ -136,8 +135,12 @@ class SecurityService {
     return headers;
   }
 
-  /// Validate SSL certificate for production
-  static bool validateSSLCertificate(String url) {
+  /// Check that a URL uses HTTPS and points at our production domain.
+  ///
+  /// This is a plain string/allowlist check, not certificate pinning or any
+  /// other real TLS verification — actual certificate validation is left to
+  /// the platform/`http` package's default TLS handling.
+  static bool isAllowedProductionUrl(String url) {
     if (!url.startsWith('https://')) {
       return false;
     }

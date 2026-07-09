@@ -1271,6 +1271,8 @@ class _StandaloneClassesPageState extends State<StandaloneClassesPage> {
       ),
     );
 
+    weeksController.dispose();
+
     if (weeksActive != null && weeksActive > 0) {
       try {
         final renewData = RenewClassRequest(weeksActive: weeksActive);

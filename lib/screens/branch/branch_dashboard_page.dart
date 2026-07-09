@@ -1084,58 +1084,6 @@ class _BranchDashboardPageState extends State<BranchDashboardPage> {
     );
   }
 
-  Widget _buildScheduleItem(ClassSchedule schedule) {
-    final days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-    final dayName = days[schedule.dayOfWeek];
-    // Display UTC times directly without timezone conversion
-    final startTime = '${schedule.startTime.hour.toString().padLeft(2, '0')}:${schedule.startTime.minute.toString().padLeft(2, '0')}';
-    final endTime = '${schedule.endTime.hour.toString().padLeft(2, '0')}:${schedule.endTime.minute.toString().padLeft(2, '0')}';
-    
-    // Check if this is a recurring schedule (recurring schedules use dates in 2099 as markers)
-    final isRecurring = schedule.date.year >= 2099;
-    final isNextWeekSchedule = !isRecurring;
-    
-    String scheduleText;
-    if (isNextWeekSchedule) {
-      final date = schedule.date;
-      scheduleText = '${date.day}/${date.month}/${date.year} ($dayName): $startTime - $endTime';
-    } else {
-      scheduleText = '$dayName: $startTime - $endTime';
-    }
-    
-    return Container(
-      margin: const EdgeInsets.only(bottom: 4),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: isNextWeekSchedule 
-            ? Colors.white.withOpacity(0.2) // Different color for next week schedules
-            : Colors.white.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(6),
-        border: isNextWeekSchedule 
-            ? Border.all(color: Colors.white, width: 1)
-            : null,
-      ),
-      child: Row(
-        children: [
-          if (isNextWeekSchedule) 
-            const Icon(Icons.event, color: Colors.white, size: 12),
-          if (isNextWeekSchedule) 
-            const SizedBox(width: 4),
-          Expanded(
-            child: Text(
-              scheduleText,
-              style: TextStyle(
-                color: isNextWeekSchedule ? Colors.white : Colors.white,
-                fontSize: 12,
-                fontWeight: isNextWeekSchedule ? FontWeight.w600 : FontWeight.normal,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildActionCard({
     required IconData icon,
     required String title,

@@ -294,6 +294,7 @@ class _UserDashboardState extends State<UserDashboard> {
         // Show selection dialog for multiple bookings
         final selectedBooking = await _showBookingSelectionDialog(classData, bookings);
         if (selectedBooking == null) return;
+        if (!mounted) return;
         bookingId = selectedBooking.id;
       }
     }
@@ -388,8 +389,10 @@ class _UserDashboardState extends State<UserDashboard> {
     );
 
     if (shouldCancel != true) return;
+    if (!mounted) return;
 
     // Show loading indicator
+    bool dialogOpen = true;
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -400,30 +403,39 @@ class _UserDashboardState extends State<UserDashboard> {
       ),
     );
 
+    void closeLoadingDialog() {
+      if (dialogOpen && mounted) {
+        Navigator.of(context).pop();
+      }
+      dialogOpen = false;
+    }
+
     try {
       // Cancel booking using the update endpoint (PUT /api/bookings/:id)
       // This internally calls updateBooking with status: 'cancelled'
       final result = await ApiService.cancelBooking(bookingId, _accessToken!);
 
-      Navigator.of(context).pop(); // Close loading dialog
+      closeLoadingDialog();
+      if (!mounted) return;
 
       if (result['success']) {
-        // Find and remove the cancelled booking from tracking
-        final bookingToRemove = _allBookings.firstWhere(
-          (b) => b.id == bookingId,
-          orElse: () => _allBookings.first,
-        );
-        
-        final bookingKey = '${bookingToRemove.classId}_${bookingToRemove.scheduleId}';
+        // Find and remove the cancelled booking from tracking, if present
+        final bookingIndex = _allBookings.indexWhere((b) => b.id == bookingId);
+        final bookingToRemove = bookingIndex != -1 ? _allBookings[bookingIndex] : null;
+
         setState(() {
-          _bookingKeyToBookingId.remove(bookingKey);
+          if (bookingToRemove != null) {
+            final bookingKey = '${bookingToRemove.classId}_${bookingToRemove.scheduleId}';
+            _bookingKeyToBookingId.remove(bookingKey);
+          }
           _allBookings.removeWhere((b) => b.id == bookingId);
         });
         await _saveBookedClassesToStorage();
-        
+
         // Reload bookings to get updated list
         await _loadUserBookings();
-        
+        if (!mounted) return;
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
@@ -444,7 +456,8 @@ class _UserDashboardState extends State<UserDashboard> {
         );
       }
     } catch (e) {
-      Navigator.of(context).pop(); // Close loading dialog
+      closeLoadingDialog();
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error cancelling booking: $e', style: const TextStyle(color: Colors.black)),
@@ -772,6 +785,7 @@ class _UserDashboardState extends State<UserDashboard> {
     }
 
     // Show loading indicator while fetching schedules
+    bool dialogOpen = true;
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -782,6 +796,13 @@ class _UserDashboardState extends State<UserDashboard> {
       ),
     );
 
+    void closeLoadingDialog() {
+      if (dialogOpen && mounted) {
+        Navigator.of(context).pop();
+      }
+      dialogOpen = false;
+    }
+
     try {
       // Fetch available schedules for this class
       final schedulesResult = await ApiService.getClassSchedules(
@@ -791,7 +812,8 @@ class _UserDashboardState extends State<UserDashboard> {
         _accessToken!,
       );
 
-      Navigator.of(context).pop(); // Close loading dialog
+      closeLoadingDialog();
+      if (!mounted) return;
 
       if (!schedulesResult['success']) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -950,6 +972,7 @@ class _UserDashboardState extends State<UserDashboard> {
       );
 
       if (selectedSchedule == null) return;
+      if (!mounted) return;
 
       // Check if selected schedule has available slots
       if (selectedSchedule.availableSlots == 0) {
@@ -1032,8 +1055,10 @@ class _UserDashboardState extends State<UserDashboard> {
       );
 
       if (shouldBook != true) return;
+      if (!mounted) return;
 
       // Show loading indicator
+      dialogOpen = true;
       showDialog(
         context: context,
         barrierDismissible: false,
@@ -1058,12 +1083,14 @@ class _UserDashboardState extends State<UserDashboard> {
 
       final result = await ApiService.createBooking(bookingRequest, _accessToken!);
 
-      Navigator.of(context).pop(); // Close loading dialog
+      closeLoadingDialog();
+      if (!mounted) return;
 
       if (result['success']) {
         // Reload bookings to get the booking ID
         await _loadUserBookings();
-        
+        if (!mounted) return;
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
@@ -1096,7 +1123,8 @@ class _UserDashboardState extends State<UserDashboard> {
         }
       }
     } catch (e) {
-      Navigator.of(context).pop(); // Close loading dialog
+      closeLoadingDialog();
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error booking class: $e', style: const TextStyle(color: Colors.black)),
@@ -1543,9 +1571,13 @@ class _UserDashboardState extends State<UserDashboard> {
       ),
     );
 
+    notesController.dispose();
+
     if (result == null) return;
+    if (!mounted) return;
 
     // Show loading indicator
+    bool dialogOpen = true;
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -1555,6 +1587,13 @@ class _UserDashboardState extends State<UserDashboard> {
         ),
       ),
     );
+
+    void closeLoadingDialog() {
+      if (dialogOpen && mounted) {
+        Navigator.of(context).pop();
+      }
+      dialogOpen = false;
+    }
 
     try {
       final updateRequest = UpdateBookingRequest(
@@ -1568,11 +1607,13 @@ class _UserDashboardState extends State<UserDashboard> {
         _accessToken!,
       );
 
-      Navigator.of(context).pop(); // Close loading dialog
+      closeLoadingDialog();
+      if (!mounted) return;
 
       if (updateResult['success']) {
         // Reload bookings to get updated list
         await _loadUserBookings();
+        if (!mounted) return;
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -1594,7 +1635,8 @@ class _UserDashboardState extends State<UserDashboard> {
         );
       }
     } catch (e) {
-      Navigator.of(context).pop(); // Close loading dialog
+      closeLoadingDialog();
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error updating booking: $e', style: const TextStyle(color: Colors.black)),

@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -568,23 +569,15 @@ class _SuperAdminSettingsPageState extends State<SuperAdminSettingsPage> {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         // Current Password
-                        TextFormField(
+                        _buildPasswordField(
                           controller: _currentPasswordController,
+                          label: 'Current Password',
                           obscureText: !_showCurrentPassword,
-                          decoration: InputDecoration(
-                            labelText: 'Current Password',
-                            border: OutlineInputBorder(),
-                            suffixIcon: IconButton(
-                              icon: Icon(
-                                _showCurrentPassword ? Icons.visibility : Icons.visibility_off,
-                              ),
-                              onPressed: () {
-                                setState(() {
-                                  _showCurrentPassword = !_showCurrentPassword;
-                                });
-                              },
-                            ),
-                          ),
+                          onToggleObscure: () {
+                            setState(() {
+                              _showCurrentPassword = !_showCurrentPassword;
+                            });
+                          },
                           validator: (value) {
                             if (value == null || value.isEmpty) {
                               return 'Please enter your current password';
@@ -594,23 +587,15 @@ class _SuperAdminSettingsPageState extends State<SuperAdminSettingsPage> {
                         ),
                         const SizedBox(height: 16),
                         // New Password
-                        TextFormField(
+                        _buildPasswordField(
                           controller: _newPasswordController,
+                          label: 'New Password',
                           obscureText: !_showNewPassword,
-                          decoration: InputDecoration(
-                            labelText: 'New Password',
-                            border: OutlineInputBorder(),
-                            suffixIcon: IconButton(
-                              icon: Icon(
-                                _showNewPassword ? Icons.visibility : Icons.visibility_off,
-                              ),
-                              onPressed: () {
-                                setState(() {
-                                  _showNewPassword = !_showNewPassword;
-                                });
-                              },
-                            ),
-                          ),
+                          onToggleObscure: () {
+                            setState(() {
+                              _showNewPassword = !_showNewPassword;
+                            });
+                          },
                           validator: (value) {
                             if (value == null || value.isEmpty) {
                               return 'Please enter a new password';
@@ -623,23 +608,15 @@ class _SuperAdminSettingsPageState extends State<SuperAdminSettingsPage> {
                         ),
                         const SizedBox(height: 16),
                         // Confirm Password
-                        TextFormField(
+                        _buildPasswordField(
                           controller: _confirmPasswordController,
+                          label: 'Confirm New Password',
                           obscureText: !_showConfirmPassword,
-                          decoration: InputDecoration(
-                            labelText: 'Confirm New Password',
-                            border: OutlineInputBorder(),
-                            suffixIcon: IconButton(
-                              icon: Icon(
-                                _showConfirmPassword ? Icons.visibility : Icons.visibility_off,
-                              ),
-                              onPressed: () {
-                                setState(() {
-                                  _showConfirmPassword = !_showConfirmPassword;
-                                });
-                              },
-                            ),
-                          ),
+                          onToggleObscure: () {
+                            setState(() {
+                              _showConfirmPassword = !_showConfirmPassword;
+                            });
+                          },
                           validator: (value) {
                             if (value == null || value.isEmpty) {
                               return 'Please confirm your new password';
@@ -687,6 +664,60 @@ class _SuperAdminSettingsPageState extends State<SuperAdminSettingsPage> {
     );
   }
   
+  Widget _buildPasswordField({
+    required TextEditingController controller,
+    required String label,
+    required bool obscureText,
+    required VoidCallback onToggleObscure,
+    String? Function(String?)? validator,
+  }) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(8),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+        child: TextFormField(
+          controller: controller,
+          obscureText: obscureText,
+          style: const TextStyle(color: Colors.white),
+          validator: validator,
+          decoration: InputDecoration(
+            labelText: label,
+            labelStyle: const TextStyle(color: Colors.white70),
+            filled: true,
+            fillColor: Colors.white.withOpacity(0.15),
+            suffixIcon: IconButton(
+              icon: Icon(
+                obscureText ? Icons.visibility : Icons.visibility_off,
+                color: Colors.white70,
+              ),
+              onPressed: onToggleObscure,
+            ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide.none,
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: Colors.white, width: 2),
+            ),
+            errorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: Colors.redAccent),
+            ),
+            focusedErrorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: Colors.redAccent, width: 2),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildDashboardBackgroundSection(
     String title,
     String dashboardType,

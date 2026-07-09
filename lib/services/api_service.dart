@@ -20,8 +20,8 @@ class ApiService {
       SecureLogger.debug('Testing Backend Connection', data: {'url': ApiConfig.baseUrl});
       
       // Validate production domain
-      if (!SecurityService.validateSSLCertificate('${ApiConfig.baseUrl}/health')) {
-        SecurityService.logSecurityEvent('invalid_ssl_certificate', details: {'url': '${ApiConfig.baseUrl}/health'});
+      if (!SecurityService.isAllowedProductionUrl('${ApiConfig.baseUrl}/health')) {
+        SecurityService.logSecurityEvent('invalid_production_url', details: {'url': '${ApiConfig.baseUrl}/health'});
         return false;
       }
       
@@ -58,14 +58,15 @@ class ApiService {
         url += '?dashboard=$dashboardType';
       }
       final uri = Uri.parse(url);
-      if (!SecurityService.validateSSLCertificate(uri.toString())) {
+      if (!SecurityService.isAllowedProductionUrl(uri.toString())) {
         return {
           'success': false,
           'message': 'Security validation failed',
-          'error': 'Invalid SSL certificate',
+          'error': 'Invalid or non-production URL',
         };
       }
       final headers = SecurityService.getSecurityHeaders(accessToken);
+      headers['X-Device-ID'] = await SecurityService.getDeviceId();
       final response = await http.get(
         uri,
         headers: headers,
@@ -115,16 +116,17 @@ class ApiService {
       
       final url = '${cfg.ApiConfig.baseUrl}$endpoint';
       final uri = Uri.parse(url);
-      if (!SecurityService.validateSSLCertificate(uri.toString())) {
+      if (!SecurityService.isAllowedProductionUrl(uri.toString())) {
         return {
           'success': false,
           'message': 'Security validation failed',
-          'error': 'Invalid SSL certificate',
+          'error': 'Invalid or non-production URL',
         };
       }
 
       final headers = SecurityService.getSecurityHeaders(accessToken);
       headers.remove('Content-Type');
+      headers['X-Device-ID'] = await SecurityService.getDeviceId();
 
       final request = http.MultipartRequest('POST', uri);
       request.headers.addAll(headers);
@@ -187,13 +189,13 @@ class ApiService {
         'url': '${ApiConfig.baseUrl}${ApiConfig.superAdminLogin}'
       });
       
-      // Validate SSL certificate
-      if (!SecurityService.validateSSLCertificate('${ApiConfig.baseUrl}${ApiConfig.superAdminLogin}')) {
-        SecurityService.logSecurityEvent('invalid_ssl_certificate', details: {'url': '${ApiConfig.baseUrl}${ApiConfig.superAdminLogin}'});
+      // Validate production URL
+      if (!SecurityService.isAllowedProductionUrl('${ApiConfig.baseUrl}${ApiConfig.superAdminLogin}')) {
+        SecurityService.logSecurityEvent('invalid_production_url', details: {'url': '${ApiConfig.baseUrl}${ApiConfig.superAdminLogin}'});
         return {
           'success': false,
           'message': 'Security validation failed',
-          'error': 'Invalid SSL certificate',
+          'error': 'Invalid or non-production URL',
         };
       }
       
@@ -269,13 +271,13 @@ class ApiService {
       // Sanitize input
       final sanitizedEmail = SecurityService.sanitizeInput(email);
       
-      // Validate SSL certificate
-      if (!SecurityService.validateSSLCertificate('${ApiConfig.baseUrl}${ApiConfig.adminLogin}')) {
-        SecurityService.logSecurityEvent('invalid_ssl_certificate', details: {'url': '${ApiConfig.baseUrl}${ApiConfig.adminLogin}'});
+      // Validate production URL
+      if (!SecurityService.isAllowedProductionUrl('${ApiConfig.baseUrl}${ApiConfig.adminLogin}')) {
+        SecurityService.logSecurityEvent('invalid_production_url', details: {'url': '${ApiConfig.baseUrl}${ApiConfig.adminLogin}'});
         return {
           'success': false,
           'message': 'Security validation failed',
-          'error': 'Invalid SSL certificate',
+          'error': 'Invalid or non-production URL',
         };
       }
       
@@ -333,13 +335,13 @@ class ApiService {
       // Sanitize input
       final sanitizedEmail = SecurityService.sanitizeInput(email);
       
-      // Validate SSL certificate
-      if (!SecurityService.validateSSLCertificate('${ApiConfig.baseUrl}${ApiConfig.branchLogin}')) {
-        SecurityService.logSecurityEvent('invalid_ssl_certificate', details: {'url': '${ApiConfig.baseUrl}${ApiConfig.branchLogin}'});
+      // Validate production URL
+      if (!SecurityService.isAllowedProductionUrl('${ApiConfig.baseUrl}${ApiConfig.branchLogin}')) {
+        SecurityService.logSecurityEvent('invalid_production_url', details: {'url': '${ApiConfig.baseUrl}${ApiConfig.branchLogin}'});
         return {
           'success': false,
           'message': 'Security validation failed',
-          'error': 'Invalid SSL certificate',
+          'error': 'Invalid or non-production URL',
         };
       }
       
@@ -411,13 +413,13 @@ class ApiService {
         };
       }
       
-      // Validate SSL certificate
-      if (!SecurityService.validateSSLCertificate('${ApiConfig.baseUrl}${ApiConfig.branchLogout}')) {
-        SecurityService.logSecurityEvent('invalid_ssl_certificate', details: {'url': '${ApiConfig.baseUrl}${ApiConfig.branchLogout}'});
+      // Validate production URL
+      if (!SecurityService.isAllowedProductionUrl('${ApiConfig.baseUrl}${ApiConfig.branchLogout}')) {
+        SecurityService.logSecurityEvent('invalid_production_url', details: {'url': '${ApiConfig.baseUrl}${ApiConfig.branchLogout}'});
         return {
           'success': false,
           'message': 'Security validation failed',
-          'error': 'Invalid SSL certificate',
+          'error': 'Invalid or non-production URL',
         };
       }
       
@@ -481,13 +483,13 @@ class ApiService {
       // Sanitize input
       final sanitizedEmail = SecurityService.sanitizeInput(email);
       
-      // Validate SSL certificate
-      if (!SecurityService.validateSSLCertificate('${ApiConfig.baseUrl}${ApiConfig.branchForgotPassword}')) {
-        SecurityService.logSecurityEvent('invalid_ssl_certificate', details: {'url': '${ApiConfig.baseUrl}${ApiConfig.branchForgotPassword}'});
+      // Validate production URL
+      if (!SecurityService.isAllowedProductionUrl('${ApiConfig.baseUrl}${ApiConfig.branchForgotPassword}')) {
+        SecurityService.logSecurityEvent('invalid_production_url', details: {'url': '${ApiConfig.baseUrl}${ApiConfig.branchForgotPassword}'});
         return {
           'success': false,
           'message': 'Security validation failed',
-          'error': 'Invalid SSL certificate',
+          'error': 'Invalid or non-production URL',
         };
       }
       
@@ -545,13 +547,13 @@ class ApiService {
       final sanitizedEmail = SecurityService.sanitizeInput(email);
       final sanitizedOtp = SecurityService.sanitizeInput(otp);
       
-      // Validate SSL certificate
-      if (!SecurityService.validateSSLCertificate('${ApiConfig.baseUrl}${ApiConfig.branchResetPassword}')) {
-        SecurityService.logSecurityEvent('invalid_ssl_certificate', details: {'url': '${ApiConfig.baseUrl}${ApiConfig.branchResetPassword}'});
+      // Validate production URL
+      if (!SecurityService.isAllowedProductionUrl('${ApiConfig.baseUrl}${ApiConfig.branchResetPassword}')) {
+        SecurityService.logSecurityEvent('invalid_production_url', details: {'url': '${ApiConfig.baseUrl}${ApiConfig.branchResetPassword}'});
         return {
           'success': false,
           'message': 'Security validation failed',
-          'error': 'Invalid SSL certificate',
+          'error': 'Invalid or non-production URL',
         };
       }
       
@@ -609,13 +611,13 @@ class ApiService {
       // Sanitize input
       final sanitizedEmail = SecurityService.sanitizeInput(email);
       
-      // Validate SSL certificate
-      if (!SecurityService.validateSSLCertificate('${ApiConfig.baseUrl}${ApiConfig.branchResendOTP}')) {
-        SecurityService.logSecurityEvent('invalid_ssl_certificate', details: {'url': '${ApiConfig.baseUrl}${ApiConfig.branchResendOTP}'});
+      // Validate production URL
+      if (!SecurityService.isAllowedProductionUrl('${ApiConfig.baseUrl}${ApiConfig.branchResendOTP}')) {
+        SecurityService.logSecurityEvent('invalid_production_url', details: {'url': '${ApiConfig.baseUrl}${ApiConfig.branchResendOTP}'});
         return {
           'success': false,
           'message': 'Security validation failed',
-          'error': 'Invalid SSL certificate',
+          'error': 'Invalid or non-production URL',
         };
       }
       
@@ -671,13 +673,13 @@ class ApiService {
         };
       }
       
-      // Validate SSL certificate
-      if (!SecurityService.validateSSLCertificate('${ApiConfig.baseUrl}${ApiConfig.createBranch}')) {
-        SecurityService.logSecurityEvent('invalid_ssl_certificate', details: {'url': '${ApiConfig.baseUrl}${ApiConfig.createBranch}'});
+      // Validate production URL
+      if (!SecurityService.isAllowedProductionUrl('${ApiConfig.baseUrl}${ApiConfig.createBranch}')) {
+        SecurityService.logSecurityEvent('invalid_production_url', details: {'url': '${ApiConfig.baseUrl}${ApiConfig.createBranch}'});
         return {
           'success': false,
           'message': 'Security validation failed',
-          'error': 'Invalid SSL certificate',
+          'error': 'Invalid or non-production URL',
         };
       }
       
@@ -725,13 +727,13 @@ class ApiService {
   // Get Branches for Signup (public endpoint)
   static Future<Map<String, dynamic>> getBranchesForSignup() async {
     try {
-      // Validate SSL certificate
-      if (!SecurityService.validateSSLCertificate('${ApiConfig.baseUrl}/api/auth/branches')) {
-        SecurityService.logSecurityEvent('invalid_ssl_certificate', details: {'url': '${ApiConfig.baseUrl}/api/auth/branches'});
+      // Validate production URL
+      if (!SecurityService.isAllowedProductionUrl('${ApiConfig.baseUrl}/api/auth/branches')) {
+        SecurityService.logSecurityEvent('invalid_production_url', details: {'url': '${ApiConfig.baseUrl}/api/auth/branches'});
         return {
           'success': false,
           'message': 'Security validation failed',
-          'error': 'Invalid SSL certificate',
+          'error': 'Invalid or non-production URL',
         };
       }
       
@@ -795,13 +797,13 @@ class ApiService {
         };
       }
       
-      // Validate SSL certificate
-      if (!SecurityService.validateSSLCertificate('${ApiConfig.baseUrl}${ApiConfig.getBranches}')) {
-        SecurityService.logSecurityEvent('invalid_ssl_certificate', details: {'url': '${ApiConfig.baseUrl}${ApiConfig.getBranches}'});
+      // Validate production URL
+      if (!SecurityService.isAllowedProductionUrl('${ApiConfig.baseUrl}${ApiConfig.getBranches}')) {
+        SecurityService.logSecurityEvent('invalid_production_url', details: {'url': '${ApiConfig.baseUrl}${ApiConfig.getBranches}'});
         return {
           'success': false,
           'message': 'Security validation failed',
-          'error': 'Invalid SSL certificate',
+          'error': 'Invalid or non-production URL',
         };
       }
       
@@ -867,13 +869,13 @@ class ApiService {
         };
       }
       
-      // Validate SSL certificate
-      if (!SecurityService.validateSSLCertificate('${ApiConfig.baseUrl}${ApiConfig.getBranch}/$branchId')) {
-        SecurityService.logSecurityEvent('invalid_ssl_certificate', details: {'url': '${ApiConfig.baseUrl}${ApiConfig.getBranch}/$branchId'});
+      // Validate production URL
+      if (!SecurityService.isAllowedProductionUrl('${ApiConfig.baseUrl}${ApiConfig.getBranch}/$branchId')) {
+        SecurityService.logSecurityEvent('invalid_production_url', details: {'url': '${ApiConfig.baseUrl}${ApiConfig.getBranch}/$branchId'});
         return {
           'success': false,
           'message': 'Security validation failed',
-          'error': 'Invalid SSL certificate',
+          'error': 'Invalid or non-production URL',
         };
       }
       
@@ -929,13 +931,13 @@ class ApiService {
         };
       }
       
-      // Validate SSL certificate
-      if (!SecurityService.validateSSLCertificate('${ApiConfig.baseUrl}${ApiConfig.updateBranch}/$branchId')) {
-        SecurityService.logSecurityEvent('invalid_ssl_certificate', details: {'url': '${ApiConfig.baseUrl}${ApiConfig.updateBranch}/$branchId'});
+      // Validate production URL
+      if (!SecurityService.isAllowedProductionUrl('${ApiConfig.baseUrl}${ApiConfig.updateBranch}/$branchId')) {
+        SecurityService.logSecurityEvent('invalid_production_url', details: {'url': '${ApiConfig.baseUrl}${ApiConfig.updateBranch}/$branchId'});
         return {
           'success': false,
           'message': 'Security validation failed',
-          'error': 'Invalid SSL certificate',
+          'error': 'Invalid or non-production URL',
         };
       }
       
@@ -1140,13 +1142,13 @@ class ApiService {
         };
       }
       
-      // Validate SSL certificate
-      if (!SecurityService.validateSSLCertificate('${ApiConfig.baseUrl}${ApiConfig.deleteBranch}/$branchId')) {
-        SecurityService.logSecurityEvent('invalid_ssl_certificate', details: {'url': '${ApiConfig.baseUrl}${ApiConfig.deleteBranch}/$branchId'});
+      // Validate production URL
+      if (!SecurityService.isAllowedProductionUrl('${ApiConfig.baseUrl}${ApiConfig.deleteBranch}/$branchId')) {
+        SecurityService.logSecurityEvent('invalid_production_url', details: {'url': '${ApiConfig.baseUrl}${ApiConfig.deleteBranch}/$branchId'});
         return {
           'success': false,
           'message': 'Security validation failed',
-          'error': 'Invalid SSL certificate',
+          'error': 'Invalid or non-production URL',
         };
       }
       
@@ -1204,14 +1206,14 @@ class ApiService {
         };
       }
       
-      // Validate SSL certificate
+      // Validate production URL
       final url = '${ApiConfig.baseUrl}/api/branches/$branchId/team-members';
-      if (!SecurityService.validateSSLCertificate(url)) {
-        SecurityService.logSecurityEvent('invalid_ssl_certificate', details: {'url': url});
+      if (!SecurityService.isAllowedProductionUrl(url)) {
+        SecurityService.logSecurityEvent('invalid_production_url', details: {'url': url});
         return {
           'success': false,
           'message': 'Security validation failed',
-          'error': 'Invalid SSL certificate',
+          'error': 'Invalid or non-production URL',
         };
       }
       
@@ -1281,14 +1283,14 @@ class ApiService {
         };
       }
       
-      // Validate SSL certificate
+      // Validate production URL
       final url = '${ApiConfig.baseUrl}/api/branches/$branchId/team-members/$teamMemberId';
-      if (!SecurityService.validateSSLCertificate(url)) {
-        SecurityService.logSecurityEvent('invalid_ssl_certificate', details: {'url': url});
+      if (!SecurityService.isAllowedProductionUrl(url)) {
+        SecurityService.logSecurityEvent('invalid_production_url', details: {'url': url});
         return {
           'success': false,
           'message': 'Security validation failed',
-          'error': 'Invalid SSL certificate',
+          'error': 'Invalid or non-production URL',
         };
       }
       
@@ -1358,14 +1360,14 @@ class ApiService {
         };
       }
       
-      // Validate SSL certificate
+      // Validate production URL
       final url = '${ApiConfig.baseUrl}/api/branches/$branchId/team-members/$teamMemberId';
-      if (!SecurityService.validateSSLCertificate(url)) {
-        SecurityService.logSecurityEvent('invalid_ssl_certificate', details: {'url': url});
+      if (!SecurityService.isAllowedProductionUrl(url)) {
+        SecurityService.logSecurityEvent('invalid_production_url', details: {'url': url});
         return {
           'success': false,
           'message': 'Security validation failed',
-          'error': 'Invalid SSL certificate',
+          'error': 'Invalid or non-production URL',
         };
       }
       
@@ -1427,13 +1429,13 @@ class ApiService {
         };
       }
       
-      // Validate SSL certificate
-      if (!SecurityService.validateSSLCertificate('${ApiConfig.baseUrl}${ApiConfig.createStandaloneClass}')) {
-        SecurityService.logSecurityEvent('invalid_ssl_certificate', details: {'url': '${ApiConfig.baseUrl}${ApiConfig.createStandaloneClass}'});
+      // Validate production URL
+      if (!SecurityService.isAllowedProductionUrl('${ApiConfig.baseUrl}${ApiConfig.createStandaloneClass}')) {
+        SecurityService.logSecurityEvent('invalid_production_url', details: {'url': '${ApiConfig.baseUrl}${ApiConfig.createStandaloneClass}'});
         return {
           'success': false,
           'message': 'Security validation failed',
-          'error': 'Invalid SSL certificate',
+          'error': 'Invalid or non-production URL',
         };
       }
       
@@ -1609,13 +1611,13 @@ class ApiService {
         };
       }
       
-      // Validate SSL certificate
-      if (!SecurityService.validateSSLCertificate('${ApiConfig.baseUrl}${ApiConfig.getStandaloneClasses}')) {
-        SecurityService.logSecurityEvent('invalid_ssl_certificate', details: {'url': '${ApiConfig.baseUrl}${ApiConfig.getStandaloneClasses}'});
+      // Validate production URL
+      if (!SecurityService.isAllowedProductionUrl('${ApiConfig.baseUrl}${ApiConfig.getStandaloneClasses}')) {
+        SecurityService.logSecurityEvent('invalid_production_url', details: {'url': '${ApiConfig.baseUrl}${ApiConfig.getStandaloneClasses}'});
         return {
           'success': false,
           'message': 'Security validation failed',
-          'error': 'Invalid SSL certificate',
+          'error': 'Invalid or non-production URL',
         };
       }
       
@@ -1729,13 +1731,13 @@ class ApiService {
         };
       }
       
-      // Validate SSL certificate
-      if (!SecurityService.validateSSLCertificate('${ApiConfig.baseUrl}${ApiConfig.getStandaloneClass}/$classId')) {
-        SecurityService.logSecurityEvent('invalid_ssl_certificate', details: {'url': '${ApiConfig.baseUrl}${ApiConfig.getStandaloneClass}/$classId'});
+      // Validate production URL
+      if (!SecurityService.isAllowedProductionUrl('${ApiConfig.baseUrl}${ApiConfig.getStandaloneClass}/$classId')) {
+        SecurityService.logSecurityEvent('invalid_production_url', details: {'url': '${ApiConfig.baseUrl}${ApiConfig.getStandaloneClass}/$classId'});
         return {
           'success': false,
           'message': 'Security validation failed',
-          'error': 'Invalid SSL certificate',
+          'error': 'Invalid or non-production URL',
         };
       }
       
@@ -1790,13 +1792,13 @@ class ApiService {
         };
       }
       
-      // Validate SSL certificate
-      if (!SecurityService.validateSSLCertificate('${ApiConfig.baseUrl}${ApiConfig.updateStandaloneClass}/$classId')) {
-        SecurityService.logSecurityEvent('invalid_ssl_certificate', details: {'url': '${ApiConfig.baseUrl}${ApiConfig.updateStandaloneClass}/$classId'});
+      // Validate production URL
+      if (!SecurityService.isAllowedProductionUrl('${ApiConfig.baseUrl}${ApiConfig.updateStandaloneClass}/$classId')) {
+        SecurityService.logSecurityEvent('invalid_production_url', details: {'url': '${ApiConfig.baseUrl}${ApiConfig.updateStandaloneClass}/$classId'});
         return {
           'success': false,
           'message': 'Security validation failed',
-          'error': 'Invalid SSL certificate',
+          'error': 'Invalid or non-production URL',
         };
       }
       
@@ -1973,13 +1975,13 @@ class ApiService {
         };
       }
       
-      // Validate SSL certificate
-      if (!SecurityService.validateSSLCertificate('${ApiConfig.baseUrl}${ApiConfig.deleteStandaloneClass}/$classId')) {
-        SecurityService.logSecurityEvent('invalid_ssl_certificate', details: {'url': '${ApiConfig.baseUrl}${ApiConfig.deleteStandaloneClass}/$classId'});
+      // Validate production URL
+      if (!SecurityService.isAllowedProductionUrl('${ApiConfig.baseUrl}${ApiConfig.deleteStandaloneClass}/$classId')) {
+        SecurityService.logSecurityEvent('invalid_production_url', details: {'url': '${ApiConfig.baseUrl}${ApiConfig.deleteStandaloneClass}/$classId'});
         return {
           'success': false,
           'message': 'Security validation failed',
-          'error': 'Invalid SSL certificate',
+          'error': 'Invalid or non-production URL',
         };
       }
       
@@ -2029,13 +2031,13 @@ class ApiService {
         };
       }
       
-      // Validate SSL certificate
-      if (!SecurityService.validateSSLCertificate('${ApiConfig.baseUrl}${ApiConfig.superAdminLogout}')) {
-        SecurityService.logSecurityEvent('invalid_ssl_certificate', details: {'url': '${ApiConfig.baseUrl}${ApiConfig.superAdminLogout}'});
+      // Validate production URL
+      if (!SecurityService.isAllowedProductionUrl('${ApiConfig.baseUrl}${ApiConfig.superAdminLogout}')) {
+        SecurityService.logSecurityEvent('invalid_production_url', details: {'url': '${ApiConfig.baseUrl}${ApiConfig.superAdminLogout}'});
         return {
           'success': false,
           'message': 'Security validation failed',
-          'error': 'Invalid SSL certificate',
+          'error': 'Invalid or non-production URL',
         };
       }
       
@@ -2160,13 +2162,13 @@ class ApiService {
         };
       }
       
-      // Validate SSL certificate
-      if (!SecurityService.validateSSLCertificate('${ApiConfig.baseUrl}/superadmin/users')) {
-        SecurityService.logSecurityEvent('invalid_ssl_certificate', details: {'url': '${ApiConfig.baseUrl}/superadmin/users'});
+      // Validate production URL
+      if (!SecurityService.isAllowedProductionUrl('${ApiConfig.baseUrl}/superadmin/users')) {
+        SecurityService.logSecurityEvent('invalid_production_url', details: {'url': '${ApiConfig.baseUrl}/superadmin/users'});
         return {
           'success': false,
           'message': 'Security validation failed',
-          'error': 'Invalid SSL certificate',
+          'error': 'Invalid or non-production URL',
         };
       }
       
@@ -2256,13 +2258,13 @@ class ApiService {
         };
       }
       
-      // Validate SSL certificate
-      if (!SecurityService.validateSSLCertificate('${ApiConfig.baseUrl}/api/branches/with-users')) {
-        SecurityService.logSecurityEvent('invalid_ssl_certificate', details: {'url': '${ApiConfig.baseUrl}/api/branches/with-users'});
+      // Validate production URL
+      if (!SecurityService.isAllowedProductionUrl('${ApiConfig.baseUrl}/api/branches/with-users')) {
+        SecurityService.logSecurityEvent('invalid_production_url', details: {'url': '${ApiConfig.baseUrl}/api/branches/with-users'});
         return {
           'success': false,
           'message': 'Security validation failed',
-          'error': 'Invalid SSL certificate',
+          'error': 'Invalid or non-production URL',
         };
       }
       
@@ -2336,13 +2338,13 @@ class ApiService {
         };
       }
       
-      // Validate SSL certificate
-      if (!SecurityService.validateSSLCertificate('${ApiConfig.baseUrl}/api/admin/bookings/classes-with-users')) {
-        SecurityService.logSecurityEvent('invalid_ssl_certificate', details: {'url': '${ApiConfig.baseUrl}/api/admin/bookings/classes-with-users'});
+      // Validate production URL
+      if (!SecurityService.isAllowedProductionUrl('${ApiConfig.baseUrl}/api/admin/bookings/classes-with-users')) {
+        SecurityService.logSecurityEvent('invalid_production_url', details: {'url': '${ApiConfig.baseUrl}/api/admin/bookings/classes-with-users'});
         return {
           'success': false,
           'message': 'Security validation failed',
-          'error': 'Invalid SSL certificate',
+          'error': 'Invalid or non-production URL',
         };
       }
       
@@ -2412,13 +2414,13 @@ class ApiService {
         };
       }
       
-      // Validate SSL certificate
-      if (!SecurityService.validateSSLCertificate('${ApiConfig.baseUrl}${ApiConfig.renewClass}/$classId/renew')) {
-        SecurityService.logSecurityEvent('invalid_ssl_certificate', details: {'url': '${ApiConfig.baseUrl}${ApiConfig.renewClass}/$classId/renew'});
+      // Validate production URL
+      if (!SecurityService.isAllowedProductionUrl('${ApiConfig.baseUrl}${ApiConfig.renewClass}/$classId/renew')) {
+        SecurityService.logSecurityEvent('invalid_production_url', details: {'url': '${ApiConfig.baseUrl}${ApiConfig.renewClass}/$classId/renew'});
         return {
           'success': false,
           'message': 'Security validation failed',
-          'error': 'Invalid SSL certificate',
+          'error': 'Invalid or non-production URL',
         };
       }
       
@@ -2472,13 +2474,13 @@ class ApiService {
         };
       }
       
-      // Validate SSL certificate
-      if (!SecurityService.validateSSLCertificate('${ApiConfig.baseUrl}${ApiConfig.getExpiringClasses}')) {
-        SecurityService.logSecurityEvent('invalid_ssl_certificate', details: {'url': '${ApiConfig.baseUrl}${ApiConfig.getExpiringClasses}'});
+      // Validate production URL
+      if (!SecurityService.isAllowedProductionUrl('${ApiConfig.baseUrl}${ApiConfig.getExpiringClasses}')) {
+        SecurityService.logSecurityEvent('invalid_production_url', details: {'url': '${ApiConfig.baseUrl}${ApiConfig.getExpiringClasses}'});
         return {
           'success': false,
           'message': 'Security validation failed',
-          'error': 'Invalid SSL certificate',
+          'error': 'Invalid or non-production URL',
         };
       }
       
@@ -2537,13 +2539,13 @@ class ApiService {
         };
       }
       
-      // Validate SSL certificate
-      if (!SecurityService.validateSSLCertificate('${ApiConfig.baseUrl}${ApiConfig.getBranchClasses}')) {
-        SecurityService.logSecurityEvent('invalid_ssl_certificate', details: {'url': '${ApiConfig.baseUrl}${ApiConfig.getBranchClasses}'});
+      // Validate production URL
+      if (!SecurityService.isAllowedProductionUrl('${ApiConfig.baseUrl}${ApiConfig.getBranchClasses}')) {
+        SecurityService.logSecurityEvent('invalid_production_url', details: {'url': '${ApiConfig.baseUrl}${ApiConfig.getBranchClasses}'});
         return {
           'success': false,
           'message': 'Security validation failed',
-          'error': 'Invalid SSL certificate',
+          'error': 'Invalid or non-production URL',
         };
       }
       
@@ -2601,13 +2603,13 @@ class ApiService {
         };
       }
       
-      // Validate SSL certificate
-      if (!SecurityService.validateSSLCertificate('${ApiConfig.baseUrl}/api/auth/branch-classes')) {
-        SecurityService.logSecurityEvent('invalid_ssl_certificate', details: {'url': '${ApiConfig.baseUrl}/api/auth/branch-classes'});
+      // Validate production URL
+      if (!SecurityService.isAllowedProductionUrl('${ApiConfig.baseUrl}/api/auth/branch-classes')) {
+        SecurityService.logSecurityEvent('invalid_production_url', details: {'url': '${ApiConfig.baseUrl}/api/auth/branch-classes'});
         return {
           'success': false,
           'message': 'Security validation failed',
-          'error': 'Invalid SSL certificate',
+          'error': 'Invalid or non-production URL',
         };
       }
       
@@ -2663,13 +2665,13 @@ class ApiService {
         };
       }
       
-      // Validate SSL certificate
-      if (!SecurityService.validateSSLCertificate('${ApiConfig.baseUrl}/api/branches/$branchId/classes')) {
-        SecurityService.logSecurityEvent('invalid_ssl_certificate', details: {'url': '${ApiConfig.baseUrl}/api/branches/$branchId/classes'});
+      // Validate production URL
+      if (!SecurityService.isAllowedProductionUrl('${ApiConfig.baseUrl}/api/branches/$branchId/classes')) {
+        SecurityService.logSecurityEvent('invalid_production_url', details: {'url': '${ApiConfig.baseUrl}/api/branches/$branchId/classes'});
         return {
           'success': false,
           'message': 'Security validation failed',
-          'error': 'Invalid SSL certificate',
+          'error': 'Invalid or non-production URL',
         };
       }
       
@@ -2728,13 +2730,13 @@ class ApiService {
         };
       }
       
-      // Validate SSL certificate
-      if (!SecurityService.validateSSLCertificate('${ApiConfig.baseUrl}${ApiConfig.getBranchClass}/$classId')) {
-        SecurityService.logSecurityEvent('invalid_ssl_certificate', details: {'url': '${ApiConfig.baseUrl}${ApiConfig.getBranchClass}/$classId'});
+      // Validate production URL
+      if (!SecurityService.isAllowedProductionUrl('${ApiConfig.baseUrl}${ApiConfig.getBranchClass}/$classId')) {
+        SecurityService.logSecurityEvent('invalid_production_url', details: {'url': '${ApiConfig.baseUrl}${ApiConfig.getBranchClass}/$classId'});
         return {
           'success': false,
           'message': 'Security validation failed',
-          'error': 'Invalid SSL certificate',
+          'error': 'Invalid or non-production URL',
         };
       }
       
@@ -2795,13 +2797,13 @@ class ApiService {
       // Super admin endpoint: /api/branches/:branchId/classes/:classId
       final url = '${ApiConfig.baseUrl}/api/branches/$branchId/classes/$classId';
       
-      // Validate SSL certificate
-      if (!SecurityService.validateSSLCertificate(url)) {
-        SecurityService.logSecurityEvent('invalid_ssl_certificate', details: {'url': url});
+      // Validate production URL
+      if (!SecurityService.isAllowedProductionUrl(url)) {
+        SecurityService.logSecurityEvent('invalid_production_url', details: {'url': url});
         return {
           'success': false,
           'message': 'Security validation failed',
-          'error': 'Invalid SSL certificate',
+          'error': 'Invalid or non-production URL',
         };
       }
       
@@ -2855,13 +2857,13 @@ class ApiService {
         };
       }
       
-      // Validate SSL certificate
-      if (!SecurityService.validateSSLCertificate('${ApiConfig.baseUrl}${ApiConfig.updateBranchClassSchedule}/$classId/schedule')) {
-        SecurityService.logSecurityEvent('invalid_ssl_certificate', details: {'url': '${ApiConfig.baseUrl}${ApiConfig.updateBranchClassSchedule}/$classId/schedule'});
+      // Validate production URL
+      if (!SecurityService.isAllowedProductionUrl('${ApiConfig.baseUrl}${ApiConfig.updateBranchClassSchedule}/$classId/schedule')) {
+        SecurityService.logSecurityEvent('invalid_production_url', details: {'url': '${ApiConfig.baseUrl}${ApiConfig.updateBranchClassSchedule}/$classId/schedule'});
         return {
           'success': false,
           'message': 'Security validation failed',
-          'error': 'Invalid SSL certificate',
+          'error': 'Invalid or non-production URL',
         };
       }
       
@@ -2940,13 +2942,13 @@ class ApiService {
         };
       }
       
-      // Validate SSL certificate
-      if (!SecurityService.validateSSLCertificate('${ApiConfig.baseUrl}${ApiConfig.updateBranchClassInstructor}/$classId/instructor')) {
-        SecurityService.logSecurityEvent('invalid_ssl_certificate', details: {'url': '${ApiConfig.baseUrl}${ApiConfig.updateBranchClassInstructor}/$classId/instructor'});
+      // Validate production URL
+      if (!SecurityService.isAllowedProductionUrl('${ApiConfig.baseUrl}${ApiConfig.updateBranchClassInstructor}/$classId/instructor')) {
+        SecurityService.logSecurityEvent('invalid_production_url', details: {'url': '${ApiConfig.baseUrl}${ApiConfig.updateBranchClassInstructor}/$classId/instructor'});
         return {
           'success': false,
           'message': 'Security validation failed',
-          'error': 'Invalid SSL certificate',
+          'error': 'Invalid or non-production URL',
         };
       }
       
@@ -3028,15 +3030,15 @@ class ApiService {
         };
       }
       
-      // Validate SSL certificate
+      // Validate production URL
       // Backend route: /api/branch/classes/:branchId/:classId
       final url = '${ApiConfig.baseUrl}${ApiConfig.updateBranchClass}/$branchId/$classId';
-      if (!SecurityService.validateSSLCertificate(url)) {
-        SecurityService.logSecurityEvent('invalid_ssl_certificate', details: {'url': url});
+      if (!SecurityService.isAllowedProductionUrl(url)) {
+        SecurityService.logSecurityEvent('invalid_production_url', details: {'url': url});
         return {
           'success': false,
           'message': 'Security validation failed',
-          'error': 'Invalid SSL certificate',
+          'error': 'Invalid or non-production URL',
         };
       }
       
@@ -3117,15 +3119,15 @@ class ApiService {
         };
       }
       
-      // Validate SSL certificate
+      // Validate production URL
       // Backend route: /api/branch/classes/:branchId/:classId
       final url = '${ApiConfig.baseUrl}${ApiConfig.updateBranchClass}/$branchId/$classId';
-      if (!SecurityService.validateSSLCertificate(url)) {
-        SecurityService.logSecurityEvent('invalid_ssl_certificate', details: {'url': url});
+      if (!SecurityService.isAllowedProductionUrl(url)) {
+        SecurityService.logSecurityEvent('invalid_production_url', details: {'url': url});
         return {
           'success': false,
           'message': 'Security validation failed',
-          'error': 'Invalid SSL certificate',
+          'error': 'Invalid or non-production URL',
         };
       }
       
@@ -3206,14 +3208,14 @@ class ApiService {
         };
       }
 
-      // Validate SSL certificate
+      // Validate production URL
       final url = '${ApiConfig.baseUrl}${ApiConfig.bulkUpdateClassTime}';
-      if (!SecurityService.validateSSLCertificate(url)) {
-        SecurityService.logSecurityEvent('invalid_ssl_certificate', details: {'url': url});
+      if (!SecurityService.isAllowedProductionUrl(url)) {
+        SecurityService.logSecurityEvent('invalid_production_url', details: {'url': url});
         return {
           'success': false,
           'message': 'Security validation failed',
-          'error': 'Invalid SSL certificate',
+          'error': 'Invalid or non-production URL',
         };
       }
 
@@ -3289,14 +3291,14 @@ class ApiService {
         };
       }
       
-      // Validate SSL certificate
+      // Validate production URL
       final url = '${ApiConfig.baseUrl}/api/standalone-classes/$classId/toggle-visibility';
-      if (!SecurityService.validateSSLCertificate(url)) {
-        SecurityService.logSecurityEvent('invalid_ssl_certificate', details: {'url': url});
+      if (!SecurityService.isAllowedProductionUrl(url)) {
+        SecurityService.logSecurityEvent('invalid_production_url', details: {'url': url});
         return {
           'success': false,
           'message': 'Security validation failed',
-          'error': 'Invalid SSL certificate',
+          'error': 'Invalid or non-production URL',
         };
       }
       
@@ -3349,14 +3351,14 @@ class ApiService {
         };
       }
       
-      // Validate SSL certificate
+      // Validate production URL
       final url = '${ApiConfig.baseUrl}/api/branch/classes/$classId/toggle-visibility';
-      if (!SecurityService.validateSSLCertificate(url)) {
-        SecurityService.logSecurityEvent('invalid_ssl_certificate', details: {'url': url});
+      if (!SecurityService.isAllowedProductionUrl(url)) {
+        SecurityService.logSecurityEvent('invalid_production_url', details: {'url': url});
         return {
           'success': false,
           'message': 'Security validation failed',
-          'error': 'Invalid SSL certificate',
+          'error': 'Invalid or non-production URL',
         };
       }
       
@@ -3418,12 +3420,12 @@ class ApiService {
       if (kDebugMode) print('Branch ID: $branchId');
       if (kDebugMode) print('Class ID: $classId');
       
-      if (!SecurityService.validateSSLCertificate(url)) {
-        SecurityService.logSecurityEvent('invalid_ssl_certificate', details: {'url': url});
+      if (!SecurityService.isAllowedProductionUrl(url)) {
+        SecurityService.logSecurityEvent('invalid_production_url', details: {'url': url});
         return {
           'success': false,
           'message': 'Security validation failed',
-          'error': 'Invalid SSL certificate',
+          'error': 'Invalid or non-production URL',
         };
       }
       
@@ -3496,13 +3498,13 @@ class ApiService {
       final uri = Uri.parse('${ApiConfig.baseUrl}${ApiConfig.getClassSchedules}/$classId/schedules')
           .replace(queryParameters: queryParams);
       
-      // Validate SSL certificate
-      if (!SecurityService.validateSSLCertificate(uri.toString())) {
-        SecurityService.logSecurityEvent('invalid_ssl_certificate', details: {'url': uri.toString()});
+      // Validate production URL
+      if (!SecurityService.isAllowedProductionUrl(uri.toString())) {
+        SecurityService.logSecurityEvent('invalid_production_url', details: {'url': uri.toString()});
         return {
           'success': false,
           'message': 'Security validation failed',
-          'error': 'Invalid SSL certificate',
+          'error': 'Invalid or non-production URL',
         };
       }
       
@@ -3555,13 +3557,13 @@ class ApiService {
         };
       }
       
-      // Validate SSL certificate
-      if (!SecurityService.validateSSLCertificate('${ApiConfig.baseUrl}${ApiConfig.createBooking}')) {
-        SecurityService.logSecurityEvent('invalid_ssl_certificate', details: {'url': '${ApiConfig.baseUrl}${ApiConfig.createBooking}'});
+      // Validate production URL
+      if (!SecurityService.isAllowedProductionUrl('${ApiConfig.baseUrl}${ApiConfig.createBooking}')) {
+        SecurityService.logSecurityEvent('invalid_production_url', details: {'url': '${ApiConfig.baseUrl}${ApiConfig.createBooking}'});
         return {
           'success': false,
           'message': 'Security validation failed',
-          'error': 'Invalid SSL certificate',
+          'error': 'Invalid or non-production URL',
         };
       }
       
@@ -3615,13 +3617,13 @@ class ApiService {
         };
       }
       
-      // Validate SSL certificate
-      if (!SecurityService.validateSSLCertificate('${ApiConfig.baseUrl}${ApiConfig.getBooking}/$bookingId')) {
-        SecurityService.logSecurityEvent('invalid_ssl_certificate', details: {'url': '${ApiConfig.baseUrl}${ApiConfig.getBooking}/$bookingId'});
+      // Validate production URL
+      if (!SecurityService.isAllowedProductionUrl('${ApiConfig.baseUrl}${ApiConfig.getBooking}/$bookingId')) {
+        SecurityService.logSecurityEvent('invalid_production_url', details: {'url': '${ApiConfig.baseUrl}${ApiConfig.getBooking}/$bookingId'});
         return {
           'success': false,
           'message': 'Security validation failed',
-          'error': 'Invalid SSL certificate',
+          'error': 'Invalid or non-production URL',
         };
       }
       
@@ -3678,13 +3680,13 @@ class ApiService {
         };
       }
       
-      // Validate SSL certificate
-      if (!SecurityService.validateSSLCertificate('${ApiConfig.baseUrl}/api/bookings')) {
-        SecurityService.logSecurityEvent('invalid_ssl_certificate', details: {'url': '${ApiConfig.baseUrl}/api/bookings'});
+      // Validate production URL
+      if (!SecurityService.isAllowedProductionUrl('${ApiConfig.baseUrl}/api/bookings')) {
+        SecurityService.logSecurityEvent('invalid_production_url', details: {'url': '${ApiConfig.baseUrl}/api/bookings'});
         return {
           'success': false,
           'message': 'Security validation failed',
-          'error': 'Invalid SSL certificate',
+          'error': 'Invalid or non-production URL',
         };
       }
       
@@ -3794,13 +3796,13 @@ class ApiService {
         normalizedNotes = rawNotes;
       }
 
-      // Validate SSL certificate
-      if (!SecurityService.validateSSLCertificate('${ApiConfig.baseUrl}${ApiConfig.updateBooking}/$bookingId')) {
-        SecurityService.logSecurityEvent('invalid_ssl_certificate', details: {'url': '${ApiConfig.baseUrl}${ApiConfig.updateBooking}/$bookingId'});
+      // Validate production URL
+      if (!SecurityService.isAllowedProductionUrl('${ApiConfig.baseUrl}${ApiConfig.updateBooking}/$bookingId')) {
+        SecurityService.logSecurityEvent('invalid_production_url', details: {'url': '${ApiConfig.baseUrl}${ApiConfig.updateBooking}/$bookingId'});
         return {
           'success': false,
           'message': 'Security validation failed',
-          'error': 'Invalid SSL certificate',
+          'error': 'Invalid or non-production URL',
         };
       }
 
@@ -3897,13 +3899,13 @@ class ApiService {
         };
       }
       
-      // Validate SSL certificate
-      if (!SecurityService.validateSSLCertificate('${ApiConfig.baseUrl}/api/branch/users')) {
-        SecurityService.logSecurityEvent('invalid_ssl_certificate', details: {'url': '${ApiConfig.baseUrl}/api/branch/users'});
+      // Validate production URL
+      if (!SecurityService.isAllowedProductionUrl('${ApiConfig.baseUrl}/api/branch/users')) {
+        SecurityService.logSecurityEvent('invalid_production_url', details: {'url': '${ApiConfig.baseUrl}/api/branch/users'});
         return {
           'success': false,
           'message': 'Security validation failed',
-          'error': 'Invalid SSL certificate',
+          'error': 'Invalid or non-production URL',
         };
       }
       
@@ -3970,13 +3972,13 @@ class ApiService {
         };
       }
       
-      // Validate SSL certificate
-      if (!SecurityService.validateSSLCertificate('${ApiConfig.baseUrl}/api/branch/users/stats')) {
-        SecurityService.logSecurityEvent('invalid_ssl_certificate', details: {'url': '${ApiConfig.baseUrl}/api/branch/users/stats'});
+      // Validate production URL
+      if (!SecurityService.isAllowedProductionUrl('${ApiConfig.baseUrl}/api/branch/users/stats')) {
+        SecurityService.logSecurityEvent('invalid_production_url', details: {'url': '${ApiConfig.baseUrl}/api/branch/users/stats'});
         return {
           'success': false,
           'message': 'Security validation failed',
-          'error': 'Invalid SSL certificate',
+          'error': 'Invalid or non-production URL',
         };
       }
       
@@ -4029,13 +4031,13 @@ class ApiService {
         };
       }
       
-      // Validate SSL certificate
-      if (!SecurityService.validateSSLCertificate('${ApiConfig.baseUrl}/api/branch/users/$userId')) {
-        SecurityService.logSecurityEvent('invalid_ssl_certificate', details: {'url': '${ApiConfig.baseUrl}/api/branch/users/$userId'});
+      // Validate production URL
+      if (!SecurityService.isAllowedProductionUrl('${ApiConfig.baseUrl}/api/branch/users/$userId')) {
+        SecurityService.logSecurityEvent('invalid_production_url', details: {'url': '${ApiConfig.baseUrl}/api/branch/users/$userId'});
         return {
           'success': false,
           'message': 'Security validation failed',
-          'error': 'Invalid SSL certificate',
+          'error': 'Invalid or non-production URL',
         };
       }
       
@@ -4094,13 +4096,13 @@ class ApiService {
         };
       }
       
-      // Validate SSL certificate
-      if (!SecurityService.validateSSLCertificate('${ApiConfig.baseUrl}/api/branch/users/$userId/bookings')) {
-        SecurityService.logSecurityEvent('invalid_ssl_certificate', details: {'url': '${ApiConfig.baseUrl}/api/branch/users/$userId/bookings'});
+      // Validate production URL
+      if (!SecurityService.isAllowedProductionUrl('${ApiConfig.baseUrl}/api/branch/users/$userId/bookings')) {
+        SecurityService.logSecurityEvent('invalid_production_url', details: {'url': '${ApiConfig.baseUrl}/api/branch/users/$userId/bookings'});
         return {
           'success': false,
           'message': 'Security validation failed',
-          'error': 'Invalid SSL certificate',
+          'error': 'Invalid or non-production URL',
         };
       }
       
@@ -4173,13 +4175,13 @@ class ApiService {
         };
       }
       
-      // Validate SSL certificate
-      if (!SecurityService.validateSSLCertificate('${ApiConfig.baseUrl}/superadmin/upload-image')) {
-        SecurityService.logSecurityEvent('invalid_ssl_certificate', details: {'url': '${ApiConfig.baseUrl}/superadmin/upload-image'});
+      // Validate production URL
+      if (!SecurityService.isAllowedProductionUrl('${ApiConfig.baseUrl}/superadmin/upload-image')) {
+        SecurityService.logSecurityEvent('invalid_production_url', details: {'url': '${ApiConfig.baseUrl}/superadmin/upload-image'});
         return {
           'success': false,
           'message': 'Security validation failed',
-          'error': 'Invalid SSL certificate',
+          'error': 'Invalid or non-production URL',
         };
       }
       
@@ -4283,13 +4285,13 @@ class ApiService {
         };
       }
       
-      // Validate SSL certificate
-      if (!SecurityService.validateSSLCertificate('${ApiConfig.baseUrl}/api/branches/$branchId/upload-images')) {
-        SecurityService.logSecurityEvent('invalid_ssl_certificate', details: {'url': '${ApiConfig.baseUrl}/api/branches/$branchId/upload-images'});
+      // Validate production URL
+      if (!SecurityService.isAllowedProductionUrl('${ApiConfig.baseUrl}/api/branches/$branchId/upload-images')) {
+        SecurityService.logSecurityEvent('invalid_production_url', details: {'url': '${ApiConfig.baseUrl}/api/branches/$branchId/upload-images'});
         return {
           'success': false,
           'message': 'Security validation failed',
-          'error': 'Invalid SSL certificate',
+          'error': 'Invalid or non-production URL',
         };
       }
       
@@ -4403,13 +4405,13 @@ class ApiService {
         };
       }
       
-      // Validate SSL certificate
-      if (!SecurityService.validateSSLCertificate('${ApiConfig.baseUrl}/api/branches/$branchId/team-members/$teamMemberId/upload-image')) {
-        SecurityService.logSecurityEvent('invalid_ssl_certificate', details: {'url': '${ApiConfig.baseUrl}/api/branches/$branchId/team-members/$teamMemberId/upload-image'});
+      // Validate production URL
+      if (!SecurityService.isAllowedProductionUrl('${ApiConfig.baseUrl}/api/branches/$branchId/team-members/$teamMemberId/upload-image')) {
+        SecurityService.logSecurityEvent('invalid_production_url', details: {'url': '${ApiConfig.baseUrl}/api/branches/$branchId/team-members/$teamMemberId/upload-image'});
         return {
           'success': false,
           'message': 'Security validation failed',
-          'error': 'Invalid SSL certificate',
+          'error': 'Invalid or non-production URL',
         };
       }
       
@@ -4532,13 +4534,13 @@ class ApiService {
         };
       }
 
-      // Validate SSL certificate
-      if (!SecurityService.validateSSLCertificate('${ApiConfig.baseUrl}/api/standalone-classes/$classId/upload-image')) {
-        SecurityService.logSecurityEvent('invalid_ssl_certificate', details: {'url': '${ApiConfig.baseUrl}/api/standalone-classes/$classId/upload-image'});
+      // Validate production URL
+      if (!SecurityService.isAllowedProductionUrl('${ApiConfig.baseUrl}/api/standalone-classes/$classId/upload-image')) {
+        SecurityService.logSecurityEvent('invalid_production_url', details: {'url': '${ApiConfig.baseUrl}/api/standalone-classes/$classId/upload-image'});
         return {
           'success': false,
           'message': 'Security validation failed',
-          'error': 'Invalid SSL certificate',
+          'error': 'Invalid or non-production URL',
         };
       }
 
@@ -4653,13 +4655,13 @@ class ApiService {
         };
       }
 
-      // Validate SSL certificate
-      if (!SecurityService.validateSSLCertificate('${ApiConfig.baseUrl}/api/auth/calculate-bmi')) {
-        SecurityService.logSecurityEvent('invalid_ssl_certificate', details: {'url': '${ApiConfig.baseUrl}/api/auth/calculate-bmi'});
+      // Validate production URL
+      if (!SecurityService.isAllowedProductionUrl('${ApiConfig.baseUrl}/api/auth/calculate-bmi')) {
+        SecurityService.logSecurityEvent('invalid_production_url', details: {'url': '${ApiConfig.baseUrl}/api/auth/calculate-bmi'});
         return {
           'success': false,
           'message': 'Security validation failed',
-          'error': 'Invalid SSL certificate',
+          'error': 'Invalid or non-production URL',
         };
       }
 
@@ -4740,13 +4742,13 @@ class ApiService {
         };
       }
 
-      // Validate SSL certificate
-      if (!SecurityService.validateSSLCertificate('${ApiConfig.baseUrl}/api/bmi')) {
-        SecurityService.logSecurityEvent('invalid_ssl_certificate', details: {'url': '${ApiConfig.baseUrl}/api/bmi'});
+      // Validate production URL
+      if (!SecurityService.isAllowedProductionUrl('${ApiConfig.baseUrl}/api/bmi')) {
+        SecurityService.logSecurityEvent('invalid_production_url', details: {'url': '${ApiConfig.baseUrl}/api/bmi'});
         return {
           'success': false,
           'message': 'Security validation failed',
-          'error': 'Invalid SSL certificate',
+          'error': 'Invalid or non-production URL',
         };
       }
 
@@ -4809,13 +4811,13 @@ class ApiService {
         };
       }
 
-      // Validate SSL certificate
-      if (!SecurityService.validateSSLCertificate('${ApiConfig.baseUrl}/api/aut/bmi')) {
-        SecurityService.logSecurityEvent('invalid_ssl_certificate', details: {'url': '${ApiConfig.baseUrl}/api/authbmi'});
+      // Validate production URL
+      if (!SecurityService.isAllowedProductionUrl('${ApiConfig.baseUrl}/api/aut/bmi')) {
+        SecurityService.logSecurityEvent('invalid_production_url', details: {'url': '${ApiConfig.baseUrl}/api/authbmi'});
         return {
           'success': false,
           'message': 'Security validation failed',
-          'error': 'Invalid SSL certificate',
+          'error': 'Invalid or non-production URL',
         };
       }
 
@@ -4871,13 +4873,13 @@ class ApiService {
         };
       }
 
-      // Validate SSL certificate
-      if (!SecurityService.validateSSLCertificate('${ApiConfig.baseUrl}/api/auth/profile')) {
-        SecurityService.logSecurityEvent('invalid_ssl_certificate', details: {'url': '${ApiConfig.baseUrl}/api/auth/profile'});
+      // Validate production URL
+      if (!SecurityService.isAllowedProductionUrl('${ApiConfig.baseUrl}/api/auth/profile')) {
+        SecurityService.logSecurityEvent('invalid_production_url', details: {'url': '${ApiConfig.baseUrl}/api/auth/profile'});
         return {
           'success': false,
           'message': 'Security validation failed',
-          'error': 'Invalid SSL certificate',
+          'error': 'Invalid or non-production URL',
         };
       }
 
@@ -5094,13 +5096,13 @@ class ApiService {
         };
       }
 
-      // Validate SSL certificate
-      if (!SecurityService.validateSSLCertificate('${ApiConfig.baseUrl}${ApiConfig.superAdminChangePassword}')) {
-        SecurityService.logSecurityEvent('invalid_ssl_certificate', details: {'url': '${ApiConfig.baseUrl}${ApiConfig.superAdminChangePassword}'});
+      // Validate production URL
+      if (!SecurityService.isAllowedProductionUrl('${ApiConfig.baseUrl}${ApiConfig.superAdminChangePassword}')) {
+        SecurityService.logSecurityEvent('invalid_production_url', details: {'url': '${ApiConfig.baseUrl}${ApiConfig.superAdminChangePassword}'});
         return {
           'success': false,
           'message': 'Security validation failed',
-          'error': 'Invalid SSL certificate',
+          'error': 'Invalid or non-production URL',
         };
       }
 

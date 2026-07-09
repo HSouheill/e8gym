@@ -201,7 +201,7 @@ class _SuperAdminBookingsPageState extends State<SuperAdminBookingsPage> {
                       padding: const EdgeInsets.all(16.0),
                       child: Row(
                         children: [
-                          const Icon(Icons.book_online, color: Colors.white),
+                          const Icon(Icons.book_online, color: Colors.black),
                           const SizedBox(width: 8),
                           Text(
                             'Classes with Bookings (${_totalClasses})',
@@ -217,7 +217,7 @@ class _SuperAdminBookingsPageState extends State<SuperAdminBookingsPage> {
                               height: 20,
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
-                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                valueColor: AlwaysStoppedAnimation<Color>(Colors.black),
                               ),
                             ),
                         ],
@@ -229,7 +229,7 @@ class _SuperAdminBookingsPageState extends State<SuperAdminBookingsPage> {
                       child: _isLoading && _classes.isEmpty
                           ? const Center(
                               child: CircularProgressIndicator(
-                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                valueColor: AlwaysStoppedAnimation<Color>(Colors.black),
                               ),
                             )
                           : _classes.isEmpty
@@ -255,7 +255,7 @@ class _SuperAdminBookingsPageState extends State<SuperAdminBookingsPage> {
                                             padding: EdgeInsets.all(16.0),
                                             child: Center(
                                               child: CircularProgressIndicator(
-                                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                                valueColor: AlwaysStoppedAnimation<Color>(Colors.black),
                                               ),
                                             ),
                                           );

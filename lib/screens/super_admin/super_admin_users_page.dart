@@ -239,10 +239,10 @@ class _SuperAdminUsersPageState extends State<SuperAdminUsersPage> {
                   onChanged: _onSearchChanged,
                   decoration: InputDecoration(
                     hintText: 'Search branches...',
-                    prefixIcon: const Icon(Icons.search, color: Colors.white),
+                    prefixIcon: const Icon(Icons.search, color: Colors.black54),
                     suffixIcon: _searchQuery.isNotEmpty
                         ? IconButton(
-                            icon: const Icon(Icons.clear, color: Colors.white),
+                            icon: const Icon(Icons.clear, color: Colors.black54),
                             onPressed: () {
                               _searchController.clear();
                               _onSearchChanged('');
@@ -270,7 +270,7 @@ class _SuperAdminUsersPageState extends State<SuperAdminUsersPage> {
                         padding: const EdgeInsets.all(16.0),
                         child: Row(
                           children: [
-                            const Icon(Icons.business, color: Colors.white),
+                            const Icon(Icons.business, color: Colors.black),
                             const SizedBox(width: 8),
                             Text(
                               'Branches (${_totalBranches})',
@@ -286,7 +286,7 @@ class _SuperAdminUsersPageState extends State<SuperAdminUsersPage> {
                                 height: 20,
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2,
-                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.black),
                                 ),
                               ),
                           ],
@@ -298,7 +298,7 @@ class _SuperAdminUsersPageState extends State<SuperAdminUsersPage> {
                         child: _isLoading && _branches.isEmpty
                             ? const Center(
                                 child: CircularProgressIndicator(
-                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.black),
                                 ),
                               )
                             : _branches.isEmpty
@@ -358,7 +358,7 @@ class _SuperAdminUsersPageState extends State<SuperAdminUsersPage> {
                                                 padding: EdgeInsets.all(16.0),
                                                 child: Center(
                                                   child: CircularProgressIndicator(
-                                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.black),
                                                   ),
                                                 ),
                                               );
@@ -440,7 +440,7 @@ class _SuperAdminUsersPageState extends State<SuperAdminUsersPage> {
             Text(
               'Users: ${branch.userCount}',
               style: const TextStyle(
-                color: Colors.white,
+                color: Colors.black,
                 fontSize: 12,
                 fontWeight: FontWeight.w500,
               ),
@@ -499,7 +499,7 @@ class _SuperAdminUsersPageState extends State<SuperAdminUsersPage> {
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 14,
-                      color: Colors.white,
+                      color: Colors.black,
                     ),
                   ),
                   const SizedBox(height: 8),

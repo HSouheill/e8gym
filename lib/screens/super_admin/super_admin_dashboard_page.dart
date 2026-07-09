@@ -902,8 +902,11 @@ class _SuperAdminDashboardPageState extends State<SuperAdminDashboardPage> {
                                   icon: Icons.settings,
                                   title: 'Settings',
                                   isSelected: false,
-                                  onTap: () {
-                                    Navigator.push(
+                                  onTap: () async {
+                                    setState(() {
+                                      _isSidebarOpen = false;
+                                    });
+                                    await Navigator.push(
                                       context,
                                       MaterialPageRoute(
                                         builder: (context) => SuperAdminSettingsPage(
@@ -911,9 +914,10 @@ class _SuperAdminDashboardPageState extends State<SuperAdminDashboardPage> {
                                         ),
                                       ),
                                     );
-                                    setState(() {
-                                      _isSidebarOpen = false;
-                                    });
+                                    // Refresh in case the background image was changed in Settings
+                                    if (mounted) {
+                                      _loadBackgroundImage();
+                                    }
                                   },
                                   isLargeDevice: isLargeDevice,
                                 ),
